@@ -22,6 +22,8 @@
     ]
   },
   "dependencies": {
+    "@home-pulse-watcher/shared": "*",
+    "livr": "^2.10.2",
     "tslib": "^2.3.0"
   }
 }

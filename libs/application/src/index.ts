@@ -1,1 +1,1 @@
-export * from './lib/application.js';
+export { BaseService } from './lib/base-service.js';

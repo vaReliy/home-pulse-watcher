@@ -31,7 +31,7 @@ Every business operation is a standalone service class:
 - **Monorepo**: Nx 22.4 with `@home-pulse-watcher/` prefix
 - **Framework**: NestJS 11
 - **ORM**: Prisma 7.3 with PostgreSQL
-- **Validation**: LIVR (register custom rules for MAC address, HMAC format)
+- **Validation**: LIVR (custom rules use camelCase: `macAddress`, `hmacFormat`)
 - **Testing**: Jest 30 with SWC compiler
 - **CLI**: nest-commander for admin tasks
 
@@ -48,3 +48,4 @@ Every business operation is a standalone service class:
 - **Composition over Inheritance**: Avoid deep class hierarchies
 - **Interface-First**: Infrastructure adapters implement Core/Application interfaces
 - **Descriptive Names**: `lastSeenAt` not `date`
+- **camelCase Everywhere**: Including LIVR rules (`macAddress` not `mac_address`)
