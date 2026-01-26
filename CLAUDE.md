@@ -1,12 +1,47 @@
-# Copilot Instructions for HomePulse Watcher
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
 HomePulse Watcher is a DIY power outage monitoring system. ESP32-C3 devices monitor power status and send HMAC-signed REST requests to this NestJS backend, which stores events and notifies users via Telegram.
 
+## Build & Development Commands
+
+```bash
+# Start development server
+npx nx serve api
+
+# Build for production
+npx nx build api
+
+# Run unit tests
+npx nx test api
+
+# Run single test file
+npx nx test api --testFile=app.service.spec.ts
+
+# Run E2E tests
+npx nx e2e api-e2e
+
+# Lint
+npx nx lint api
+
+# Type check
+npx nx typecheck api
+
+# Build Docker image
+npx nx docker:build api
+
+# Database commands
+npx prisma generate
+npx prisma migrate dev --name <migration_name>
+npx prisma migrate deploy  # production
+```
+
 ## Architecture
 
-This project follows **Onion Architecture** with **[Chista](https://github.com/koorchik/node-chista)** (Clean Integrated Services) principles:
+This project follows **Onion Architecture** with **Chista** (Clean Integrated Services) principles:
 
 ### Layer Structure (Dependencies Point Inward)
 1. **Core (Domain)**: Pure entities (`Device`, `User`), repository interfaces. No external dependencies.
