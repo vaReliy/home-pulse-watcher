@@ -1,0 +1,27 @@
+{
+  "name": "@home-pulse-watcher/infrastructure",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "@home-pulse-watcher/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "name": "infrastructure",
+    "tags": [
+      "scope:infrastructure",
+      "type:implementation"
+    ]
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  }
+}

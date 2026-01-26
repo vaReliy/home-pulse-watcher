@@ -8,6 +8,18 @@
     },
     {
       "path": "./apps/api"
+    },
+    {
+      "path": "./libs/shared"
+    },
+    {
+      "path": "./libs/core"
+    },
+    {
+      "path": "./libs/application"
+    },
+    {
+      "path": "./libs/infrastructure"
     }
   ]
 }
