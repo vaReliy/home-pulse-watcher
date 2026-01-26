@@ -29,12 +29,17 @@ Every business operation must be a standalone **Service** class.
 - **Transport Agnostic:** The service doesn't know about `Req` or `Res` objects.
 - **Validation-First:** Every service utilizes **LIVR** for strict input validation.
 
-### 2. Layers & Dependency Rule
+### 2. Layers & Dependency Rule (Pure Onion)
 
-1. **Core (Domain):** Entities and Repository Interfaces. No dependencies.
-2. **Application (Services):** Chista-style services. Depends only on Core.
-3. **Infrastructure:** Prisma implementations, Telegram API clients, Cryptography. Depends on Application and Core.
-4. **Interface (Transport):** NestJS Controllers and CLI Commands. They act as "callers" for the Services.
+| Layer | Library | Contains | Framework Code |
+|-------|---------|----------|----------------|
+| **Core** | `@home-pulse-watcher/core` | Entities, Repository Interfaces, Enums | ❌ None |
+| **Application** | `@home-pulse-watcher/application` | BaseService, Chista services | ❌ None |
+| **Infrastructure** | `@home-pulse-watcher/infrastructure` | Prisma Repositories, Mappers, External APIs | ❌ None |
+| **Interface** | `apps/api` | NestJS Controllers, Modules, DI Wiring | ✅ NestJS |
+
+**Key Principle:** Infrastructure layer contains **plain TypeScript classes** with constructor injection.
+NestJS DI wiring (providers, modules) lives exclusively in the Interface layer.
 
 ### 3. Service Structure Example
 

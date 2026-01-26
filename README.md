@@ -73,7 +73,7 @@ npx nx serve api
 
 - [x] Phase 0: System Architecture & Initial Setup
 
-- [ ] Phase 1: Domain Entities & Persistence Layer
+- [x] Phase 1: Domain Entities & Persistence Layer
 
 - [ ] Phase 2: Device Provisioning CLI
 
