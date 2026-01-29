@@ -69,18 +69,34 @@ npx prisma migrate dev
 npx nx serve api
 ```
 
-🗺 Roadmap
+### 6. CLI Commands (Device Provisioning)
+
+```bash
+# Build first
+npx nx build api
+
+# Load environment variables
+export $(grep -v '^#' .env | xargs)
+
+# Register a new device
+node apps/api/dist/cli.js device:register --mac AA:BB:CC:DD:EE:FF --label "Kitchen"
+
+# Create a user
+node apps/api/dist/cli.js user:create --telegram-id 123456789
+
+# List devices for a user
+node apps/api/dist/cli.js device:list --user-id <uuid>
+```
+
+See [CLI Reference](./docs/cli-reference.md) for full documentation.
+
+## 🗺 Roadmap
 
 - [x] Phase 0: System Architecture & Initial Setup
-
 - [x] Phase 1: Domain Entities & Persistence Layer
-
-- [ ] Phase 2: Device Provisioning CLI
-
+- [x] Phase 2: Device Provisioning CLI
 - [ ] Phase 3: Core Power Status Logic & Event Handling
-
 - [ ] Phase 4: Telegram Bot Integration
-
 - [ ] Phase 5: Advanced Analytics & Uptime Tracking
 
 📄 License

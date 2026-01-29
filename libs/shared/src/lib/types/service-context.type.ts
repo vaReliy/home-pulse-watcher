@@ -1,4 +1,13 @@
 /**
+ * Application configuration injected into services.
+ * Keeps services decoupled from environment variables.
+ */
+export interface AppConfig {
+  /** Salt for HMAC secret hashing */
+  appGlobalSalt: string;
+}
+
+/**
  * Context passed to services from the Interface layer.
  * Contains verified/authenticated information from guards/middleware.
  */
@@ -17,6 +26,9 @@ export interface ServiceContext {
 
   /** Client IP address */
   ipAddress?: string;
+
+  /** Application configuration */
+  config?: AppConfig;
 }
 
 /**

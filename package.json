@@ -2,7 +2,9 @@
   "name": "@home-pulse-watcher/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "test": "npx nx run-many -t test --passWithNoTests"
+  },
   "private": true,
   "dependencies": {
     "@nestjs/common": "^11.0.0",
@@ -12,6 +14,7 @@
     "@prisma/client": "^7.3.0",
     "axios": "^1.6.0",
     "livr": "^2.10.2",
+    "nest-commander": "^3.20.1",
     "pg": "^8.17.2",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0"

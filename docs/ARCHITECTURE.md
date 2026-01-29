@@ -36,10 +36,10 @@ Every business operation must be a standalone **Service** class.
 | **Core** | `@home-pulse-watcher/core` | Entities, Repository Interfaces, Enums | ❌ None |
 | **Application** | `@home-pulse-watcher/application` | BaseService, Chista services | ❌ None |
 | **Infrastructure** | `@home-pulse-watcher/infrastructure` | Prisma Repositories, Mappers, External APIs | ❌ None |
-| **Interface** | `apps/api` | NestJS Controllers, Modules, DI Wiring | ✅ NestJS |
+| **Interface** | `apps/api` | NestJS Controllers, Modules, DI Wiring, Guards, Interceptors | ✅ NestJS |
 
 **Key Principle:** Infrastructure layer contains **plain TypeScript classes** with constructor injection.
-NestJS DI wiring (providers, modules) lives exclusively in the Interface layer.
+NestJS DI wiring (providers, modules, interceptors, guards) lives exclusively in the Interface layer.
 
 ### 3. Service Structure Example
 
@@ -71,5 +71,28 @@ A typical service follows this lifecycle:
 
 ### Error Handling
 
-- Use specific Error classes (e.g., `NotFoundError`, `AccessDeniedError`).
-- The Transport layer (NestJS) is responsible for mapping these to HTTP Status Codes (404, 403, etc.).
+- Use specific Error classes (e.g., `NotFoundError`, `DomainError`, `ValidationError`).
+- The Transport layer (NestJS) is responsible for mapping these to HTTP Status Codes via `ServiceExceptionFilter`.
+
+---
+
+## 🔧 Key Patterns
+
+### Config Injection
+
+Services must not access `process.env` directly. Configuration is injected via `ServiceContext.config`. The Interface layer (CLI commands, controllers) reads environment variables and passes them to services. This ensures services remain testable without mocking `process.env`.
+
+### BigInt Serialization
+
+JavaScript `BigInt` cannot be serialized with `JSON.stringify()`. The Interface layer handles this via an interceptor that recursively converts `BigInt` values to strings in HTTP responses.
+
+### Factory-Based DI Wiring
+
+Services remain plain TypeScript classes (no `@Injectable()`). NestJS binds them via factory providers using Symbol tokens. This keeps the Application layer framework-agnostic while allowing full DI capabilities in the Interface layer.
+
+---
+
+## 📚 Further Reading
+
+- Implementation details: `docs/implementation/`
+- Learning guides with code examples: `docs/learning/`
