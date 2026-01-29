@@ -15,8 +15,6 @@ class LivrValidatorFactory {
   private static instance: LivrValidatorFactory;
   private initialized = false;
 
-  private constructor() {}
-
   static getInstance(): LivrValidatorFactory {
     if (!LivrValidatorFactory.instance) {
       LivrValidatorFactory.instance = new LivrValidatorFactory();
@@ -64,6 +62,8 @@ export const livrValidatorFactory = LivrValidatorFactory.getInstance();
 /**
  * Convenience function to create a prepared validator.
  */
-export function createValidator<T = unknown>(rules: LivrRules): LIVR.Validator<T> {
+export function createValidator<T = unknown>(
+  rules: LivrRules,
+): LIVR.Validator<T> {
   return livrValidatorFactory.createValidator<T>(rules);
 }
