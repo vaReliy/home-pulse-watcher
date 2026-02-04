@@ -2,11 +2,13 @@ import { Device } from './device.entity.js';
 import { PowerStatus } from '../types/power-status.enum.js';
 
 describe('Device', () => {
-  const createDevice = (overrides?: Partial<ConstructorParameters<typeof Device>[0]>) =>
+  const createDevice = (
+    overrides?: Partial<ConstructorParameters<typeof Device>[0]>,
+  ) =>
     new Device({
       id: 'device-1',
       macAddress: 'AA:BB:CC:DD:EE:FF',
-      secretHash: 'hashed-secret',
+      encryptedSecret: 'iv:authtag:ciphertext',
       label: 'Kitchen',
       lastStatus: PowerStatus.ON,
       lastSeenAt: new Date(),
@@ -19,7 +21,7 @@ describe('Device', () => {
 
       expect(device.id).toBe('device-1');
       expect(device.macAddress).toBe('AA:BB:CC:DD:EE:FF');
-      expect(device.secretHash).toBe('hashed-secret');
+      expect(device.encryptedSecret).toBe('iv:authtag:ciphertext');
       expect(device.label).toBe('Kitchen');
       expect(device.lastStatus).toBe(PowerStatus.ON);
       expect(device.lastSeenAt).toBeInstanceOf(Date);

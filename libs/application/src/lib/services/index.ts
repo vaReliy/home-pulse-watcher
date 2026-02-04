@@ -21,3 +21,17 @@ export {
   CreateUserService,
   type CreateUserInput,
 } from './user/create-user.service.js';
+
+// Power event services
+export {
+  ProcessPowerStatusService,
+  type ProcessPowerStatusInput,
+  type ProcessPowerStatusOutput,
+  type IEventEmitter,
+} from './power-event/process-power-status.service.js';
+
+export {
+  GetPowerHistoryService,
+  type GetPowerHistoryInput,
+  type GetPowerHistoryOutput,
+} from './power-event/get-power-history.service.js';

@@ -1,15 +1,23 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from '../modules/prisma/prisma.module';
 import { RepositoriesModule } from '../modules/repositories/repositories.module';
 import { ServicesModule } from '../modules/services/services.module';
+import { DeviceStatusModule } from '../modules/device-status/device-status.module';
 import { ServiceExceptionFilter } from '../filters/service-exception.filter';
 import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.interceptor';
 
 @Module({
-  imports: [PrismaModule, RepositoriesModule, ServicesModule],
+  imports: [
+    EventEmitterModule.forRoot(),
+    PrismaModule,
+    RepositoriesModule,
+    ServicesModule,
+    DeviceStatusModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,

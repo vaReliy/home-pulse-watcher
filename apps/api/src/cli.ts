@@ -1,9 +1,13 @@
 import { CommandFactory } from 'nest-commander';
 import { CliModule } from './cli/cli.module';
 import { Logger } from '@nestjs/common';
+import { livrValidatorFactory } from '@home-pulse-watcher/shared';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('CLI');
+
+  // Initialize LIVR custom rules before CLI commands execute
+  livrValidatorFactory.initialize();
 
   try {
     await CommandFactory.run(CliModule, {

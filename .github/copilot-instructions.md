@@ -39,8 +39,9 @@ Every business operation is a standalone service class:
 ### Security
 
 - Device-to-backend communication uses HMAC signatures
-- Signature verification happens in Middleware/Guards, passing verified `deviceId` to service context
-- Environment variables: `APP_GLOBAL_SALT`, `HMAC_SECRET_KEY` (32+ chars each)
+- Device secrets are encrypted with AES-256-GCM (stored as `encryptedSecret`)
+- Signature verification happens in Guards, passing verified `deviceId` to service context
+- Environment variable: `DEVICE_SECRET_ENCRYPTION_KEY` (64 hex chars)
 
 ## Tech Stack
 
@@ -54,7 +55,7 @@ Every business operation is a standalone service class:
 ## Database Models
 
 - **User**: Telegram users (telegramId unique)
-- **Device**: ESP32 devices (macAddress unique, secretHash for HMAC)
+- **Device**: ESP32 devices (macAddress unique, encryptedSecret for HMAC verification)
 - **UserDevice**: Many-to-many with role (VIEWER default)
 - **PowerEvent**: Status changes (1=on, 0=off) with optional duration
 
@@ -65,3 +66,89 @@ Every business operation is a standalone service class:
 - **Interface-First**: Infrastructure adapters implement Core/Application interfaces
 - **Descriptive Names**: `lastSeenAt` not `date`
 - **camelCase Everywhere**: Including LIVR rules (`macAddress` not `mac_address`)
+
+## Code Formatting Rules
+
+### TypeScript Configuration
+
+- **Module System**: `"module": "nodenext"`, `"moduleResolution": "nodenext"`
+- **Target**: ES2022
+- **Strict Mode**: All strict flags enabled
+- **Compiler Options**:
+  - `noUnusedLocals: true`
+  - `noImplicitReturns: true`
+  - `noFallthroughCasesInSwitch: true`
+  - `noImplicitOverride: true`
+
+### Import/Export Conventions
+
+- **Always use `.js` extensions** in imports (TypeScript with NodeNext module resolution)
+  - `import { User } from './user.entity.js';`
+  - `import { BaseService } from '../../base-service.js';`
+- **Use `type` imports** for types/interfaces: `import type { Device } from '@home-pulse-watcher/core';`
+- **Named exports only** - avoid default exports
+- **Barrel exports** through index.ts files for clean API surfaces
+
+### Prettier Configuration
+
+- **Single quotes**: `'string'` not `"string"`
+- **Default Prettier rules** for everything else (2-space indent, trailing commas, etc.)
+
+### Naming Conventions
+
+- **Interfaces**: Prefix with `I` for repository/service abstractions (`IDeviceRepository`, `IEventEmitter`)
+- **Types**: PascalCase without prefix (`PowerStatus`, `DeviceRole`, `LivrRules`)
+- **Classes**: PascalCase (`BaseService`, `PrismaDeviceRepository`, `CreateUserService`)
+- **Files**: kebab-case (`device.repository.ts`, `create-user.service.ts`, `power-status.enum.ts`)
+- **Constants**: SCREAMING_SNAKE_CASE for error codes (`DEVICE_ALREADY_REGISTERED`)
+- **Enums**: Use `as const` objects over TypeScript enums
+
+### Service Structure
+
+```typescript
+export interface ServiceNameInput {
+  field: string;
+}
+
+export interface ServiceNameOutput {
+  result: ResultType;
+}
+
+export class ServiceNameService extends BaseService<ServiceNameInput, ServiceNameOutput> {
+  constructor(private readonly repository: IRepository) {
+    super();
+  }
+
+  protected validationRules(): LivrRules {
+    return {
+      field: ['required', 'string'],
+    };
+  }
+
+  protected async execute(params: ServiceNameInput, context: ServiceContext): Promise<ServiceNameOutput> {
+    // Implementation
+  }
+}
+```
+
+### Repository Pattern
+
+- **Plain TypeScript classes** in Infrastructure layer (no `@Injectable()`)
+- **Constructor injection** of PrismaClient
+- **Map Prisma models** to Domain Entities using mapper functions
+- **Never expose** Prisma types outside Infrastructure layer
+
+### Error Handling
+
+- **Specific error classes**: `ValidationError`, `DomainError`, `NotFoundError`
+- **Error codes as constants**: `DomainErrorCode.DEVICE_ALREADY_REGISTERED`
+- **Descriptive messages**: Include identifiers in error messages
+
+### Documentation
+
+- **JSDoc comments** for:
+  - All public classes and interfaces
+  - All public methods
+  - Complex business logic
+- **Concise descriptions**: One-line summary preferred
+- **Include parameter/return descriptions** for non-obvious cases

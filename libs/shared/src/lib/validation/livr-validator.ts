@@ -1,5 +1,9 @@
 import LIVR from 'livr';
-import { macAddressRule, hmacFormatRule } from './custom-rules/index.js';
+import {
+  macAddressRule,
+  hmacFormatRule,
+  powerStatusRule,
+} from './custom-rules/index.js';
 
 /** LIVR validation rules schema type */
 export type LivrRules = Record<string, unknown>;
@@ -33,6 +37,7 @@ class LivrValidatorFactory {
     LIVR.Validator.registerDefaultRules({
       macAddress: macAddressRule(),
       hmacFormat: hmacFormatRule(),
+      powerStatus: powerStatusRule(),
     });
 
     // Enable auto-trim for all string inputs

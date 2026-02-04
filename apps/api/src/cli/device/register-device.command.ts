@@ -18,16 +18,19 @@ export class RegisterDeviceCommand extends CommandRunner {
 
   constructor(
     @Inject(SERVICE_TOKENS.REGISTER_DEVICE)
-    private readonly registerDeviceService: RegisterDeviceService
+    private readonly registerDeviceService: RegisterDeviceService,
   ) {
     super();
   }
 
   async run(_inputs: string[], options: RegisterDeviceOptions): Promise<void> {
     try {
-      const appGlobalSalt = process.env['APP_GLOBAL_SALT'];
-      if (!appGlobalSalt) {
-        throw new Error('APP_GLOBAL_SALT environment variable is required');
+      const deviceSecretEncryptionKey =
+        process.env['DEVICE_SECRET_ENCRYPTION_KEY'];
+      if (!deviceSecretEncryptionKey) {
+        throw new Error(
+          'DEVICE_SECRET_ENCRYPTION_KEY environment variable is required',
+        );
       }
 
       const result = await this.registerDeviceService.run(
@@ -36,8 +39,8 @@ export class RegisterDeviceCommand extends CommandRunner {
           label: options.label,
         },
         {
-          config: { appGlobalSalt },
-        }
+          config: { deviceSecretEncryptionKey },
+        },
       );
 
       const { device, secret } = result.data;

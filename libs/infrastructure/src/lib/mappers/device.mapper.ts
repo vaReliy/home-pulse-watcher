@@ -8,7 +8,7 @@ export function mapPrismaDeviceToEntity(prismaDevice: PrismaDevice): Device {
   return new Device({
     id: prismaDevice.id,
     macAddress: prismaDevice.macAddress,
-    secretHash: prismaDevice.secretHash,
+    encryptedSecret: prismaDevice.encryptedSecret,
     label: prismaDevice.label,
     lastStatus:
       prismaDevice.lastStatus !== null

@@ -27,13 +27,13 @@ export class PrismaDeviceRepository implements IDeviceRepository {
 
   async create(data: {
     macAddress: string;
-    secretHash: string;
+    encryptedSecret: string;
     label?: string | null;
   }): Promise<Device> {
     const device = await this.prisma.device.create({
       data: {
         macAddress: data.macAddress,
-        secretHash: data.secretHash,
+        encryptedSecret: data.encryptedSecret,
         label: data.label ?? null,
       },
     });
@@ -42,7 +42,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
 
   async update(
     id: string,
-    data: { label?: string | null; secretHash?: string }
+    data: { label?: string | null; encryptedSecret?: string },
   ): Promise<Device> {
     const device = await this.prisma.device.update({
       where: { id },
@@ -53,7 +53,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
 
   async updateStatus(
     id: string,
-    data: { lastStatus: PowerStatus; lastSeenAt: Date }
+    data: { lastStatus: PowerStatus; lastSeenAt: Date },
   ): Promise<Device> {
     const device = await this.prisma.device.update({
       where: { id },

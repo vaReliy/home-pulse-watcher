@@ -8,7 +8,7 @@ import { PowerStatus } from '../types/power-status.enum.js';
 export class Device {
   readonly id: string;
   readonly macAddress: string;
-  readonly secretHash: string;
+  readonly encryptedSecret: string;
   readonly label: string | null;
   readonly lastStatus: PowerStatus | null;
   readonly lastSeenAt: Date | null;
@@ -16,14 +16,14 @@ export class Device {
   constructor(props: {
     id: string;
     macAddress: string;
-    secretHash: string;
+    encryptedSecret: string;
     label: string | null;
     lastStatus: PowerStatus | null;
     lastSeenAt: Date | null;
   }) {
     this.id = props.id;
     this.macAddress = props.macAddress;
-    this.secretHash = props.secretHash;
+    this.encryptedSecret = props.encryptedSecret;
     this.label = props.label;
     this.lastStatus = props.lastStatus;
     this.lastSeenAt = props.lastSeenAt;

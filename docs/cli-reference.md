@@ -198,15 +198,6 @@ Ensure the `.env` file exists and contains `DATABASE_URL`:
 export $(grep -v '^#' .env | xargs)
 ```
 
-### "APP_GLOBAL_SALT environment variable is required"
-
-The `APP_GLOBAL_SALT` is required for device secret hashing:
-
-```bash
-# Add to .env
-APP_GLOBAL_SALT=your-32-character-random-string-here
-```
-
 ### Connection refused to database
 
 Ensure PostgreSQL is running:

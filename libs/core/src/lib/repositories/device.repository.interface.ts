@@ -20,7 +20,7 @@ export interface IDeviceRepository {
    */
   create(data: {
     macAddress: string;
-    secretHash: string;
+    encryptedSecret: string;
     label?: string | null;
   }): Promise<Device>;
 
@@ -31,7 +31,7 @@ export interface IDeviceRepository {
     id: string,
     data: {
       label?: string | null;
-      secretHash?: string;
+      encryptedSecret?: string;
     },
   ): Promise<Device>;
 

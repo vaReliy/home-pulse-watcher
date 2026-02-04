@@ -6,7 +6,7 @@ describe('mapPrismaDeviceToEntity', () => {
     const prismaDevice = {
       id: 'device-1',
       macAddress: 'AA:BB:CC:DD:EE:FF',
-      secretHash: 'hashed-secret',
+      encryptedSecret: 'iv:authtag:ciphertext',
       label: 'Kitchen',
       lastStatus: 1,
       lastSeenAt: new Date('2024-01-01'),
@@ -17,7 +17,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result).toBeInstanceOf(Device);
     expect(result.id).toBe('device-1');
     expect(result.macAddress).toBe('AA:BB:CC:DD:EE:FF');
-    expect(result.secretHash).toBe('hashed-secret');
+    expect(result.encryptedSecret).toBe('iv:authtag:ciphertext');
     expect(result.label).toBe('Kitchen');
     expect(result.lastStatus).toBe(PowerStatus.ON);
     expect(result.lastSeenAt).toEqual(new Date('2024-01-01'));
@@ -27,7 +27,7 @@ describe('mapPrismaDeviceToEntity', () => {
     const prismaDevice = {
       id: 'device-1',
       macAddress: 'AA:BB:CC:DD:EE:FF',
-      secretHash: 'hashed-secret',
+      encryptedSecret: 'iv:authtag:ciphertext',
       label: null,
       lastStatus: null,
       lastSeenAt: null,
@@ -44,7 +44,7 @@ describe('mapPrismaDeviceToEntity', () => {
     const prismaDevice = {
       id: 'device-1',
       macAddress: 'AA:BB:CC:DD:EE:FF',
-      secretHash: 'hashed-secret',
+      encryptedSecret: 'iv:authtag:ciphertext',
       label: null,
       lastStatus: 0,
       lastSeenAt: null,

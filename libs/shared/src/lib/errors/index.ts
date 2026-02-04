@@ -6,3 +6,8 @@ export {
   type DomainErrorCodeType,
 } from './domain.error.js';
 export { NotFoundError } from './not-found.error.js';
+export {
+  AuthenticationError,
+  AuthenticationErrorCode,
+  type AuthenticationErrorCodeType,
+} from './authentication.error.js';

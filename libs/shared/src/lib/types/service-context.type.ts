@@ -3,8 +3,8 @@
  * Keeps services decoupled from environment variables.
  */
 export interface AppConfig {
-  /** Salt for HMAC secret hashing */
-  appGlobalSalt: string;
+  /** Encryption key for device secrets (64-char hex = 32 bytes) */
+  deviceSecretEncryptionKey: string;
 }
 
 /**

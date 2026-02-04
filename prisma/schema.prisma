@@ -21,14 +21,14 @@ model User {
 }
 
 model Device {
-  id           String       @id @default(uuid())
-  macAddress   String       @unique
-  secretHash   String
-  label        String?
-  lastStatus   Int?
-  lastSeenAt   DateTime?    @updatedAt
-  users        UserDevice[]
-  events       PowerEvent[]
+  id              String       @id @default(uuid())
+  macAddress      String       @unique
+  encryptedSecret String
+  label           String?
+  lastStatus      Int?
+  lastSeenAt      DateTime?    @updatedAt
+  users           UserDevice[]
+  events          PowerEvent[]
 }
 
 model UserDevice {

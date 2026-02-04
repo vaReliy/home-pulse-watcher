@@ -10,7 +10,7 @@ describe('RegisterDeviceService', () => {
   const mockDevice: Device = {
     id: 'device-123',
     macAddress: 'AA:BB:CC:DD:EE:FF',
-    secretHash: 'hashed-secret',
+    encryptedSecret: 'iv:authtag:ciphertext',
     label: 'Test Device',
     lastStatus: null,
     lastSeenAt: null,
@@ -28,8 +28,14 @@ describe('RegisterDeviceService', () => {
     existsByMacAddress: jest.fn(),
   });
 
+  // 32 bytes = 64 hex characters
+  const testEncryptionKey =
+    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
   const validContext = {
-    config: { appGlobalSalt: 'test-salt-32-characters-minimum!' },
+    config: {
+      deviceSecretEncryptionKey: testEncryptionKey,
+    },
   };
 
   describe('successful registration', () => {
@@ -41,7 +47,7 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
       const result = await service.run(
         { macAddress: 'aa:bb:cc:dd:ee:ff' },
-        validContext
+        validContext,
       );
 
       expect(result.data.device).toEqual(mockDevice);
@@ -58,10 +64,10 @@ describe('RegisterDeviceService', () => {
       await service.run({ macAddress: 'aa:bb:cc:dd:ee:ff' }, validContext);
 
       expect(mockRepo.existsByMacAddress).toHaveBeenCalledWith(
-        'AA:BB:CC:DD:EE:FF'
+        'AA:BB:CC:DD:EE:FF',
       );
       expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ macAddress: 'AA:BB:CC:DD:EE:FF' })
+        expect.objectContaining({ macAddress: 'AA:BB:CC:DD:EE:FF' }),
       );
     });
 
@@ -73,11 +79,11 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
       await service.run(
         { macAddress: 'AA:BB:CC:DD:EE:FF', label: 'Kitchen' },
-        validContext
+        validContext,
       );
 
       expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ label: 'Kitchen' })
+        expect.objectContaining({ label: 'Kitchen' }),
       );
     });
 
@@ -90,8 +96,31 @@ describe('RegisterDeviceService', () => {
       await service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext);
 
       expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ label: null })
+        expect.objectContaining({ label: null }),
       );
+    });
+
+    it('should store encrypted secret, not plain secret', async () => {
+      const mockRepo = createMockRepository();
+      mockRepo.existsByMacAddress.mockResolvedValue(false);
+      mockRepo.create.mockResolvedValue(mockDevice);
+
+      const service = new RegisterDeviceService(mockRepo);
+      const result = await service.run(
+        { macAddress: 'AA:BB:CC:DD:EE:FF' },
+        validContext,
+      );
+
+      // The create call should have encryptedSecret (iv:authtag:ciphertext format)
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          encryptedSecret: expect.stringContaining(':'),
+        }),
+      );
+
+      // The returned secret should not match the stored encrypted secret
+      const createCall = mockRepo.create.mock.calls[0][0];
+      expect(result.data.secret).not.toBe(createCall.encryptedSecret);
     });
   });
 
@@ -103,25 +132,27 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext)
+        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext),
       ).rejects.toThrow(DomainError);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext)
+        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext),
       ).rejects.toMatchObject({
         code: DomainErrorCode.DEVICE_ALREADY_REGISTERED,
       });
     });
 
-    it('should throw Error when config.appGlobalSalt missing', async () => {
+    it('should throw Error when deviceSecretEncryptionKey missing', async () => {
       const mockRepo = createMockRepository();
       mockRepo.existsByMacAddress.mockResolvedValue(false);
 
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, {})
-      ).rejects.toThrow('appGlobalSalt not provided in service context');
+        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, {}),
+      ).rejects.toThrow(
+        'deviceSecretEncryptionKey not provided in service context',
+      );
     });
 
     it('should throw Error when context has no config', async () => {
@@ -131,8 +162,10 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, { config: undefined })
-      ).rejects.toThrow('appGlobalSalt not provided in service context');
+        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, { config: undefined }),
+      ).rejects.toThrow(
+        'deviceSecretEncryptionKey not provided in service context',
+      );
     });
   });
 
@@ -142,7 +175,7 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({} as { macAddress: string }, validContext)
+        service.run({} as { macAddress: string }, validContext),
       ).rejects.toThrow(ValidationError);
     });
 
@@ -151,7 +184,7 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'invalid-mac' }, validContext)
+        service.run({ macAddress: 'invalid-mac' }, validContext),
       ).rejects.toThrow(ValidationError);
     });
   });

@@ -95,7 +95,7 @@ See [CLI Reference](./docs/cli-reference.md) for full documentation.
 - [x] Phase 0: System Architecture & Initial Setup
 - [x] Phase 1: Domain Entities & Persistence Layer
 - [x] Phase 2: Device Provisioning CLI
-- [ ] Phase 3: Core Power Status Logic & Event Handling
+- [x] Phase 3: Core Power Status Logic & Event Handling
 - [ ] Phase 4: Telegram Bot Integration
 - [ ] Phase 5: Advanced Analytics & Uptime Tracking
 
