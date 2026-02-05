@@ -7,6 +7,7 @@ import { PrismaModule } from '../modules/prisma/prisma.module';
 import { RepositoriesModule } from '../modules/repositories/repositories.module';
 import { ServicesModule } from '../modules/services/services.module';
 import { DeviceStatusModule } from '../modules/device-status/device-status.module';
+import { TelegramModule } from '../modules/telegram/telegram.module';
 import { ServiceExceptionFilter } from '../filters/service-exception.filter';
 import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.interceptor';
 
@@ -17,6 +18,7 @@ import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.i
     RepositoriesModule,
     ServicesModule,
     DeviceStatusModule,
+    TelegramModule,
   ],
   controllers: [AppController],
   providers: [

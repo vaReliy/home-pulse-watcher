@@ -50,3 +50,8 @@ test-output
 .history
 
 /generated/prisma
+
+# PlatformIO (ESP32 firmware)
+firmware/**/.pio/
+firmware/**/.vscode/
+firmware/**/include/secrets.h

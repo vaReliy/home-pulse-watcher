@@ -2,7 +2,7 @@ import { PowerStatus } from '../types/power-status.enum.js';
 
 /**
  * Device domain entity.
- * Represents an ESP32-C3 power monitoring device.
+ * Represents an ESP32-C3/ESP32-C6 power monitoring device.
  * Pure domain object with no external dependencies.
  */
 export class Device {

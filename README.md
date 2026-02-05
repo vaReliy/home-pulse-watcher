@@ -13,7 +13,7 @@
 
 ### Hardware
 
-- **MCU:** ESP32-C3 SuperMini (RISC-V).
+- **MCU:** ESP32-C3/ESP32-C6 SuperMini (RISC-V).
 - **Sensor:** Non-contact monitoring via a 220V -> 5V USB adapter logic.
 - **Power:** UPS-backed ESP32 to ensure operation during blackouts.
 
@@ -90,13 +90,30 @@ node apps/api/dist/cli.js device:list --user-id <uuid>
 
 See [CLI Reference](./docs/cli-reference.md) for full documentation.
 
+### 7. ESP32 Firmware
+
+ESP32 firmware for power monitoring devices is located in the `firmware/` directory.
+
+```bash
+cd firmware/esp32c3  # or esp32c6
+
+# Configure secrets
+cp include/secrets.h.example include/secrets.h
+# Edit secrets.h with WiFi and device credentials
+
+# Build and flash
+pio run -t upload
+```
+
+See [Device Provisioning Guide](./docs/device-provisioning-guide.md) for the complete setup workflow.
+
 ## 🗺 Roadmap
 
 - [x] Phase 0: System Architecture & Initial Setup
 - [x] Phase 1: Domain Entities & Persistence Layer
 - [x] Phase 2: Device Provisioning CLI
 - [x] Phase 3: Core Power Status Logic & Event Handling
-- [ ] Phase 4: Telegram Bot Integration
+- [x] Phase 4: Telegram Bot Integration
 - [ ] Phase 5: Advanced Analytics & Uptime Tracking
 
 📄 License

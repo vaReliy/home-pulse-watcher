@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HomePulse Watcher is a DIY power outage monitoring system. ESP32-C3 devices monitor power status and send HMAC-signed REST requests to this NestJS backend, which stores events and notifies users via Telegram.
+HomePulse Watcher is a DIY power outage monitoring system. ESP32-C3/ESP32-C6 devices monitor power status and send HMAC-signed REST requests to this NestJS backend, which stores events and notifies users via Telegram.
 
 **MVP Stage**: This project is in early development. No legacy concerns - database can be recreated from scratch as needed.
 
@@ -91,6 +91,25 @@ Every business operation is a standalone service class:
 - Device secrets are encrypted with AES-256-GCM (stored as `encryptedSecret`)
 - Signature verification happens in Guards, passing verified `deviceId` to service context
 - Environment variable: `DEVICE_SECRET_ENCRYPTION_KEY` (64 hex chars)
+
+### Telegram Bot Integration
+
+- **Library**: Telegraf (TypeScript-native Telegram bot framework)
+- **Module**: `apps/api/src/modules/telegram/`
+- **Commands**: `/start`, `/help`, `/status`, `/devices`
+- **Notifications**: Event-driven via `@OnEvent(POWER_STATUS_CHANGED_EVENT)`
+- **Authentication**: User verification via `telegramId` lookup before protected commands
+- **Environment**: `TELEGRAM_BOT_TOKEN` (required), `TELEGRAM_ADMIN_CHAT_ID` (optional)
+
+Bot follows the adapter pattern - handlers call existing Application Services, keeping business logic transport-agnostic.
+
+### ESP32 Firmware
+
+- **Location**: `firmware/` directory (ESP32-C3 and ESP32-C6 variants)
+- **Build Tool**: PlatformIO with Arduino framework
+- **Features**: WiFi, NTP time sync, HMAC-SHA256 signing, GPIO power detection
+- **Configuration**: `config.h` (hardware), `secrets.h` (credentials - not tracked)
+- **Documentation**: `docs/device-provisioning-guide.md`, `firmware/docs/FLASHING_GUIDE.md`
 
 ## Tech Stack
 
