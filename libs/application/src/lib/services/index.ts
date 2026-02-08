@@ -28,6 +28,12 @@ export {
   type CreateUserInput,
 } from './user/create-user.service.js';
 
+export {
+  ListUsersService,
+  type ListUsersInput,
+  type ListUsersOutput,
+} from './user/list-users.service.js';
+
 // Power event services
 export {
   ProcessPowerStatusService,

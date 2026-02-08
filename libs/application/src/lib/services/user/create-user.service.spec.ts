@@ -17,6 +17,7 @@ describe('CreateUserService', () => {
   const createMockRepository = (): jest.Mocked<IUserRepository> => ({
     findById: jest.fn(),
     findByTelegramId: jest.fn(),
+    findAll: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),

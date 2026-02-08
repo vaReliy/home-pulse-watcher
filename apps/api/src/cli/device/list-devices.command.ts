@@ -6,6 +6,7 @@ import { SERVICE_TOKENS } from '../../modules/services/services.module';
 
 interface ListDevicesOptions {
   userId?: string;
+  telegramId?: string;
 }
 
 @Command({
@@ -24,19 +25,22 @@ export class ListDevicesCommand extends CommandRunner {
 
   async run(_inputs: string[], options: ListDevicesOptions): Promise<void> {
     try {
-      if (!options.userId) {
-        console.log('\nError: --user-id is required\n');
-        console.log('Usage: device:list --user-id <uuid>\n');
+      if (!options.userId && !options.telegramId) {
+        console.log('\nError: Either --user-id or --telegram-id is required\n');
+        console.log('Usage: device:list --user-id <uuid>');
+        console.log('       device:list --telegram-id <telegramId>\n');
         process.exit(1);
       }
 
       const result = await this.listDevicesService.run({
         userId: options.userId,
+        telegramId: options.telegramId,
       });
 
       const { devices, total } = result.data;
 
-      console.log(`\nDevices for user ${options.userId}:\n`);
+      const userLabel = options.userId ?? `telegramId=${options.telegramId}`;
+      console.log(`\nDevices for user ${userLabel}:\n`);
 
       if (devices.length === 0) {
         console.log('No devices found.\n');
@@ -74,9 +78,17 @@ export class ListDevicesCommand extends CommandRunner {
 
   @Option({
     flags: '-u, --user-id <userId>',
-    description: 'Filter devices by user ID',
+    description: 'Filter devices by user UUID',
   })
   parseUserId(val: string): string {
+    return val;
+  }
+
+  @Option({
+    flags: '-t, --telegram-id <telegramId>',
+    description: "User's Telegram ID (alternative to --user-id)",
+  })
+  parseTelegramId(val: string): string {
     return val;
   }
 }

@@ -31,6 +31,11 @@ export interface IUserRepository {
   delete(id: string): Promise<void>;
 
   /**
+   * Find all users.
+   */
+  findAll(): Promise<User[]>;
+
+  /**
    * Check if user exists by Telegram ID.
    */
   existsByTelegramId(telegramId: bigint): Promise<boolean>;

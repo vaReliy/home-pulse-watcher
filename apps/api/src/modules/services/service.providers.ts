@@ -10,6 +10,7 @@ import {
   GetDeviceService,
   ListDevicesService,
   CreateUserService,
+  ListUsersService,
   ProcessPowerStatusService,
   GetPowerHistoryService,
   LinkDeviceToUserService,
@@ -34,9 +35,9 @@ export const serviceProviders: Provider[] = [
   },
   {
     provide: SERVICE_TOKENS.LIST_DEVICES,
-    useFactory: (deviceRepo: IDeviceRepository) =>
-      new ListDevicesService(deviceRepo),
-    inject: [REPOSITORY_TOKENS.DEVICE],
+    useFactory: (deviceRepo: IDeviceRepository, userRepo: IUserRepository) =>
+      new ListDevicesService(deviceRepo, userRepo),
+    inject: [REPOSITORY_TOKENS.DEVICE, REPOSITORY_TOKENS.USER],
   },
   {
     provide: SERVICE_TOKENS.CREATE_USER,
@@ -79,5 +80,10 @@ export const serviceProviders: Provider[] = [
       REPOSITORY_TOKENS.DEVICE,
       REPOSITORY_TOKENS.USER_DEVICE,
     ],
+  },
+  {
+    provide: SERVICE_TOKENS.LIST_USERS,
+    useFactory: (userRepo: IUserRepository) => new ListUsersService(userRepo),
+    inject: [REPOSITORY_TOKENS.USER],
   },
 ];

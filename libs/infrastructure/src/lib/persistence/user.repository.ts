@@ -46,6 +46,13 @@ export class PrismaUserRepository implements IUserRepository {
     await this.prisma.user.delete({ where: { id } });
   }
 
+  async findAll(): Promise<User[]> {
+    const users = await this.prisma.user.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    return users.map(mapPrismaUserToEntity);
+  }
+
   async existsByTelegramId(telegramId: bigint): Promise<boolean> {
     const count = await this.prisma.user.count({
       where: { telegramId },
