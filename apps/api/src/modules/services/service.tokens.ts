@@ -5,4 +5,5 @@ export const SERVICE_TOKENS = {
   CREATE_USER: Symbol('CreateUserService'),
   PROCESS_POWER_STATUS: Symbol('ProcessPowerStatusService'),
   GET_POWER_HISTORY: Symbol('GetPowerHistoryService'),
+  LINK_DEVICE_TO_USER: Symbol('LinkDeviceToUserService'),
 } as const;

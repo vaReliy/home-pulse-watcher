@@ -84,6 +84,9 @@ node apps/api/dist/cli.js device:register --mac AA:BB:CC:DD:EE:FF --label "Kitch
 # Create a user
 node apps/api/dist/cli.js user:create --telegram-id 123456789
 
+# Link a device to a user
+node apps/api/dist/cli.js device:link --telegram-id 123456789 --mac AA:BB:CC:DD:EE:FF --role OWNER
+
 # List devices for a user
 node apps/api/dist/cli.js device:list --user-id <uuid>
 ```

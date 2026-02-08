@@ -9,6 +9,7 @@ export const DomainErrorCode = {
   DEVICE_NOT_OWNED: 'DEVICE_NOT_OWNED',
   INVALID_HMAC_SIGNATURE: 'INVALID_HMAC_SIGNATURE',
   USER_ALREADY_EXISTS: 'USER_ALREADY_EXISTS',
+  DEVICE_ALREADY_LINKED: 'DEVICE_ALREADY_LINKED',
   UNAUTHORIZED_ACTION: 'UNAUTHORIZED_ACTION',
 } as const;
 
@@ -37,6 +38,7 @@ export class DomainError extends BaseError {
     const conflictCodes: DomainErrorCodeType[] = [
       DomainErrorCode.DEVICE_ALREADY_REGISTERED,
       DomainErrorCode.USER_ALREADY_EXISTS,
+      DomainErrorCode.DEVICE_ALREADY_LINKED,
     ];
 
     const forbiddenCodes: DomainErrorCodeType[] = [

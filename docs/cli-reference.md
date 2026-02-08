@@ -126,6 +126,56 @@ Total: 1 device(s)
 
 ---
 
+### device:link
+
+Link an ESP32 device to a user account.
+
+**Usage:**
+
+```bash
+node apps/api/dist/cli.js device:link [options]
+```
+
+**Options:**
+| Option | Required | Description |
+|--------|----------|-------------|
+| `-t, --telegram-id <id>` | No* | User's Telegram ID |
+| `-u, --user-id <uuid>` | No* | User's UUID |
+| `-m, --mac <mac>` | No** | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
+| `-d, --device-id <uuid>` | No** | Device UUID |
+| `-r, --role <role>` | No | Role: OWNER, EDITOR, VIEWER (default: VIEWER) |
+
+\* At least one of `--telegram-id` or `--user-id` is required.
+\*\* At least one of `--mac` or `--device-id` is required.
+
+**Example:**
+
+```bash
+node apps/api/dist/cli.js device:link \
+  --telegram-id 123456789 \
+  --mac AA:BB:CC:DD:EE:FF \
+  --role OWNER
+```
+
+**Output:**
+
+```
+=== Device Linked Successfully ===
+Device:      Kitchen Sensor
+MAC Address: AA:BB:CC:DD:EE:FF
+User:        johndoe
+User ID:     8867bdee-bfd6-4158-b8cb-b80e79126958
+Role:        OWNER
+```
+
+**Error Cases:**
+
+- `DEVICE_ALREADY_LINKED` - This device is already linked to the specified user
+- `NOT_FOUND` - User or device not found with the given identifier
+- `VALIDATION_ERROR` - Invalid input format or missing required identifiers
+
+---
+
 ### user:create
 
 Create a new user from Telegram ID.

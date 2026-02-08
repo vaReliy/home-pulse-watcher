@@ -138,8 +138,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       await this.bot.telegram.setWebhook(webhookUrl);
       this.logger.log(`Telegram bot webhook set to: ${webhookUrl}`);
     } else {
-      // Development: use long polling
-      await this.bot.launch();
+      // Development: use long polling (don't await - runs in background)
+      this.bot.launch();
       this.logger.log('Telegram bot started with long polling');
     }
   }

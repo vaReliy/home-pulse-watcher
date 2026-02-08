@@ -16,6 +16,12 @@ export {
   type ListDevicesOutput,
 } from './device/list-devices.service.js';
 
+export {
+  LinkDeviceToUserService,
+  type LinkDeviceToUserInput,
+  type LinkDeviceToUserOutput,
+} from './device/link-device-to-user.service.js';
+
 // User services
 export {
   CreateUserService,

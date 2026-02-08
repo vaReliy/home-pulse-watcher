@@ -2,6 +2,7 @@ import type { Provider } from '@nestjs/common';
 import type {
   IDeviceRepository,
   IUserRepository,
+  IUserDeviceRepository,
   IPowerEventRepository,
 } from '@home-pulse-watcher/core';
 import {
@@ -11,6 +12,7 @@ import {
   CreateUserService,
   ProcessPowerStatusService,
   GetPowerHistoryService,
+  LinkDeviceToUserService,
   type IEventEmitter,
 } from '@home-pulse-watcher/application';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -64,5 +66,18 @@ export const serviceProviders: Provider[] = [
     useFactory: (powerEventRepo: IPowerEventRepository) =>
       new GetPowerHistoryService(powerEventRepo),
     inject: [REPOSITORY_TOKENS.POWER_EVENT],
+  },
+  {
+    provide: SERVICE_TOKENS.LINK_DEVICE_TO_USER,
+    useFactory: (
+      userRepo: IUserRepository,
+      deviceRepo: IDeviceRepository,
+      userDeviceRepo: IUserDeviceRepository,
+    ) => new LinkDeviceToUserService(userRepo, deviceRepo, userDeviceRepo),
+    inject: [
+      REPOSITORY_TOKENS.USER,
+      REPOSITORY_TOKENS.DEVICE,
+      REPOSITORY_TOKENS.USER_DEVICE,
+    ],
   },
 ];

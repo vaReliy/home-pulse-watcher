@@ -122,9 +122,27 @@ To find a user's Telegram ID, they can message [@userinfobot](https://t.me/useri
 
 Link the registered device to a user account. This determines who receives notifications.
 
-**Note:** A CLI command for this is planned. Currently, use direct database access.
+```bash
+node apps/api/dist/cli.js device:link \
+  --telegram-id 123456789 \
+  --mac AA:BB:CC:DD:EE:FF \
+  --role OWNER
+```
 
-### Using Prisma Studio
+**Output:**
+
+```
+=== Device Linked Successfully ===
+Device:      Kitchen Sensor
+MAC Address: AA:BB:CC:DD:EE:FF
+User:        johndoe
+User ID:     8867bdee-bfd6-4158-b8cb-b80e79126958
+Role:        OWNER
+```
+
+You can identify the user by `--telegram-id` or `--user-id`, and the device by `--mac` or `--device-id`. The default role is `VIEWER` if `--role` is omitted.
+
+### Alternative: Using Prisma Studio
 
 ```bash
 npx prisma studio
@@ -136,7 +154,7 @@ Navigate to `UserDevice` table and create a new record:
 - `deviceId`: Device's UUID (from Step 1)
 - `role`: `OWNER`, `EDITOR`, or `VIEWER`
 
-### Using SQL
+### Alternative: Using SQL
 
 ```sql
 INSERT INTO "UserDevice" ("id", "userId", "deviceId", "role", "createdAt", "updatedAt")
