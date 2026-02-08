@@ -8,6 +8,7 @@ import {
   createValidator,
   hmacFormatRule,
   macAddressRule,
+  telegramIdRule,
 } from './validation/index.js';
 
 describe('Errors', () => {
@@ -118,6 +119,29 @@ describe('Validation', () => {
 
     it('should reject non-hex characters', () => {
       expect(rule('g'.repeat(64))).toBe('INVALID_HMAC_FORMAT');
+    });
+  });
+
+  describe('telegramIdRule', () => {
+    const rule = telegramIdRule()();
+
+    it('should accept valid numeric strings', () => {
+      expect(rule('123456789')).toBeUndefined();
+      expect(rule('0')).toBeUndefined();
+      expect(rule('9999999999999999')).toBeUndefined();
+    });
+
+    it('should reject non-numeric strings', () => {
+      expect(rule('user003')).toBe('INVALID_TELEGRAM_ID');
+      expect(rule('abc123')).toBe('INVALID_TELEGRAM_ID');
+      expect(rule('12.34')).toBe('INVALID_TELEGRAM_ID');
+      expect(rule('-123')).toBe('INVALID_TELEGRAM_ID');
+    });
+
+    it('should allow empty for optional fields', () => {
+      expect(rule('')).toBeUndefined();
+      expect(rule(null)).toBeUndefined();
+      expect(rule(undefined)).toBeUndefined();
     });
   });
 

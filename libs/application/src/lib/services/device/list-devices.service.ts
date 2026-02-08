@@ -36,7 +36,7 @@ export class ListDevicesService extends BaseService<
   protected validationRules(): LivrRules {
     return {
       userId: 'string',
-      telegramId: 'string',
+      telegramId: ['string', 'telegramId'],
     };
   }
 

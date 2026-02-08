@@ -3,6 +3,7 @@ import {
   macAddressRule,
   hmacFormatRule,
   powerStatusRule,
+  telegramIdRule,
 } from './custom-rules/index.js';
 
 /** LIVR validation rules schema type */
@@ -38,6 +39,7 @@ class LivrValidatorFactory {
       macAddress: macAddressRule(),
       hmacFormat: hmacFormatRule(),
       powerStatus: powerStatusRule(),
+      telegramId: telegramIdRule(),
     });
 
     // Enable auto-trim for all string inputs

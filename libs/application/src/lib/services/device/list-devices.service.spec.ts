@@ -103,13 +103,21 @@ describe('ListDevicesService', () => {
       expect(deviceRepo.findByUserId).toHaveBeenCalledWith('user-1');
     });
 
+    it('should throw ValidationError when telegramId is not numeric', async () => {
+      const { service } = createService();
+
+      await expect(service.run({ telegramId: 'user003' })).rejects.toThrow(
+        ValidationError,
+      );
+    });
+
     it('should throw NotFoundError when telegramId user not found', async () => {
       const { service, userRepo } = createService();
       userRepo.findByTelegramId.mockResolvedValue(null);
 
-      await expect(
-        service.run({ telegramId: '999999999' }),
-      ).rejects.toThrow(NotFoundError);
+      await expect(service.run({ telegramId: '999999999' })).rejects.toThrow(
+        NotFoundError,
+      );
     });
   });
 

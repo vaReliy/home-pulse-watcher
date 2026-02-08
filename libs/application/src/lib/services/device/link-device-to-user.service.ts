@@ -46,7 +46,7 @@ export class LinkDeviceToUserService extends BaseService<
 
   protected validationRules(): LivrRules {
     return {
-      telegramId: ['string'],
+      telegramId: ['string', 'telegramId'],
       userId: ['string'],
       mac: ['string'],
       deviceId: ['string'],

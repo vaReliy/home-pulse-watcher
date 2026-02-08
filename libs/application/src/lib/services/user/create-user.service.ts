@@ -19,14 +19,14 @@ export class CreateUserService extends BaseService<CreateUserInput, User> {
 
   protected validationRules(): LivrRules {
     return {
-      telegramId: ['required', 'string'],
+      telegramId: ['required', 'string', 'telegramId'],
       username: { max_length: 100 },
     };
   }
 
   protected async execute(
     params: CreateUserInput,
-    _context: ServiceContext
+    _context: ServiceContext,
   ): Promise<User> {
     const telegramId = BigInt(params.telegramId);
 
@@ -34,7 +34,7 @@ export class CreateUserService extends BaseService<CreateUserInput, User> {
     if (existing) {
       throw new DomainError(
         DomainErrorCode.USER_ALREADY_EXISTS,
-        `User with Telegram ID ${params.telegramId} already exists`
+        `User with Telegram ID ${params.telegramId} already exists`,
       );
     }
 
