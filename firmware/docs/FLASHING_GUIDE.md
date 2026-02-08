@@ -38,15 +38,7 @@ Most ESP32 boards use CH340 or CP2102 USB-to-serial chips.
 
 ## Step 1: Get Device Credentials
 
-Before flashing, register the device with the backend:
-
-```bash
-# From the project root
-npx nx build api
-node apps/api/dist/cli.js device:register --mac AA:BB:CC:DD:EE:FF --label "My Sensor"
-```
-
-**Save the displayed secret** - it won't be shown again.
+Before flashing, you need a registered device and its HMAC secret. Follow [Admin Guide - Steps 1-2](../../docs/admin-guide.md#step-2-register-device) to create a user and register the device.
 
 ## Step 2: Configure Firmware
 
@@ -160,11 +152,7 @@ If upload fails, try:
 - Try alternative NTP server in `config.h`
 - Firewall may block UDP port 123
 
-### HMAC Signature Errors (Backend)
-
-- Verify secret matches exactly (64 hex chars, no spaces)
-- Check MAC address format: `AA:BB:CC:DD:EE:FF` (uppercase, colons)
-- Ensure ESP32 time is synced (check serial output)
+For HMAC signature and backend errors, see [Admin Guide - Troubleshooting](../../docs/admin-guide.md#troubleshooting).
 
 ### Serial Garbage Characters
 

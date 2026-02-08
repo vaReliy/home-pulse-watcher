@@ -78,31 +78,9 @@ firmware/
 | `CHECK_INTERVAL_MS` | 1000 | Power check interval |
 | `NTP_SERVER` | pool.ntp.org | Time sync server |
 
-## HMAC Authentication
+## Device Setup
 
-The firmware signs all requests using HMAC-SHA256:
-
-```
-Headers:
-  X-Device-Mac: AA:BB:CC:DD:EE:FF
-  X-Timestamp: 1738765845
-  X-Signature: <64-char-hex>
-
-Signature = HMAC-SHA256(secret, "MAC:TIMESTAMP:STATUS")
-```
-
-## Getting Device Credentials
-
-1. Register device via CLI:
-   ```bash
-   node apps/api/dist/cli.js device:register --mac AA:BB:CC:DD:EE:FF
-   ```
-
-2. Save the displayed secret (shown only once)
-
-3. Configure `secrets.h` with the MAC and secret
-
-See [Device Provisioning Guide](../docs/device-provisioning-guide.md) for complete setup instructions.
+To register a device, obtain credentials, and configure `secrets.h`, follow the [Admin Guide](../docs/admin-guide.md).
 
 ## Troubleshooting
 
@@ -118,8 +96,4 @@ See [Device Provisioning Guide](../docs/device-provisioning-guide.md) for comple
 - Check 2.4GHz network (ESP32 doesn't support 5GHz)
 - Ensure router allows new connections
 
-### HMAC Errors
-
-- Verify secret matches registration output exactly
-- Check MAC address format (uppercase, colons)
-- Ensure NTP time sync is working
+For HMAC signature and backend errors, see [Admin Guide - Troubleshooting](../docs/admin-guide.md#troubleshooting).

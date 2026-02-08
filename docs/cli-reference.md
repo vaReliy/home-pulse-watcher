@@ -98,18 +98,27 @@ List registered devices for a user.
 
 ```bash
 node apps/api/dist/cli.js device:list --user-id <uuid>
+node apps/api/dist/cli.js device:list --telegram-id <telegramId>
 ```
 
 **Options:**
 | Option | Required | Description |
 |--------|----------|-------------|
-| `-u, --user-id <uuid>` | Yes | User ID to filter devices |
+| `-u, --user-id <uuid>` | No\* | User UUID to filter devices |
+| `-t, --telegram-id <telegramId>` | No\* | User's Telegram ID (alternative to `--user-id`) |
 
-**Example:**
+\* At least one of `--user-id` or `--telegram-id` is required.
+
+**Examples:**
 
 ```bash
+# By user ID
 node apps/api/dist/cli.js device:list \
   --user-id 8867bdee-bfd6-4158-b8cb-b80e79126958
+
+# By Telegram ID
+node apps/api/dist/cli.js device:list \
+  --telegram-id 123456789
 ```
 
 **Output:**
@@ -214,6 +223,45 @@ Created At:  2026-01-28T21:38:57.936Z
 
 - `USER_ALREADY_EXISTS` - A user with this Telegram ID already exists
 - `VALIDATION_ERROR` - Invalid input format
+
+---
+
+### user:list
+
+List registered users.
+
+**Usage:**
+
+```bash
+node apps/api/dist/cli.js user:list [--username <username>]
+```
+
+**Options:**
+| Option | Required | Description |
+|--------|----------|-------------|
+| `-u, --username <username>` | No | Filter by username (partial match) |
+
+**Examples:**
+
+```bash
+# List all users
+node apps/api/dist/cli.js user:list
+
+# Filter by username
+node apps/api/dist/cli.js user:list --username john
+```
+
+**Output:**
+
+```
+All registered users:
+
+ID                                      Telegram ID         Username            Created At
+----------------------------------------------------------------------------------------------------
+8867bdee-bfd6-4158-b8cb-b80e79126958    123456789           johndoe             2026-01-28T21:38:57.936Z
+
+Total: 1 user(s)
+```
 
 ---
 

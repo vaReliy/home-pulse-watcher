@@ -78,20 +78,24 @@ npx nx build api
 # Load environment variables
 export $(grep -v '^#' .env | xargs)
 
+# Create a user
+node apps/api/dist/cli.js user:create --telegram-id 123456789 --username johndoe
+
+# List users
+node apps/api/dist/cli.js user:list
+
 # Register a new device
 node apps/api/dist/cli.js device:register --mac AA:BB:CC:DD:EE:FF --label "Kitchen"
 
-# Create a user
-node apps/api/dist/cli.js user:create --telegram-id 123456789
+# List devices for a user (by user ID or Telegram ID)
+node apps/api/dist/cli.js device:list --user-id <uuid>
+node apps/api/dist/cli.js device:list --telegram-id 123456789
 
 # Link a device to a user
 node apps/api/dist/cli.js device:link --telegram-id 123456789 --mac AA:BB:CC:DD:EE:FF --role OWNER
-
-# List devices for a user
-node apps/api/dist/cli.js device:list --user-id <uuid>
 ```
 
-See [CLI Reference](./docs/cli-reference.md) for full documentation.
+See [CLI Reference](./docs/cli-reference.md) for full documentation and the [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 
 ### 7. ESP32 Firmware
 
@@ -108,7 +112,7 @@ cp include/secrets.h.example include/secrets.h
 pio run -t upload
 ```
 
-See [Device Provisioning Guide](./docs/device-provisioning-guide.md) for the complete setup workflow.
+See [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 
 ## 🗺 Roadmap
 

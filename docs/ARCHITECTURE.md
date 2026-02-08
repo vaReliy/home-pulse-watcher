@@ -2,7 +2,7 @@
 
 This document outlines the architectural principles and patterns used in HomePulse Watcher, blending **Onion Architecture** with **[Chista](https://github.com/koorchik/node-chista)** principles for robust and testable service-oriented development.
 
-## 🌟 Core Product Idea
+## Core Product Idea
 
 **HomePulse Watcher** is a resilient power-monitoring ecosystem.
 The core mission is to bridge the gap between low-power hardware (ESP32-C3/ESP32-C6) and end-users by providing reliable, authenticated, and instant notifications regarding power grid stability.
@@ -17,7 +17,7 @@ A distributed system where lightweight sensors report state changes via HMAC-sig
 
 ---
 
-## 🏛 Architectural Principles (Chista + NestJS)
+## Architectural Principles (Chista + NestJS)
 
 We adopt the **Clean Integrated Services** approach. The application logic is decoupled from the framework (NestJS) and the database (Prisma).
 
@@ -33,10 +33,10 @@ Every business operation must be a standalone **Service** class.
 
 | Layer              | Library                              | Contains                                                     | Framework Code |
 | ------------------ | ------------------------------------ | ------------------------------------------------------------ | -------------- |
-| **Core**           | `@home-pulse-watcher/core`           | Entities, Repository Interfaces, Enums                       | ❌ None        |
-| **Application**    | `@home-pulse-watcher/application`    | BaseService, Chista services                                 | ❌ None        |
-| **Infrastructure** | `@home-pulse-watcher/infrastructure` | Prisma Repositories, Mappers, External APIs                  | ❌ None        |
-| **Interface**      | `apps/api`                           | NestJS Controllers, Modules, DI Wiring, Guards, Interceptors | ✅ NestJS      |
+| **Core**           | `@home-pulse-watcher/core`           | Entities, Repository Interfaces, Enums                       | None           |
+| **Application**    | `@home-pulse-watcher/application`    | BaseService, Chista services                                 | None           |
+| **Infrastructure** | `@home-pulse-watcher/infrastructure` | Prisma Repositories, Mappers, External APIs                  | None           |
+| **Interface**      | `apps/api`                           | NestJS Controllers, Modules, DI Wiring, Guards, Interceptors | NestJS         |
 
 **Key Principle:** Infrastructure layer contains **plain TypeScript classes** with constructor injection.
 NestJS DI wiring (providers, modules, interceptors, guards) lives exclusively in the Interface layer.
@@ -52,7 +52,7 @@ A typical service follows this lifecycle:
 
 ---
 
-## 🛠 Coding Practices & Recommendations
+## Coding Practices & Recommendations
 
 ### Data Access (Prisma)
 
@@ -76,7 +76,7 @@ A typical service follows this lifecycle:
 
 ---
 
-## 🔧 Key Patterns
+## Key Patterns
 
 ### Config Injection
 
@@ -92,7 +92,8 @@ Services remain plain TypeScript classes (no `@Injectable()`). NestJS binds them
 
 ---
 
-## 📚 Further Reading
+## Further Reading
 
+- Admin setup workflow: [Admin Guide](./admin-guide.md)
 - Implementation details: `docs/implementation/`
 - Learning guides with code examples: `docs/learning/`

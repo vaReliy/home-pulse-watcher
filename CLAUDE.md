@@ -43,14 +43,7 @@ npx prisma migrate deploy  # production
 
 ## Architecture
 
-This project follows **Onion Architecture** with **Chista** (Clean Integrated Services) principles:
-
-### Layer Structure (Dependencies Point Inward)
-
-1. **Core (Domain)** `@home-pulse-watcher/core`: Pure entities, repository interfaces, enums. No external dependencies.
-2. **Application (Services)** `@home-pulse-watcher/application`: Chista-style services (BaseService). Depends only on Core.
-3. **Infrastructure** `@home-pulse-watcher/infrastructure`: Plain TypeScript Prisma repositories. **No NestJS code**.
-4. **Interface (Transport)** `apps/api`: NestJS controllers, modules, DI wiring. Maps errors to HTTP.
+Full architectural overview: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ### Core Layer Exports
 
@@ -76,22 +69,6 @@ const device = await userRepo.findByTelegramId(BigInt(123));
 (getPrismaClient(), disconnectPrisma());
 ```
 
-### Service Pattern (Chista)
-
-Every business operation is a standalone service class:
-
-- **Validation-First**: Use LIVR for input validation before any logic
-- **Transport Agnostic**: Services don't access `Req`/`Res` objects
-- **Repository Pattern**: Map Prisma models to Domain Entities (never leak Prisma to services)
-- **Standardized Output**: Return `{ data: ... }` or throw specific Error classes
-
-### Security
-
-- Device-to-backend communication uses HMAC signatures
-- Device secrets are encrypted with AES-256-GCM (stored as `encryptedSecret`)
-- Signature verification happens in Guards, passing verified `deviceId` to service context
-- Environment variable: `DEVICE_SECRET_ENCRYPTION_KEY` (64 hex chars)
-
 ### Telegram Bot Integration
 
 - **Library**: Telegraf (TypeScript-native Telegram bot framework)
@@ -109,7 +86,7 @@ Bot follows the adapter pattern - handlers call existing Application Services, k
 - **Build Tool**: PlatformIO with Arduino framework
 - **Features**: WiFi, NTP time sync, HMAC-SHA256 signing, GPIO power detection
 - **Configuration**: `config.h` (hardware), `secrets.h` (credentials - not tracked)
-- **Documentation**: `docs/device-provisioning-guide.md`, `firmware/docs/FLASHING_GUIDE.md`
+- **Documentation**: `docs/admin-guide.md`, `firmware/docs/FLASHING_GUIDE.md`
 
 ## Tech Stack
 
