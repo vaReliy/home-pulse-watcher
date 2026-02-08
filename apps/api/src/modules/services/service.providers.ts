@@ -14,6 +14,7 @@ import {
   ProcessPowerStatusService,
   GetPowerHistoryService,
   LinkDeviceToUserService,
+  UnlinkDeviceFromUserService,
   UpdateDeviceService,
   DeleteDeviceService,
   RotateDeviceSecretService,
@@ -78,6 +79,19 @@ export const serviceProviders: Provider[] = [
       deviceRepo: IDeviceRepository,
       userDeviceRepo: IUserDeviceRepository,
     ) => new LinkDeviceToUserService(userRepo, deviceRepo, userDeviceRepo),
+    inject: [
+      REPOSITORY_TOKENS.USER,
+      REPOSITORY_TOKENS.DEVICE,
+      REPOSITORY_TOKENS.USER_DEVICE,
+    ],
+  },
+  {
+    provide: SERVICE_TOKENS.UNLINK_DEVICE_FROM_USER,
+    useFactory: (
+      userRepo: IUserRepository,
+      deviceRepo: IDeviceRepository,
+      userDeviceRepo: IUserDeviceRepository,
+    ) => new UnlinkDeviceFromUserService(userRepo, deviceRepo, userDeviceRepo),
     inject: [
       REPOSITORY_TOKENS.USER,
       REPOSITORY_TOKENS.DEVICE,

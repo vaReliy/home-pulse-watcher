@@ -23,6 +23,12 @@ export {
 } from './device/link-device-to-user.service.js';
 
 export {
+  UnlinkDeviceFromUserService,
+  type UnlinkDeviceFromUserInput,
+  type UnlinkDeviceFromUserOutput,
+} from './device/unlink-device-from-user.service.js';
+
+export {
   UpdateDeviceService,
   type UpdateDeviceInput,
   type UpdateDeviceOutput,

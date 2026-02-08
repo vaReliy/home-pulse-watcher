@@ -185,6 +185,53 @@ Role:        OWNER
 
 ---
 
+### device:unlink
+
+Remove a user's access to a device without affecting other users linked to the same device.
+
+**Usage:**
+
+```bash
+node apps/api/dist/cli.js device:unlink [options]
+```
+
+**Options:**
+| Option | Required | Description |
+|--------|----------|-------------|
+| `-t, --telegram-id <id>` | No\* | User's Telegram ID |
+| `-u, --user-id <uuid>` | No\* | User's UUID |
+| `-m, --mac <mac>` | No\*\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
+| `-d, --device-id <uuid>` | No\*\* | Device UUID |
+
+\* At least one of `--telegram-id` or `--user-id` is required.
+\*\* At least one of `--mac` or `--device-id` is required.
+
+**Example:**
+
+```bash
+node apps/api/dist/cli.js device:unlink \
+  --telegram-id 123456789 \
+  --mac AA:BB:CC:DD:EE:FF
+```
+
+**Output:**
+
+```
+=== Device Unlinked Successfully ===
+Device:      Kitchen Sensor
+MAC Address: AA:BB:CC:DD:EE:FF
+User:        johndoe
+User ID:     8867bdee-bfd6-4158-b8cb-b80e79126958
+```
+
+**Error Cases:**
+
+- `DEVICE_NOT_LINKED` - This device is not linked to the specified user
+- `NOT_FOUND` - User or device not found with the given identifier
+- `VALIDATION_ERROR` - Invalid input format or missing required identifiers
+
+---
+
 ### device:update
 
 Update device information (label).

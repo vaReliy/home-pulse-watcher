@@ -10,6 +10,7 @@ export const DomainErrorCode = {
   INVALID_HMAC_SIGNATURE: 'INVALID_HMAC_SIGNATURE',
   USER_ALREADY_EXISTS: 'USER_ALREADY_EXISTS',
   DEVICE_ALREADY_LINKED: 'DEVICE_ALREADY_LINKED',
+  DEVICE_NOT_LINKED: 'DEVICE_NOT_LINKED',
   UNAUTHORIZED_ACTION: 'UNAUTHORIZED_ACTION',
 } as const;
 
@@ -27,7 +28,7 @@ export class DomainError extends BaseError {
   constructor(
     code: DomainErrorCodeType,
     message: string,
-    fields?: Record<string, unknown>
+    fields?: Record<string, unknown>,
   ) {
     super(message, fields);
     this.code = code;
