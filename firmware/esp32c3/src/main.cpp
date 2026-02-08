@@ -50,7 +50,7 @@ void setupHardware() {
     Serial.println("=================================");
 
     // Configure GPIO
-    pinMode(POWER_SENSE_PIN, INPUT_PULLUP);
+    pinMode(POWER_SENSE_PIN, INPUT_PULLDOWN);
     pinMode(STATUS_LED_PIN, OUTPUT);
     digitalWrite(STATUS_LED_PIN, HIGH);  // LED off (active LOW)
 
