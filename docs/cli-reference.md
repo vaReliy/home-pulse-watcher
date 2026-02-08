@@ -185,6 +185,141 @@ Role:        OWNER
 
 ---
 
+### device:update
+
+Update device information (label).
+
+**Usage:**
+
+```bash
+node apps/api/dist/cli.js device:update [options]
+```
+
+**Options:**
+| Option | Required | Description |
+|--------|----------|-------------|
+| `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
+| `-d, --device-id <uuid>` | No\* | Device UUID |
+| `-l, --label <label>` | Yes | New human-readable device label (max 100 chars) |
+
+\* At least one of `--mac` or `--device-id` is required.
+
+**Example:**
+
+```bash
+node apps/api/dist/cli.js device:update \
+  --mac AA:BB:CC:DD:EE:FF \
+  --label "Living Room Sensor"
+```
+
+**Output:**
+
+```
+=== Device Updated Successfully ===
+ID:          b894e613-74ed-474b-ae45-7d5a899fb13f
+MAC Address: AA:BB:CC:DD:EE:FF
+Label:       Living Room Sensor
+```
+
+**Error Cases:**
+
+- `NOT_FOUND` - Device not found with the given identifier
+- `VALIDATION_ERROR` - Invalid input format or missing required identifiers
+
+---
+
+### device:delete
+
+Delete a device and all its associations (user links, power events).
+
+**Usage:**
+
+```bash
+node apps/api/dist/cli.js device:delete [options]
+```
+
+**Options:**
+| Option | Required | Description |
+|--------|----------|-------------|
+| `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
+| `-d, --device-id <uuid>` | No\* | Device UUID |
+
+\* At least one of `--mac` or `--device-id` is required.
+
+**Example:**
+
+```bash
+node apps/api/dist/cli.js device:delete \
+  --mac AA:BB:CC:DD:EE:FF
+```
+
+**Output:**
+
+```
+=== Device Deleted Successfully ===
+ID:              b894e613-74ed-474b-ae45-7d5a899fb13f
+MAC Address:     AA:BB:CC:DD:EE:FF
+Label:           Kitchen Sensor
+User links:      1 removed
+Power events:    42 removed
+```
+
+**Error Cases:**
+
+- `NOT_FOUND` - Device not found with the given identifier
+- `VALIDATION_ERROR` - Invalid input format or missing required identifiers
+
+---
+
+### device:rotate-secret
+
+Generate a new HMAC secret for a device, replacing the existing one. The device's history and user links are preserved.
+
+**Usage:**
+
+```bash
+node apps/api/dist/cli.js device:rotate-secret [options]
+```
+
+**Options:**
+| Option | Required | Description |
+|--------|----------|-------------|
+| `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
+| `-d, --device-id <uuid>` | No\* | Device UUID |
+
+\* At least one of `--mac` or `--device-id` is required.
+
+**Requires:** `DEVICE_SECRET_ENCRYPTION_KEY` environment variable.
+
+**Example:**
+
+```bash
+node apps/api/dist/cli.js device:rotate-secret \
+  --mac AA:BB:CC:DD:EE:FF
+```
+
+**Output:**
+
+```
+=== Device Secret Rotated Successfully ===
+ID:          b894e613-74ed-474b-ae45-7d5a899fb13f
+MAC Address: AA:BB:CC:DD:EE:FF
+Label:       Kitchen Sensor
+
+=== IMPORTANT: Save this secret ===
+Secret:      a1b2c3d4e5f6...
+
+This secret will NOT be shown again!
+Update secrets.h on the ESP32 and re-flash the firmware.
+```
+
+**Error Cases:**
+
+- `NOT_FOUND` - Device not found with the given identifier
+- `VALIDATION_ERROR` - Invalid input format or missing required identifiers
+
+---
+
 ### user:create
 
 Create a new user from Telegram ID.
@@ -308,5 +443,5 @@ docker compose up -d
 
 Each MAC address can only be registered once. To re-register:
 
-1. Delete the device from the database
-2. Or use a different MAC address
+1. Delete the device: `device:delete --mac AA:BB:CC:DD:EE:FF`
+2. Re-register: `device:register --mac AA:BB:CC:DD:EE:FF`

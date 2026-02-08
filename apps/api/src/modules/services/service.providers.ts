@@ -14,6 +14,9 @@ import {
   ProcessPowerStatusService,
   GetPowerHistoryService,
   LinkDeviceToUserService,
+  UpdateDeviceService,
+  DeleteDeviceService,
+  RotateDeviceSecretService,
   type IEventEmitter,
 } from '@home-pulse-watcher/application';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -80,6 +83,31 @@ export const serviceProviders: Provider[] = [
       REPOSITORY_TOKENS.DEVICE,
       REPOSITORY_TOKENS.USER_DEVICE,
     ],
+  },
+  {
+    provide: SERVICE_TOKENS.UPDATE_DEVICE,
+    useFactory: (deviceRepo: IDeviceRepository) =>
+      new UpdateDeviceService(deviceRepo),
+    inject: [REPOSITORY_TOKENS.DEVICE],
+  },
+  {
+    provide: SERVICE_TOKENS.DELETE_DEVICE,
+    useFactory: (
+      deviceRepo: IDeviceRepository,
+      userDeviceRepo: IUserDeviceRepository,
+      powerEventRepo: IPowerEventRepository,
+    ) => new DeleteDeviceService(deviceRepo, userDeviceRepo, powerEventRepo),
+    inject: [
+      REPOSITORY_TOKENS.DEVICE,
+      REPOSITORY_TOKENS.USER_DEVICE,
+      REPOSITORY_TOKENS.POWER_EVENT,
+    ],
+  },
+  {
+    provide: SERVICE_TOKENS.ROTATE_DEVICE_SECRET,
+    useFactory: (deviceRepo: IDeviceRepository) =>
+      new RotateDeviceSecretService(deviceRepo),
+    inject: [REPOSITORY_TOKENS.DEVICE],
   },
   {
     provide: SERVICE_TOKENS.LIST_USERS,

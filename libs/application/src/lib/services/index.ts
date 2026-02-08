@@ -22,6 +22,24 @@ export {
   type LinkDeviceToUserOutput,
 } from './device/link-device-to-user.service.js';
 
+export {
+  UpdateDeviceService,
+  type UpdateDeviceInput,
+  type UpdateDeviceOutput,
+} from './device/update-device.service.js';
+
+export {
+  DeleteDeviceService,
+  type DeleteDeviceInput,
+  type DeleteDeviceOutput,
+} from './device/delete-device.service.js';
+
+export {
+  RotateDeviceSecretService,
+  type RotateDeviceSecretInput,
+  type RotateDeviceSecretOutput,
+} from './device/rotate-device-secret.service.js';
+
 // User services
 export {
   CreateUserService,

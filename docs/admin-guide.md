@@ -28,6 +28,7 @@ Create User (CLI) -> Register Device (CLI) -> Flash ESP32 -> Link Device (CLI) -
    ```
 
 4. **API built**:
+
    ```bash
    npx nx build api
    ```
@@ -138,6 +139,7 @@ See [CLI Reference](./cli-reference.md#devicelink) for full options.
 1. **Telegram bot:** User sends `/start` to the bot (if not done already).
 
 2. **Check linked devices:** User sends `/devices`:
+
    ```
    Your devices:
 
@@ -147,6 +149,7 @@ See [CLI Reference](./cli-reference.md#devicelink) for full options.
    ```
 
 3. **Check power status:** User sends `/status`:
+
    ```
    Power Status:
 
@@ -155,6 +158,7 @@ See [CLI Reference](./cli-reference.md#devicelink) for full options.
    ```
 
 4. **Test notification:** Power cycle the monitored circuit. The user should receive:
+
    ```
    Power Status Changed
 
@@ -167,54 +171,77 @@ See [CLI Reference](./cli-reference.md#devicelink) for full options.
 
 ### Change Device Label
 
-**Planned:** `device:update` CLI command.
-
-**Current workaround** (SQL):
-
-```sql
-UPDATE "Device" SET "label" = 'New Label' WHERE "id" = 'device-uuid';
+```bash
+node apps/api/dist/cli.js device:update \
+  --mac AA:BB:CC:DD:EE:FF \
+  --label "New Label"
 ```
+
+See [CLI Reference](./cli-reference.md#deviceupdate) for full options.
 
 ### Rotate Device Secret
 
 If a secret is compromised:
 
-1. Delete the device:
-
-   ```sql
-   DELETE FROM "UserDevice" WHERE "deviceId" = 'device-uuid';
-   DELETE FROM "Device" WHERE "id" = 'device-uuid';
-   ```
-
-2. Re-register with the same MAC:
+1. Rotate the secret:
 
    ```bash
-   node apps/api/dist/cli.js device:register --mac AA:BB:CC:DD:EE:FF
+   node apps/api/dist/cli.js device:rotate-secret --mac AA:BB:CC:DD:EE:FF
    ```
+
+2. **Save the new secret immediately.** It will not be shown again.
 
 3. Update `secrets.h` with the new secret and re-flash the firmware.
 
+Device history and user links are preserved.
+
+See [CLI Reference](./cli-reference.md#devicerotate-secret) for full options.
+
 ### Remove a Device
 
-```sql
--- Remove user links
-DELETE FROM "UserDevice" WHERE "deviceId" = 'device-uuid';
-
--- Remove power events (optional)
-DELETE FROM "PowerEvent" WHERE "deviceId" = 'device-uuid';
-
--- Delete device
-DELETE FROM "Device" WHERE "id" = 'device-uuid';
+```bash
+node apps/api/dist/cli.js device:delete --mac AA:BB:CC:DD:EE:FF
 ```
+
+This removes all user links and power events for the device.
+
+See [CLI Reference](./cli-reference.md#devicedelete) for full options.
 
 ## Troubleshooting
 
 ### HMAC Signature Mismatch (`INVALID_SIGNATURE`)
 
-- Verify the secret matches exactly (64 hex characters, no spaces)
-- Check MAC address format (uppercase, colons: `AA:BB:CC:DD:EE:FF`)
-- Ensure payload format is `MAC:TIMESTAMP:STATUS`
-- Verify status is `0` or `1` (integer, not string)
+The server found the device and decrypted the stored secret, but the HMAC signature from the ESP32 doesn't match the expected value.
+
+**Common causes:**
+
+1. **Secret mismatch** — the `DEVICE_SECRET` in `secrets.h` doesn't exactly match the 64-character hex string printed during `device:register`. Copy-paste errors, trailing whitespace, or truncation are frequent culprits.
+2. **MAC address format mismatch** — `DEVICE_MAC` in `secrets.h` differs from the registered MAC. Must be uppercase with colons: `AA:BB:CC:DD:EE:FF`.
+3. **Encryption key changed** — if `DEVICE_SECRET_ENCRYPTION_KEY` was regenerated after devices were registered, decryption produces invalid data. This usually shows as `Failed to decrypt device secret` in logs, but can sometimes surface as a signature mismatch.
+
+**Diagnostic steps:**
+
+1. Check the log line before the error — if you see the Prisma query returning a device, it means the MAC matched and decryption succeeded.
+2. Verify `DEVICE_SECRET` in `secrets.h` is exactly 64 hex characters with no trailing spaces or newlines.
+3. Verify `DEVICE_MAC` in `secrets.h` matches the registered MAC (uppercase, colon-separated).
+4. Confirm the ESP32 is sending `status` as an integer (`0` or `1`) in the JSON body.
+
+**Resolution:**
+
+- **Rotate the secret** (preserves device history and user links):
+
+  ```bash
+  node apps/api/dist/cli.js device:rotate-secret --mac AA:BB:CC:DD:EE:FF
+  ```
+
+  Copy the new secret to `secrets.h` and re-flash the firmware.
+
+- **Re-register** (if rotation doesn't help — clears all device data):
+  ```bash
+  node apps/api/dist/cli.js device:delete --mac AA:BB:CC:DD:EE:FF
+  node apps/api/dist/cli.js device:register --mac AA:BB:CC:DD:EE:FF --label "My Sensor"
+  ```
+  Copy the new secret, update `secrets.h`, re-flash, then re-link the device to the user.
 
 ### Timestamp Expired (`EXPIRED_TIMESTAMP`)
 
