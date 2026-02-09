@@ -10,7 +10,8 @@
 
 // GPIO Configuration
 #define POWER_SENSE_PIN 2       // GPIO for power detection (connect to optocoupler output)
-#define STATUS_LED_PIN 8        // Onboard LED (active LOW on most boards)
+#define STATUS_LED_PIN 8        // Onboard WS2812B RGB LED
+#define LED_BRIGHTNESS 10       // WS2812 brightness (0-255)
 
 // Timing Configuration
 #define CHECK_INTERVAL_MS 1000      // Power status check interval (milliseconds)

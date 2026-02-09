@@ -28,6 +28,7 @@
 #include <HTTPClient.h>
 #include <time.h>
 #include <mbedtls/md.h>
+#include <Adafruit_NeoPixel.h>
 
 #include "config.h"
 #include "secrets.h"
@@ -36,6 +37,30 @@
 static int lastPowerStatus = -1;  // -1 = unknown, 0 = off, 1 = on
 static unsigned long lastCheckTime = 0;
 static bool timeInitialized = false;
+
+// WS2812B RGB LED
+static Adafruit_NeoPixel led(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
+
+/** Set WS2812 LED color */
+void setLedColor(uint8_t r, uint8_t g, uint8_t b) {
+    led.setPixelColor(0, led.Color(r, g, b));
+    led.show();
+}
+
+/** Turn LED off */
+void setLedOff() {
+    led.clear();
+    led.show();
+}
+
+/** Set LED to power status color (green = ON, red = OFF) */
+void updateStatusLed(int powerStatus) {
+    if (powerStatus == POWER_STATUS_ON) {
+        setLedColor(0, 255, 0);   // Green
+    } else {
+        setLedColor(255, 0, 0);   // Red
+    }
+}
 
 /**
  * Initialize serial and LED
@@ -51,8 +76,12 @@ void setupHardware() {
 
     // Configure GPIO
     pinMode(POWER_SENSE_PIN, INPUT_PULLDOWN);
-    pinMode(STATUS_LED_PIN, OUTPUT);
-    digitalWrite(STATUS_LED_PIN, HIGH);  // LED off (active LOW)
+
+    // Initialize WS2812B RGB LED
+    led.begin();
+    led.setBrightness(LED_BRIGHTNESS);
+    led.clear();
+    led.show();
 
     Serial.printf("Power sense pin: GPIO%d\n", POWER_SENSE_PIN);
     Serial.printf("Status LED pin: GPIO%d\n", STATUS_LED_PIN);
@@ -73,7 +102,10 @@ bool connectWiFi() {
             Serial.println("WiFi connection timeout!");
             return false;
         }
-        digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));  // Blink
+        static bool wifiLedOn = false;
+        wifiLedOn = !wifiLedOn;
+        if (wifiLedOn) setLedColor(255, 200, 0);  // Yellow
+        else setLedOff();
         delay(500);
         Serial.print(".");
     }
@@ -81,7 +113,7 @@ bool connectWiFi() {
     Serial.println();
     Serial.printf("Connected! IP: %s\n", WiFi.localIP().toString().c_str());
     Serial.printf("MAC: %s\n", WiFi.macAddress().c_str());
-    digitalWrite(STATUS_LED_PIN, HIGH);  // LED off
+    setLedOff();
     return true;
 }
 
@@ -185,9 +217,9 @@ bool sendPowerStatus(int status) {
     snprintf(body, sizeof(body), "{\"status\":%d}", status);
 
     // Send request
-    digitalWrite(STATUS_LED_PIN, LOW);  // LED on during request
+    setLedColor(0, 0, 255);  // Blue during request
     int httpCode = http.POST(body);
-    digitalWrite(STATUS_LED_PIN, HIGH);  // LED off
+    updateStatusLed(status);
 
     if (httpCode > 0) {
         Serial.printf("HTTP Response: %d\n", httpCode);
@@ -242,6 +274,7 @@ void setup() {
     // Read initial status and send
     lastPowerStatus = readPowerStatus();
     Serial.printf("Initial power status: %d\n", lastPowerStatus);
+    updateStatusLed(lastPowerStatus);
 
     if (!sendPowerStatus(lastPowerStatus)) {
         Serial.println("Failed to send initial status");
@@ -270,6 +303,7 @@ void loop() {
         // Report if status changed
         if (currentStatus != lastPowerStatus) {
             Serial.printf("Power status changed: %d -> %d\n", lastPowerStatus, currentStatus);
+            updateStatusLed(currentStatus);
 
             if (sendPowerStatus(currentStatus)) {
                 lastPowerStatus = currentStatus;

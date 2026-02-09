@@ -10,17 +10,20 @@ ESP32-based power monitoring firmware for HomePulse Watcher.
 ## Quick Start
 
 1. **Install PlatformIO**
+
    ```bash
    pip install platformio
    # Or install VS Code extension: platformio.platformio-ide
    ```
 
 2. **Navigate to your board directory**
+
    ```bash
    cd firmware/esp32c3  # or esp32c6
    ```
 
 3. **Configure secrets**
+
    ```bash
    cp include/secrets.h.example include/secrets.h
    ```
@@ -31,6 +34,7 @@ ESP32-based power monitoring firmware for HomePulse Watcher.
    - Backend URL
 
 4. **Build and flash**
+
    ```bash
    pio run -t upload
    ```
@@ -71,12 +75,13 @@ firmware/
 
 ### config.h (Hardware-specific)
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `POWER_SENSE_PIN` | 2 | GPIO for power detection |
-| `STATUS_LED_PIN` | 8 | Onboard LED GPIO |
-| `CHECK_INTERVAL_MS` | 1000 | Power check interval |
-| `NTP_SERVER` | pool.ntp.org | Time sync server |
+| Setting             | Default      | Description                   |
+| ------------------- | ------------ | ----------------------------- |
+| `POWER_SENSE_PIN`   | 2            | GPIO for power detection      |
+| `STATUS_LED_PIN`    | 8            | Onboard WS2812B RGB LED       |
+| `LED_BRIGHTNESS`    | 10           | WS2812 LED brightness (0-255) |
+| `CHECK_INTERVAL_MS` | 1000         | Power check interval          |
+| `NTP_SERVER`        | pool.ntp.org | Time sync server              |
 
 ## Device Setup
 
@@ -89,6 +94,17 @@ To register a device, obtain credentials, and configure `secrets.h`, follow the 
 - Check USB connection
 - Try holding BOOT button while uploading
 - Verify correct board selected in `platformio.ini`
+
+### LED Status Indicators
+
+The onboard WS2812B RGB LED shows device status:
+
+| Color        | Meaning                     |
+| ------------ | --------------------------- |
+| Yellow blink | WiFi connecting             |
+| Green        | 220V power present (normal) |
+| Red          | 220V power lost (outage)    |
+| Blue flash   | HTTP request in progress    |
 
 ### WiFi Connection Failed
 
