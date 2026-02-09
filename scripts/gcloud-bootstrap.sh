@@ -117,7 +117,7 @@ DEPLOY_ROLES=(
   roles/iam.serviceAccountUser
   roles/cloudbuild.builds.editor
   roles/storage.admin
-  roles/artifactregistry.writer
+  roles/artifactregistry.admin
 )
 
 for role in "${DEPLOY_ROLES[@]}"; do
