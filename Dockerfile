@@ -52,8 +52,9 @@ WORKDIR /app
 # Copy bundled application from build stage
 COPY --from=build /app/apps/api/dist ./
 
-# Copy Prisma schema + migrations for runtime migration
+# Copy Prisma schema, migrations, and config for runtime migration
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
@@ -63,7 +64,7 @@ RUN chmod +x ./docker-entrypoint.sh
 RUN npm ci --omit=dev
 
 # Install Prisma CLI for runtime migrations (not in prod deps)
-RUN npm install --no-save prisma
+RUN npm install --no-save prisma dotenv
 
 ENV NODE_ENV=production
 ENV PORT=8080

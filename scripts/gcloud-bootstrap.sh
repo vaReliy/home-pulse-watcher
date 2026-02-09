@@ -118,6 +118,7 @@ DEPLOY_ROLES=(
   roles/cloudbuild.builds.editor
   roles/storage.admin
   roles/artifactregistry.admin
+  roles/serviceusage.serviceUsageConsumer
 )
 
 for role in "${DEPLOY_ROLES[@]}"; do
@@ -129,17 +130,24 @@ for role in "${DEPLOY_ROLES[@]}"; do
 done
 ok "Deploying SA roles granted"
 
-# --------------- Step 5: Grant Secret Manager access to runtime SA ---------------
-info "Granting Secret Manager access to Cloud Run runtime service account..."
+# --------------- Step 5: Grant IAM roles to runtime / build SA ---------------
+info "Granting IAM roles to Cloud Run runtime service account..."
 
 RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:$RUNTIME_SA" \
-  --role="roles/secretmanager.secretAccessor" \
-  --condition=None \
-  --quiet
-ok "Runtime SA can access secrets"
+RUNTIME_ROLES=(
+  roles/secretmanager.secretAccessor
+  roles/run.builder
+)
+
+for role in "${RUNTIME_ROLES[@]}"; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="$role" \
+    --condition=None \
+    --quiet
+done
+ok "Runtime SA roles granted"
 
 # --------------- Step 6: Set up Workload Identity Federation ---------------
 info "Setting up Workload Identity Federation for GitHub Actions..."
