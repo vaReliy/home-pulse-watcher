@@ -1,0 +1,56 @@
+# Dependencies (installed inside container)
+node_modules
+
+# Build output (built inside container)
+dist
+out-tsc
+apps/*/dist
+apps/*/out-tsc
+libs/*/dist
+libs/*/out-tsc
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+.history
+
+# Nx cache
+.nx
+
+# Claude
+.claude
+
+# CI/CD
+.github
+
+# Tests
+**/*.spec.ts
+**/*.test.ts
+**/jest.config.*
+**/.spec.swcrc
+apps/api-e2e
+
+# Firmware (not needed for API deployment)
+firmware
+
+# Documentation (not needed in image)
+docs
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Misc
+*.md
+LICENSE
+.editorconfig
+.prettierrc
+.prettierignore
+coverage
+test-output
+generated

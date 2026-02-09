@@ -1,0 +1,5 @@
+# Use the same exclusions as Docker
+#!include:.dockerignore
+
+# Also exclude docker-compose (not needed in Cloud Build)
+docker-compose.yml

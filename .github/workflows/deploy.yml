@@ -1,0 +1,58 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'firmware/**'
+      - 'docs/**'
+      - '*.md'
+      - '.vscode/**'
+
+# Prevent concurrent deployments
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: home-pulse-watcher
+          source: .
+          region: europe-west3
+          flags: >-
+            --allow-unauthenticated
+            --min-instances=0
+            --max-instances=1
+            --memory=256Mi
+            --cpu=1
+            --timeout=60
+            --concurrency=80
+          env_vars: |
+            NODE_ENV=production
+            PORT=8080
+            TELEGRAM_USE_WEBHOOK=true
+            TELEGRAM_WEBHOOK_DOMAIN=${{ vars.CLOUD_RUN_URL }}
+          secrets: DATABASE_URL=database-url:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_ADMIN_CHAT_ID=telegram-admin-chat-id:latest,DEVICE_SECRET_ENCRYPTION_KEY=device-secret-encryption-key:latest

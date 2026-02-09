@@ -10,6 +10,37 @@ services:
       POSTGRES_DB: ${DB_NAME:-home_pulse_watcher}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-home_pulse_watcher}',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Production-like API service. Run with: docker-compose --profile full up --build
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: home-pulse-api
+    ports:
+      - '8080:8080'
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-admin}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-home_pulse_watcher}?schema=public
+      NODE_ENV: production
+      PORT: 8080
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
+      TELEGRAM_USE_WEBHOOK: 'false'
+      DEVICE_SECRET_ENCRYPTION_KEY: ${DEVICE_SECRET_ENCRYPTION_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - full
 
 volumes:
   postgres_data:

@@ -8,6 +8,7 @@ import {
   type TelegramConfig,
 } from './telegram.config.js';
 import { TelegramService } from './telegram.service.js';
+import { TelegramController } from './telegram.controller.js';
 import { MessageFormatter } from './formatters/message.formatter.js';
 import { StartHandler } from './handlers/start.handler.js';
 import { StatusHandler } from './handlers/status.handler.js';
@@ -18,6 +19,7 @@ import type { TelegramContext } from './types/telegram-context.type.js';
 
 @Module({
   imports: [RepositoriesModule, ServicesModule],
+  controllers: [TelegramController],
   providers: [
     // Configuration - returns null if TELEGRAM_BOT_TOKEN not set
     {
