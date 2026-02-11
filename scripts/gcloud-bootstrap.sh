@@ -40,7 +40,7 @@ warn()  { printf '\033[1;33m[WARN]\033[0m  %s\n' "$1"; }
 
 prompt_value() {
   local description="$1" value=""
-  printf '\033[0;36m  %s\033[0m\n' "$description"
+  printf '\033[0;36m  %s\033[0m\n' "$description" >&2
   read -rp "  Value: " value
   if [[ -z "$value" ]]; then
     warn "Empty value provided, skipping"
