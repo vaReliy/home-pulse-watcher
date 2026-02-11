@@ -1,0 +1,10 @@
+{
+  "name": "@home-pulse-watcher/api",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@prisma/client": "^7.3.0",
+    "@prisma/adapter-pg": "^7.3.0",
+    "pg": "^8.17.2"
+  }
+}

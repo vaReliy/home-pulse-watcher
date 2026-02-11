@@ -34,10 +34,8 @@ RUN npx prisma generate
 ENV NX_DAEMON=false
 
 # Sync workspace (TypeScript project references) and build
+# Webpack bundles all deps except Prisma externals into main.js/cli.js
 RUN npx nx sync && npx nx build api
-
-# Create minimal production package.json + package-lock.json
-RUN npx nx run api:prune
 
 # ============================================
 # Stage 3: Production runtime
@@ -50,6 +48,7 @@ RUN apk add --no-cache tini
 WORKDIR /app
 
 # Copy bundled application from build stage
+# Includes main.js, cli.js, and minimal package.json (only Prisma externals)
 COPY --from=build /app/apps/api/dist ./
 
 # Copy Prisma schema, migrations, and config for runtime migration
@@ -60,11 +59,14 @@ COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
-# Install only production dependencies (from pruned package.json)
-RUN npm ci --omit=dev
+# Install external dependencies (Prisma + pg from minimal package.json)
+RUN npm install --omit=dev
 
-# Install Prisma CLI for runtime migrations (not in prod deps)
+# Install Prisma CLI for generate + runtime migrations (not in prod deps)
 RUN npm install --no-save prisma dotenv
+
+# Generate Prisma client in production node_modules
+RUN npx prisma generate
 
 ENV NODE_ENV=production
 ENV PORT=8080

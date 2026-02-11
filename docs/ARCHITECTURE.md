@@ -92,6 +92,30 @@ Services remain plain TypeScript classes (no `@Injectable()`). NestJS binds them
 
 ---
 
+## Build & Deployment
+
+### Webpack Bundling
+
+The production build uses Webpack to bundle **all** third-party dependencies directly into the output JS files (`main.js` for the HTTP server, `cli.js` for CLI commands). This eliminates `MODULE_NOT_FOUND` errors that occur when dependency analysis misses packages referenced via decorators or dynamic imports.
+
+**External packages** (not bundled, installed via `npm install` in Docker):
+
+- `@prisma/client` — uses WASM-based query engine and generated code under `.prisma/client`
+- `@prisma/adapter-pg` — Prisma's PostgreSQL driver adapter
+- `pg` — PostgreSQL client, kept external to avoid duplicate instances with `@prisma/adapter-pg`
+
+Configuration: `apps/api/webpack.config.js`
+
+### Docker (Cloud Run)
+
+The root `Dockerfile` uses a 3-stage build:
+
+1. **deps** — installs all workspace dependencies (`npm ci`)
+2. **build** — generates Prisma client, runs `npx nx build api` (Webpack bundles everything except Prisma externals)
+3. **production** — copies bundled output + minimal `package.json`, installs only Prisma externals, generates Prisma client, runs migrations at startup via `docker-entrypoint.sh`
+
+---
+
 ## Further Reading
 
 - Admin setup workflow: [Admin Guide](./admin-guide.md)

@@ -92,10 +92,12 @@ Bot follows the adapter pattern - handlers call existing Application Services, k
 
 - **Monorepo**: Nx 22.4 with `@home-pulse-watcher/` prefix
 - **Framework**: NestJS 11
+- **Bundler**: Webpack via `@nx/webpack` (serverless bundling — all deps bundled except Prisma)
 - **ORM**: Prisma 7.3 with PostgreSQL
 - **Validation**: LIVR (custom rules use camelCase: `macAddress`, `hmacFormat`)
 - **Testing**: Jest 30 with SWC compiler
 - **CLI**: nest-commander for admin tasks
+- **Deployment**: Google Cloud Run (Docker multi-stage build)
 
 ## Database Models
 
@@ -103,6 +105,15 @@ Bot follows the adapter pattern - handlers call existing Application Services, k
 - **Device**: ESP32 devices (macAddress unique, encryptedSecret for HMAC verification)
 - **UserDevice**: Many-to-many with role (VIEWER default)
 - **PowerEvent**: Status changes (1=on, 0=off) with optional duration
+
+## Build & Bundling
+
+Webpack bundles **all** `node_modules` into `main.js` and `cli.js`, eliminating runtime dependency resolution issues. Only Prisma-related packages are kept external (they require native WASM binaries and generated code at runtime).
+
+- **Config**: `apps/api/webpack.config.js`
+- **External packages**: `@prisma/client`, `@prisma/adapter-pg`, `.prisma/client`, `pg`
+- **Minimal package.json**: `apps/api/src/assets/package.json` — copied to `dist/`, lists only external deps for Docker `npm install`
+- **NestJS lazy imports**: `@nestjs/microservices` and `@nestjs/websockets` are ignored via `IgnorePlugin` (optional peer deps, not installed)
 
 ## Coding Standards
 
