@@ -1,13 +1,15 @@
 name: Deploy to Cloud Run
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'firmware/**'
-      - 'docs/**'
-      - '*.md'
-      - '.vscode/**'
+  # TODO: uncomment to re-enable auto-deploy on push to main
+  # push:
+  #   branches: [main]
+  #   paths-ignore:
+  #     - 'firmware/**'
+  #     - 'docs/**'
+  #     - '*.md'
+  #     - '.vscode/**'
+  workflow_dispatch:
 
 # Prevent concurrent deployments
 concurrency:

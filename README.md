@@ -172,7 +172,9 @@ The script will prompt for your GCP project ID and secret values, then print the
 
 ### CI/CD with GitHub Actions
 
-Every push to `main` triggers `.github/workflows/deploy.yml` which runs CI and deploys to Cloud Run.
+Deployments are **manual-only** during the MVP phase. To deploy, go to the repository's **Actions** tab → select **"Deploy to Cloud Run"** → click **"Run workflow"** → choose the `main` branch → click **"Run workflow"**. This runs the full CI + deploy pipeline.
+
+Auto-deploy on push to `main` is commented out in `deploy.yml` and can be re-enabled later.
 
 Sensitive values are stored in **GCP Secret Manager** (not as GitHub secrets or plain env vars):
 
