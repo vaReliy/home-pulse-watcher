@@ -54,8 +54,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    if (this.bot) {
-      this.logger.log('Stopping Telegram bot...');
+    if (!this.bot || !this.config) return;
+
+    // Only stop in polling mode — in webhook mode there's nothing to stop,
+    // and calling stop() could theoretically interact with the webhook.
+    if (!this.config.useWebhook) {
+      this.logger.log('Stopping Telegram bot polling...');
       try {
         this.bot.stop('SIGTERM');
         this.logger.log('Telegram bot stopped');
@@ -133,14 +137,54 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     if (!this.bot || !this.config) return;
 
     if (this.config.useWebhook && this.config.webhookDomain) {
-      // Production: use webhooks
+      // Production: use webhooks with retry for cold start resilience
       const webhookUrl = `${this.config.webhookDomain}/api/telegram/webhook`;
-      await this.bot.telegram.setWebhook(webhookUrl);
-      this.logger.log(`Telegram bot webhook set to: ${webhookUrl}`);
+      await this.setWebhookWithRetry(webhookUrl);
     } else {
+      // Safety: refuse polling in production — it calls deleteWebhook internally
+      // and would wipe the registered webhook URL
+      if (process.env['NODE_ENV'] === 'production') {
+        this.logger.error(
+          'Polling mode blocked in production (would delete webhook). ' +
+            'Set TELEGRAM_USE_WEBHOOK=true and TELEGRAM_WEBHOOK_DOMAIN.',
+        );
+        return;
+      }
+
       // Development: use long polling (don't await - runs in background)
       this.bot.launch();
       this.logger.log('Telegram bot started with long polling');
     }
+  }
+
+  /**
+   * Registers the webhook URL with Telegram, retrying on transient failures.
+   */
+  private async setWebhookWithRetry(
+    webhookUrl: string,
+    maxRetries = 3,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.bot!.telegram.setWebhook(webhookUrl, {
+          ...(this.config!.webhookSecret && {
+            secret_token: this.config!.webhookSecret,
+          }),
+        });
+        this.logger.log(`Telegram bot webhook set to: ${webhookUrl}`);
+        return;
+      } catch (error) {
+        this.logger.error(
+          `Failed to set webhook (attempt ${attempt}/${maxRetries})`,
+          error,
+        );
+        if (attempt < maxRetries) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 1000 * attempt),
+          );
+        }
+      }
+    }
+    this.logger.error('All webhook registration attempts failed');
   }
 }

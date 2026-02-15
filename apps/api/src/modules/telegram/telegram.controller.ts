@@ -12,6 +12,7 @@ import {
 import type { Request, Response } from 'express';
 import type { Telegraf } from 'telegraf';
 import { TELEGRAM_TOKENS } from './telegram.tokens.js';
+import type { TelegramConfig } from './telegram.config.js';
 import type { TelegramContext } from './types/telegram-context.type.js';
 
 /**
@@ -26,6 +27,9 @@ export class TelegramController {
     @Optional()
     @Inject(TELEGRAM_TOKENS.BOT)
     private readonly bot: Telegraf<TelegramContext> | null,
+    @Optional()
+    @Inject(TELEGRAM_TOKENS.CONFIG)
+    private readonly config: TelegramConfig | null,
   ) {}
 
   /**
@@ -41,6 +45,16 @@ export class TelegramController {
       this.logger.warn('Webhook received but bot is not configured');
       res.sendStatus(HttpStatus.OK);
       return;
+    }
+
+    // Validate webhook secret if configured
+    if (this.config?.webhookSecret) {
+      const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
+      if (headerSecret !== this.config.webhookSecret) {
+        this.logger.warn('Webhook request with invalid secret token');
+        res.sendStatus(HttpStatus.UNAUTHORIZED);
+        return;
+      }
     }
 
     try {

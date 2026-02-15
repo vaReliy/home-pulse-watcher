@@ -254,9 +254,83 @@ The server found the device and decrypted the stored secret, but the HMAC signat
 - Verify MAC address is registered via `device:list`
 - Check MAC address case (must match registration)
 
+### No Bot Response on Cloud Run
+
+The Telegram bot uses webhooks in production. If commands like `/status` get no response:
+
+1. **Check webhook status:**
+
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+   ```
+
+   If `url` is empty, the webhook was cleared.
+
+2. **Common cause — local dev clears production webhook:**
+
+   Telegraf's polling mode (`bot.launch()`) internally calls `deleteWebhook`. If the same bot token is used for local development and production, running the app locally wipes the production webhook.
+
+   **Prevention:** Use separate bot tokens for development and production (create a second bot via [@BotFather](https://t.me/BotFather)).
+
+3. **Re-register the webhook manually:**
+
+   ```bash
+   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=<CLOUD_RUN_URL>/api/telegram/webhook"
+   ```
+
+   Or redeploy — the webhook is re-registered automatically on startup.
+
+4. **Webhook security:** Set `TELEGRAM_WEBHOOK_SECRET` in GCP Secret Manager to validate that incoming webhook requests originate from Telegram (via the `X-Telegram-Bot-Api-Secret-Token` header).
+
 ### No Notifications
 
 - Verify user has `/start`ed the bot
 - Check device is linked to user via `/devices` bot command
 - Verify device is sending status updates (check backend logs)
 - Ensure `TELEGRAM_BOT_TOKEN` is set correctly
+
+## Post-Deploy Setup (GCP Console)
+
+One-time steps to complete after the first Cloud Run deployment.
+
+### 1. Create Webhook Secret
+
+This secret validates that incoming webhook requests originate from Telegram.
+
+1. Open [Secret Manager](https://console.cloud.google.com/security/secret-manager) in GCP Console
+2. Click **Create Secret**
+3. **Name:** `telegram-webhook-secret`
+4. **Secret value:** Generate a random 64-character hex string (e.g. using a password generator or running `openssl rand -hex 32` locally)
+5. Click **Create**
+
+The deploy workflow will automatically mount this secret as the `TELEGRAM_WEBHOOK_SECRET` env var on the next deploy.
+
+### 2. Create Keep-Warm Scheduler Job
+
+Cloud Run scales to zero after ~15 minutes of inactivity. A scheduler job pings the health endpoint to keep the instance warm for responsive Telegram bot interactions.
+
+1. Open [Cloud Scheduler](https://console.cloud.google.com/cloudscheduler) in GCP Console
+2. Click **Create Job**
+3. Fill in:
+   - **Name:** `home-pulse-keep-warm`
+   - **Region:** `europe-west3` (same as your Cloud Run service)
+   - **Frequency:** `*/15 * * * *` (every 15 minutes)
+   - **Timezone:** any (e.g. `UTC`)
+4. Click **Continue**, then configure the target:
+   - **Target type:** HTTP
+   - **URL:** `https://<your-cloud-run-url>/api`
+   - **HTTP method:** GET
+5. Expand **Advanced** (optional):
+   - **Attempt deadline:** 30s
+6. Click **Create**
+
+Free tier includes 3 scheduler jobs. This job sends 96 requests/day — negligible resource usage.
+
+### 3. Create a Development Bot Token
+
+Using the same bot token for local development and production can cause the production webhook to be deleted when running locally.
+
+1. Open [@BotFather](https://t.me/BotFather) in Telegram
+2. Send `/newbot` and follow the prompts to create a development bot (e.g. `HomePulse Dev`)
+3. Copy the token and set it as `TELEGRAM_BOT_TOKEN` in your local `.env` file
+4. Keep the production bot token only in GCP Secret Manager

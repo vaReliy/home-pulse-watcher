@@ -176,6 +176,19 @@ Deployments are **manual-only** during the MVP phase. To deploy, go to the repos
 
 Auto-deploy on push to `main` is commented out in `deploy.yml` and can be re-enabled later.
 
+### Keep-Warm (Cloud Scheduler)
+
+Cloud Run scales to zero after ~15 minutes of inactivity. To keep the instance warm for responsive Telegram bot interactions, create a Cloud Scheduler job (free tier: 3 jobs):
+
+```bash
+gcloud scheduler jobs create http home-pulse-keep-warm \
+  --location=europe-west3 \
+  --schedule="*/15 * * * *" \
+  --uri="<CLOUD_RUN_URL>/api" \
+  --http-method=GET \
+  --attempt-deadline=30s
+```
+
 Sensitive values are stored in **GCP Secret Manager** (not as GitHub secrets or plain env vars):
 
 | GCP Secret                     | Cloud Run Env Var              |
@@ -184,6 +197,7 @@ Sensitive values are stored in **GCP Secret Manager** (not as GitHub secrets or 
 | `telegram-bot-token`           | `TELEGRAM_BOT_TOKEN`           |
 | `telegram-admin-chat-id`       | `TELEGRAM_ADMIN_CHAT_ID`       |
 | `device-secret-encryption-key` | `DEVICE_SECRET_ENCRYPTION_KEY` |
+| `telegram-webhook-secret`      | `TELEGRAM_WEBHOOK_SECRET`      |
 
 **GitHub repository configuration:**
 

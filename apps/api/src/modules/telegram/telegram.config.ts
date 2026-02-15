@@ -6,6 +6,7 @@ export interface TelegramConfig {
   adminChatId?: string;
   useWebhook: boolean;
   webhookDomain?: string;
+  webhookSecret?: string;
 }
 
 /**
@@ -23,5 +24,6 @@ export function validateTelegramConfig(): TelegramConfig {
     adminChatId: process.env['TELEGRAM_ADMIN_CHAT_ID'],
     useWebhook: process.env['TELEGRAM_USE_WEBHOOK'] === 'true',
     webhookDomain: process.env['TELEGRAM_WEBHOOK_DOMAIN'],
+    webhookSecret: process.env['TELEGRAM_WEBHOOK_SECRET'],
   };
 }

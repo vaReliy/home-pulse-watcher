@@ -56,4 +56,4 @@ jobs:
             NODE_ENV=production
             TELEGRAM_USE_WEBHOOK=true
             TELEGRAM_WEBHOOK_DOMAIN=${{ vars.CLOUD_RUN_URL }}
-          secrets: DATABASE_URL=database-url:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_ADMIN_CHAT_ID=telegram-admin-chat-id:latest,DEVICE_SECRET_ENCRYPTION_KEY=device-secret-encryption-key:latest
+          secrets: DATABASE_URL=database-url:latest,TELEGRAM_BOT_TOKEN=telegram-bot-token:latest,TELEGRAM_ADMIN_CHAT_ID=telegram-admin-chat-id:latest,DEVICE_SECRET_ENCRYPTION_KEY=device-secret-encryption-key:latest,TELEGRAM_WEBHOOK_SECRET=telegram-webhook-secret:latest
