@@ -26,6 +26,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <time.h>
 #include <mbedtls/md.h>
 #include <Adafruit_NeoPixel.h>
@@ -40,6 +41,9 @@ static bool timeInitialized = false;
 
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
+
+// HTTPS client (setInsecure skips CA verification; HMAC signing provides auth)
+static WiFiClientSecure secureClient;
 
 /** Set WS2812 LED color */
 void setLedColor(uint8_t r, uint8_t g, uint8_t b) {
@@ -203,7 +207,7 @@ bool sendPowerStatus(int status) {
 
     // Send HTTP POST request
     HTTPClient http;
-    http.begin(BACKEND_URL);
+    http.begin(secureClient, BACKEND_URL);
     http.setTimeout(HTTP_TIMEOUT_MS);
 
     // Set headers
@@ -222,10 +226,9 @@ bool sendPowerStatus(int status) {
     updateStatusLed(status);
 
     if (httpCode > 0) {
-        Serial.printf("HTTP Response: %d\n", httpCode);
+        String response = http.getString();
+        Serial.printf("HTTP %d: %s\n", httpCode, response.c_str());
         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
-            String response = http.getString();
-            Serial.printf("Response: %s\n", response.c_str());
             http.end();
             return true;
         }
@@ -262,6 +265,8 @@ void setup() {
         delay(5000);
         ESP.restart();
     }
+
+    secureClient.setInsecure();
 
     if (!initializeTime()) {
         Serial.println("Failed to sync time. Restarting...");

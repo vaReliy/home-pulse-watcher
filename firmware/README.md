@@ -73,6 +73,26 @@ firmware/
 #define BACKEND_URL "https://your-server.com/api/device/status"
 ```
 
+### Dev vs Prod
+
+Each environment (dev/prod) has its own database, so devices must be registered separately. In `secrets.h`, use preprocessor conditionals to keep both configs and switch easily:
+
+```cpp
+// Uncomment one:
+// #define ENV_DEV
+// #define ENV_PROD
+
+#ifdef ENV_DEV
+  #define DEVICE_SECRET "dev-secret"
+  #define BACKEND_URL "http://192.168.x.x:3000/api/device/status"
+#else
+  #define DEVICE_SECRET "prod-secret"
+  #define BACKEND_URL "https://your-cloud-run-url.run.app/api/device/status"
+#endif
+```
+
+See `secrets.h.example` for the full template.
+
 ### config.h (Hardware-specific)
 
 | Setting             | Default      | Description                   |
@@ -105,6 +125,17 @@ The onboard WS2812B RGB LED shows device status:
 | Green        | 220V power present (normal) |
 | Red          | 220V power lost (outage)    |
 | Blue flash   | HTTP request in progress    |
+
+### HTTP 401 Unauthorized
+
+The serial output shows the error code from the backend (e.g. `HTTP 401: {"code":"...","message":"..."}`). Common causes:
+
+| Error Code           | Cause                                              | Fix                                              |
+| -------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| `DEVICE_NOT_FOUND`   | Device MAC not registered in this environment's DB  | Run `device:register` against the correct backend |
+| `INVALID_SIGNATURE`  | `DEVICE_SECRET` in firmware doesn't match backend   | Re-register or verify the secret                  |
+| `EXPIRED_TIMESTAMP`  | Device clock >5 min off from server                 | Check NTP sync in serial output                   |
+| `MISSING_CREDENTIALS`| Auth headers not sent                               | Firmware bug — check `X-Device-Mac/Timestamp/Signature` headers |
 
 ### WiFi Connection Failed
 
