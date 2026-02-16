@@ -72,9 +72,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private setupMiddleware(): void {
     if (!this.bot) return;
 
-    // Error handling middleware
-    this.bot.catch((err, ctx) => {
+    // Error handling middleware — reply to user so errors aren't silent
+    this.bot.catch(async (err, ctx) => {
       this.logger.error(`Error for ${ctx.updateType}`, err);
+      try {
+        if (ctx.chat) {
+          await ctx.reply(MESSAGES.ERROR_GENERIC);
+        }
+      } catch (replyError) {
+        this.logger.error('Failed to send error reply to user', replyError);
+      }
     });
   }
 
@@ -83,26 +90,46 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     // /start - works without authentication
     this.bot.command('start', async (ctx) => {
-      await this.startHandler.handle(ctx as TelegramContext);
+      try {
+        await this.startHandler.handle(ctx as TelegramContext);
+      } catch (error) {
+        this.logger.error('Error in /start handler', error);
+        await ctx.reply(MESSAGES.ERROR_GENERIC);
+      }
     });
 
     // /help - works without authentication
     this.bot.command('help', async (ctx) => {
-      await this.helpHandler.handle(ctx as TelegramContext);
+      try {
+        await this.helpHandler.handle(ctx as TelegramContext);
+      } catch (error) {
+        this.logger.error('Error in /help handler', error);
+        await ctx.reply(MESSAGES.ERROR_GENERIC);
+      }
     });
 
     // /status - requires authentication
     this.bot.command('status', async (ctx) => {
-      await this.withAuth(ctx as TelegramContext, () =>
-        this.statusHandler.handle(ctx as TelegramContext),
-      );
+      try {
+        await this.withAuth(ctx as TelegramContext, () =>
+          this.statusHandler.handle(ctx as TelegramContext),
+        );
+      } catch (error) {
+        this.logger.error('Error in /status handler', error);
+        await ctx.reply(MESSAGES.ERROR_GENERIC);
+      }
     });
 
     // /devices - requires authentication
     this.bot.command('devices', async (ctx) => {
-      await this.withAuth(ctx as TelegramContext, () =>
-        this.devicesHandler.handle(ctx as TelegramContext),
-      );
+      try {
+        await this.withAuth(ctx as TelegramContext, () =>
+          this.devicesHandler.handle(ctx as TelegramContext),
+        );
+      } catch (error) {
+        this.logger.error('Error in /devices handler', error);
+        await ctx.reply(MESSAGES.ERROR_GENERIC);
+      }
     });
   }
 
@@ -120,7 +147,14 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const user = await this.userRepository.findByTelegramId(BigInt(telegramId));
+    let user;
+    try {
+      user = await this.userRepository.findByTelegramId(BigInt(telegramId));
+    } catch (error) {
+      this.logger.error('Failed to look up user during authentication', error);
+      await ctx.reply(MESSAGES.ERROR_GENERIC);
+      return;
+    }
 
     if (!user) {
       await ctx.reply(MESSAGES.NOT_REGISTERED, { parse_mode: 'HTML' });
@@ -136,7 +170,15 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private async startBot(): Promise<void> {
     if (!this.bot || !this.config) return;
 
-    if (this.config.useWebhook && this.config.webhookDomain) {
+    if (this.config.useWebhook) {
+      if (!this.config.webhookDomain) {
+        this.logger.error(
+          'TELEGRAM_USE_WEBHOOK is true but TELEGRAM_WEBHOOK_DOMAIN is not set. ' +
+            'Bot cannot receive commands without a webhook URL.',
+        );
+        return;
+      }
+
       // Production: use webhooks with retry for cold start resilience
       const webhookUrl = `${this.config.webhookDomain}/api/telegram/webhook`;
       await this.setWebhookWithRetry(webhookUrl);
@@ -172,6 +214,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           }),
         });
         this.logger.log(`Telegram bot webhook set to: ${webhookUrl}`);
+
+        // Verify webhook registration
+        try {
+          const info = await this.bot!.telegram.getWebhookInfo();
+          this.logger.log(
+            `Webhook verified: url=${info.url}, pending=${info.pending_update_count}, ` +
+              `last_error=${info.last_error_message ?? 'none'}`,
+          );
+        } catch (verifyError) {
+          this.logger.warn('Failed to verify webhook info', verifyError);
+        }
+
         return;
       } catch (error) {
         this.logger.error(

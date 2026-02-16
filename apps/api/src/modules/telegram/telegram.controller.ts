@@ -58,6 +58,9 @@ export class TelegramController {
     }
 
     try {
+      this.logger.debug(
+        `Webhook update received: update_id=${req.body?.update_id}, text=${req.body?.message?.text}`,
+      );
       await this.bot.handleUpdate(req.body);
       res.sendStatus(HttpStatus.OK);
     } catch (error) {
