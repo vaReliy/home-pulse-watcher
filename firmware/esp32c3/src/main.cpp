@@ -29,6 +29,7 @@
 #include <WiFiClientSecure.h>
 #include <time.h>
 #include <mbedtls/md.h>
+#include <esp_task_wdt.h>
 #include <Adafruit_NeoPixel.h>
 
 #include "config.h"
@@ -38,6 +39,7 @@
 static int lastPowerStatus = -1;  // -1 = unknown, 0 = off, 1 = on
 static unsigned long lastCheckTime = 0;
 static bool timeInitialized = false;
+static int wifiFailureCount = 0;
 
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -285,17 +287,43 @@ void setup() {
         Serial.println("Failed to send initial status");
     }
 
+    // Initialize hardware watchdog timer
+    esp_task_wdt_config_t wdtConfig = {
+        .timeout_ms = WATCHDOG_TIMEOUT_S * 1000,
+        .idle_core_mask = 0,
+        .trigger_panic = true,
+    };
+    esp_task_wdt_init(&wdtConfig);
+    esp_task_wdt_add(NULL);
+    Serial.printf("Watchdog initialized: %ds timeout\n", WATCHDOG_TIMEOUT_S);
+
     Serial.println("Setup complete. Monitoring power status...");
 }
 
 void loop() {
+    // Feed hardware watchdog — if loop() hangs, device auto-reboots
+    esp_task_wdt_reset();
+
+    // Periodic reboot for long-term stability
+    if (millis() >= REBOOT_INTERVAL_MS) {
+        Serial.println("Periodic reboot (48h uptime reached). Restarting...");
+        ESP.restart();
+    }
+
     // Check WiFi connection
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi disconnected. Reconnecting...");
         if (!connectWiFi()) {
+            wifiFailureCount++;
+            Serial.printf("WiFi failure count: %d/%d\n", wifiFailureCount, MAX_WIFI_FAILURES);
+            if (wifiFailureCount >= MAX_WIFI_FAILURES) {
+                Serial.println("Too many WiFi failures. Restarting...");
+                ESP.restart();
+            }
             delay(RETRY_DELAY_MS);
             return;
         }
+        wifiFailureCount = 0;
     }
 
     // Check power status at configured interval

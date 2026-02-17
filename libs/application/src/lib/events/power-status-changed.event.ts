@@ -11,6 +11,7 @@ export class PowerStatusChangedEvent {
   readonly newStatus: PowerStatus;
   readonly timestamp: Date;
   readonly eventId: string;
+  readonly durationSeconds: number | null;
 
   constructor(props: {
     deviceId: string;
@@ -19,6 +20,7 @@ export class PowerStatusChangedEvent {
     newStatus: PowerStatus;
     timestamp: Date;
     eventId: string;
+    durationSeconds: number | null;
   }) {
     this.deviceId = props.deviceId;
     this.deviceLabel = props.deviceLabel;
@@ -26,6 +28,7 @@ export class PowerStatusChangedEvent {
     this.newStatus = props.newStatus;
     this.timestamp = props.timestamp;
     this.eventId = props.eventId;
+    this.durationSeconds = props.durationSeconds;
   }
 
   /**

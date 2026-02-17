@@ -18,6 +18,7 @@ Your account has been created. Use /devices to see your linked devices.`,
 /start - Register your account
 /status - Show power status of all devices
 /devices - List your linked devices
+/history - Show outage history for current month
 /help - Show this help message`,
 
   // Status
@@ -51,6 +52,9 @@ Outage duration: ${duration}`,
 
   DEVICE_OFFLINE: (label: string): string =>
     `📡 Device <b>${label}</b> is now offline`,
+
+  // History
+  NO_HISTORY: `No power events recorded this month.`,
 
   // Errors - Generic
   ERROR_GENERIC: `Something went wrong. Please try again later.`,

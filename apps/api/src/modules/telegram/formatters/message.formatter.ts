@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Device } from '@home-pulse-watcher/core';
+import type { Device, PowerEvent } from '@home-pulse-watcher/core';
 import { PowerStatus } from '@home-pulse-watcher/core';
 import { MESSAGES } from '../constants/messages.constants.js';
 
@@ -44,7 +44,9 @@ export class MessageFormatter {
 
     const header = '<b>Device Status:</b>\n';
     const statuses = devices
-      .map(({ device, customName }) => this.formatDeviceStatus(device, customName))
+      .map(({ device, customName }) =>
+        this.formatDeviceStatus(device, customName),
+      )
       .join('\n\n');
 
     return header + statuses;
@@ -92,6 +94,50 @@ export class MessageFormatter {
   formatDeviceOffline(deviceLabel: string): string {
     const label = this.escapeHtml(deviceLabel);
     return MESSAGES.DEVICE_OFFLINE(label);
+  }
+
+  /**
+   * Format outage history for all devices.
+   */
+  formatHistory(
+    deviceHistories: Array<{ label: string; events: PowerEvent[] }>,
+  ): string {
+    if (
+      deviceHistories.length === 0 ||
+      deviceHistories.every((d) => d.events.length === 0)
+    ) {
+      return MESSAGES.NO_HISTORY;
+    }
+
+    const now = new Date();
+    const monthName = now.toLocaleString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
+    const lines = [`<b>Outage History — ${monthName}</b>\n`];
+
+    for (const { label, events } of deviceHistories) {
+      const escapedLabel = this.escapeHtml(label);
+      lines.push(`<b>${escapedLabel}</b>`);
+
+      if (events.length === 0) {
+        lines.push('  No events this month\n');
+        continue;
+      }
+
+      for (const event of events) {
+        const time = this.formatDateTime(event.timestamp);
+        const status = event.status === PowerStatus.ON ? '🟢 ON' : '🔴 OFF';
+        const duration =
+          event.duration !== null
+            ? ` (${this.formatDuration(event.duration)})`
+            : '';
+        lines.push(`  ${time} — ${status}${duration}`);
+      }
+      lines.push('');
+    }
+
+    return lines.join('\n').trimEnd();
   }
 
   /**

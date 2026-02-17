@@ -14,6 +14,7 @@ import { StartHandler } from './handlers/start.handler.js';
 import { StatusHandler } from './handlers/status.handler.js';
 import { DevicesHandler } from './handlers/devices.handler.js';
 import { HelpHandler } from './handlers/help.handler.js';
+import { HistoryHandler } from './handlers/history.handler.js';
 import { PowerStatusListener } from './listeners/power-status.listener.js';
 import type { TelegramContext } from './types/telegram-context.type.js';
 
@@ -52,6 +53,7 @@ import type { TelegramContext } from './types/telegram-context.type.js';
     StatusHandler,
     DevicesHandler,
     HelpHandler,
+    HistoryHandler,
     // Event Listeners
     PowerStatusListener,
     // Main Service

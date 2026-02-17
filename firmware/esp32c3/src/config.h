@@ -30,6 +30,11 @@
 #define POWER_STATUS_OFF 0
 #define POWER_STATUS_ON 1
 
+// Stability Configuration
+#define WATCHDOG_TIMEOUT_S 60           // Hardware watchdog timeout (seconds)
+#define REBOOT_INTERVAL_MS 172800000UL  // Periodic reboot interval (48 hours)
+#define MAX_WIFI_FAILURES 10            // Consecutive WiFi failures before reboot
+
 // Deep Sleep (optional, for battery operation)
 // #define ENABLE_DEEP_SLEEP
 #define DEEP_SLEEP_DURATION_US 60000000  // 60 seconds

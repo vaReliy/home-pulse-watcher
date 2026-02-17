@@ -16,6 +16,7 @@ import { StartHandler } from './handlers/start.handler.js';
 import { StatusHandler } from './handlers/status.handler.js';
 import { DevicesHandler } from './handlers/devices.handler.js';
 import { HelpHandler } from './handlers/help.handler.js';
+import { HistoryHandler } from './handlers/history.handler.js';
 import { MESSAGES } from './constants/messages.constants.js';
 
 /**
@@ -38,6 +39,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     private readonly statusHandler: StatusHandler,
     private readonly devicesHandler: DevicesHandler,
     private readonly helpHandler: HelpHandler,
+    private readonly historyHandler: HistoryHandler,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -128,6 +130,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         );
       } catch (error) {
         this.logger.error('Error in /devices handler', error);
+        await ctx.reply(MESSAGES.ERROR_GENERIC);
+      }
+    });
+
+    // /history - requires authentication
+    this.bot.command('history', async (ctx) => {
+      try {
+        await this.withAuth(ctx as TelegramContext, () =>
+          this.historyHandler.handle(ctx as TelegramContext),
+        );
+      } catch (error) {
+        this.logger.error('Error in /history handler', error);
         await ctx.reply(MESSAGES.ERROR_GENERIC);
       }
     });
@@ -233,9 +247,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           error,
         );
         if (attempt < maxRetries) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, 1000 * attempt),
-          );
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         }
       }
     }

@@ -7,6 +7,7 @@ import type { StartHandler } from './handlers/start.handler';
 import type { StatusHandler } from './handlers/status.handler';
 import type { DevicesHandler } from './handlers/devices.handler';
 import type { HelpHandler } from './handlers/help.handler';
+import type { HistoryHandler } from './handlers/history.handler';
 
 describe('TelegramService', () => {
   const createMockBot = (): jest.Mocked<Telegraf<TelegramContext>> =>
@@ -26,6 +27,7 @@ describe('TelegramService', () => {
     statusHandler: {} as StatusHandler,
     devicesHandler: {} as DevicesHandler,
     helpHandler: {} as HelpHandler,
+    historyHandler: {} as HistoryHandler,
   });
 
   const createService = (
@@ -41,6 +43,7 @@ describe('TelegramService', () => {
       deps.statusHandler,
       deps.devicesHandler,
       deps.helpHandler,
+      deps.historyHandler,
     );
   };
 

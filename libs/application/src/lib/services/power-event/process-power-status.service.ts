@@ -83,15 +83,18 @@ export class ProcessPowerStatusService extends BaseService<
     const timestamp = new Date();
 
     // 2. Calculate duration and update previous event if exists
+    let previousDurationSeconds: number | null = null;
     if (previousStatus !== null) {
       const lastEvent =
         await this.powerEventRepository.findLatestByDeviceId(deviceId);
       if (lastEvent) {
         // Duration in seconds (how long the previous state lasted)
-        const duration = Math.floor(
+        previousDurationSeconds = Math.floor(
           (timestamp.getTime() - lastEvent.timestamp.getTime()) / 1000,
         );
-        await this.powerEventRepository.update(lastEvent.id, { duration });
+        await this.powerEventRepository.update(lastEvent.id, {
+          duration: previousDurationSeconds,
+        });
       }
     }
 
@@ -120,6 +123,7 @@ export class ProcessPowerStatusService extends BaseService<
           newStatus,
           timestamp,
           eventId: event.id,
+          durationSeconds: previousDurationSeconds,
         }),
       );
     }

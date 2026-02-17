@@ -5,7 +5,6 @@ import type {
   IUserRepository,
   IUserDeviceRepository,
   IDeviceRepository,
-  IPowerEventRepository,
 } from '@home-pulse-watcher/core';
 import { PowerStatus } from '@home-pulse-watcher/core';
 import {
@@ -38,13 +37,13 @@ export class PowerStatusListener {
     private readonly userDeviceRepository: IUserDeviceRepository,
     @Inject(REPOSITORY_TOKENS.DEVICE)
     private readonly deviceRepository: IDeviceRepository,
-    @Inject(REPOSITORY_TOKENS.POWER_EVENT)
-    private readonly powerEventRepository: IPowerEventRepository,
     private readonly messageFormatter: MessageFormatter,
   ) {}
 
   @OnEvent(POWER_STATUS_CHANGED_EVENT)
-  async handlePowerStatusChanged(event: PowerStatusChangedEvent): Promise<void> {
+  async handlePowerStatusChanged(
+    event: PowerStatusChangedEvent,
+  ): Promise<void> {
     const bot = this.bot;
     if (!bot) {
       this.logger.debug('Telegram bot not configured, skipping notification');
@@ -73,16 +72,10 @@ export class PowerStatusListener {
       const deviceLabel =
         event.deviceLabel ?? device?.label ?? 'Unknown Device';
 
-      // 3. Get outage duration for power restored events
-      let durationSeconds: number | null = null;
-      if (event.isPowerRestored) {
-        const latestEvent = await this.powerEventRepository.findLatestByDeviceId(
-          event.deviceId,
-        );
-        if (latestEvent && latestEvent.duration !== null) {
-          durationSeconds = latestEvent.duration;
-        }
-      }
+      // 3. Get outage duration from domain event (calculated by ProcessPowerStatusService)
+      const durationSeconds = event.isPowerRestored
+        ? event.durationSeconds
+        : null;
 
       // 4. Format message based on status change
       const message = this.formatNotificationMessage(
@@ -128,7 +121,10 @@ export class PowerStatusListener {
           });
           this.logger.debug(`Notification sent to user ${chatId}`);
         } catch (error) {
-          this.logger.warn(`Failed to send notification to user ${userId}`, error);
+          this.logger.warn(
+            `Failed to send notification to user ${userId}`,
+            error,
+          );
         }
       });
 
@@ -147,7 +143,10 @@ export class PowerStatusListener {
     durationSeconds: number | null,
   ): string {
     if (event.isPowerLost) {
-      return this.messageFormatter.formatPowerLost(deviceLabel, event.timestamp);
+      return this.messageFormatter.formatPowerLost(
+        deviceLabel,
+        event.timestamp,
+      );
     }
 
     if (event.isPowerRestored) {
