@@ -1,11 +1,15 @@
 import { User } from './user.entity.js';
 
 describe('User', () => {
-  const createUser = (overrides?: Partial<ConstructorParameters<typeof User>[0]>) =>
+  const createUser = (
+    overrides?: Partial<ConstructorParameters<typeof User>[0]>,
+  ) =>
     new User({
       id: 'user-1',
       telegramId: BigInt(123456789),
       username: 'johndoe',
+      locale: 'uk',
+      timezone: 'Europe/Kyiv',
       createdAt: new Date('2024-01-01'),
       ...overrides,
     });
@@ -17,6 +21,8 @@ describe('User', () => {
       expect(user.id).toBe('user-1');
       expect(user.telegramId).toBe(BigInt(123456789));
       expect(user.username).toBe('johndoe');
+      expect(user.locale).toBe('uk');
+      expect(user.timezone).toBe('Europe/Kyiv');
       expect(user.createdAt).toEqual(new Date('2024-01-01'));
     });
 

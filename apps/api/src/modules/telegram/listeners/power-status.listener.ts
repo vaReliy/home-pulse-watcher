@@ -14,11 +14,18 @@ import {
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
 import { TELEGRAM_TOKENS } from '../telegram.tokens.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
+import { DEFAULT_LOCALE, DEFAULT_TIMEZONE } from '../i18n/locale.config.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /** Rate limiting constants for Telegram API */
 const BATCH_SIZE = 25;
 const BATCH_DELAY_MS = 1000;
+
+interface RecipientGroup {
+  locale: string;
+  timezone: string;
+  recipients: Array<{ chatId: string; userId: string }>;
+}
 
 /**
  * Listens for power status change events and sends Telegram notifications.
@@ -72,32 +79,42 @@ export class PowerStatusListener {
       const deviceLabel =
         event.deviceLabel ?? device?.label ?? 'Unknown Device';
 
-      // 3. Get outage duration from domain event (calculated by ProcessPowerStatusService)
+      // 3. Get outage duration from domain event
       const durationSeconds = event.isPowerRestored
         ? event.durationSeconds
         : null;
 
-      // 4. Format message based on status change
-      const message = this.formatNotificationMessage(
-        event,
-        deviceLabel,
-        durationSeconds,
-      );
+      // 4. Group recipients by locale/timezone
+      const groups = new Map<string, RecipientGroup>();
 
-      // 5. Collect user chat IDs
-      const recipients: Array<{ chatId: string; userId: string }> = [];
       for (const ud of userDevices) {
         const user = await this.userRepository.findById(ud.userId);
-        if (user) {
-          recipients.push({
-            chatId: user.telegramId.toString(),
-            userId: ud.userId,
-          });
+        if (!user) continue;
+
+        const locale = user.locale ?? DEFAULT_LOCALE;
+        const timezone = user.timezone ?? DEFAULT_TIMEZONE;
+        const key = `${locale}:${timezone}`;
+
+        if (!groups.has(key)) {
+          groups.set(key, { locale, timezone, recipients: [] });
         }
+        groups.get(key)!.recipients.push({
+          chatId: user.telegramId.toString(),
+          userId: ud.userId,
+        });
       }
 
-      // 6. Send notifications with rate limiting
-      await this.sendWithRateLimit(bot, message, recipients);
+      // 5. Format and send one message per locale/timezone group
+      for (const group of groups.values()) {
+        const message = this.formatNotificationMessage(
+          event,
+          deviceLabel,
+          durationSeconds,
+          group.locale,
+          group.timezone,
+        );
+        await this.sendWithRateLimit(bot, message, group.recipients);
+      }
     } catch (error) {
       this.logger.error('Failed to process power status notification', error);
     }
@@ -141,11 +158,15 @@ export class PowerStatusListener {
     event: PowerStatusChangedEvent,
     deviceLabel: string,
     durationSeconds: number | null,
+    locale: string,
+    timezone: string,
   ): string {
     if (event.isPowerLost) {
       return this.messageFormatter.formatPowerLost(
         deviceLabel,
         event.timestamp,
+        locale,
+        timezone,
       );
     }
 
@@ -154,14 +175,16 @@ export class PowerStatusListener {
         deviceLabel,
         event.timestamp,
         durationSeconds,
+        locale,
+        timezone,
       );
     }
 
     // First status report (no previous status)
     if (event.newStatus === PowerStatus.ON) {
-      return this.messageFormatter.formatDeviceOnline(deviceLabel);
+      return this.messageFormatter.formatDeviceOnline(deviceLabel, locale);
     }
 
-    return this.messageFormatter.formatDeviceOffline(deviceLabel);
+    return this.messageFormatter.formatDeviceOffline(deviceLabel, locale);
   }
 }

@@ -9,18 +9,20 @@ import type {
 import { PowerStatus, DeviceRole, UserDevice } from '@home-pulse-watcher/core';
 import { HistoryHandler } from './history.handler.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
-import { MESSAGES } from '../constants/messages.constants.js';
+import { TranslationService } from '../i18n/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 describe('HistoryHandler', () => {
+  const translationService = new TranslationService();
+  const messageFormatter = new MessageFormatter(translationService);
+
   const mockUser: User = {
     id: 'user-1',
     telegramId: BigInt(12345),
-    firstName: 'Test',
-    lastName: null,
     username: 'testuser',
+    locale: 'uk',
+    timezone: 'Europe/Kyiv',
     createdAt: new Date(),
-    updatedAt: new Date(),
   } as User;
 
   const mockDevice: Device = {
@@ -104,13 +106,15 @@ describe('HistoryHandler', () => {
       createMockDeviceRepo(),
       createMockUserDeviceRepo(),
       createMockPowerEventRepo(),
-      new MessageFormatter(),
+      messageFormatter,
+      translationService,
     );
 
     const ctx = createMockContext();
     await handler.handle(ctx);
 
-    expect(ctx.reply).toHaveBeenCalledWith(MESSAGES.NOT_REGISTERED, {
+    const msgs = translationService.getMessages();
+    expect(ctx.reply).toHaveBeenCalledWith(msgs.NOT_REGISTERED, {
       parse_mode: 'HTML',
     });
   });
@@ -123,18 +127,20 @@ describe('HistoryHandler', () => {
       createMockDeviceRepo(),
       userDeviceRepo,
       createMockPowerEventRepo(),
-      new MessageFormatter(),
+      messageFormatter,
+      translationService,
     );
 
     const ctx = createMockContext(mockUser);
     await handler.handle(ctx);
 
-    expect(ctx.reply).toHaveBeenCalledWith(MESSAGES.NO_DEVICES, {
+    const msgs = translationService.getMessages('uk');
+    expect(ctx.reply).toHaveBeenCalledWith(msgs.NO_DEVICES, {
       parse_mode: 'HTML',
     });
   });
 
-  it('should display history for user devices', async () => {
+  it('should display history for user devices in Ukrainian', async () => {
     const deviceRepo = createMockDeviceRepo();
     const userDeviceRepo = createMockUserDeviceRepo();
     const powerEventRepo = createMockPowerEventRepo();
@@ -147,7 +153,8 @@ describe('HistoryHandler', () => {
       deviceRepo,
       userDeviceRepo,
       powerEventRepo,
-      new MessageFormatter(),
+      messageFormatter,
+      translationService,
     );
 
     const ctx = createMockContext(mockUser);
@@ -161,7 +168,7 @@ describe('HistoryHandler', () => {
     );
 
     const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-    expect(message).toContain('Outage History');
+    expect(message).toContain('Історія відключень');
     expect(message).toContain('Kitchen');
   });
 
@@ -178,14 +185,16 @@ describe('HistoryHandler', () => {
       deviceRepo,
       userDeviceRepo,
       powerEventRepo,
-      new MessageFormatter(),
+      messageFormatter,
+      translationService,
     );
 
     const ctx = createMockContext(mockUser);
     await handler.handle(ctx);
 
     const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
-    expect(message).toBe(MESSAGES.NO_HISTORY);
+    const msgs = translationService.getMessages('uk');
+    expect(message).toBe(msgs.NO_HISTORY);
   });
 
   it('should use customName over device label', async () => {
@@ -207,7 +216,8 @@ describe('HistoryHandler', () => {
       deviceRepo,
       userDeviceRepo,
       powerEventRepo,
-      new MessageFormatter(),
+      messageFormatter,
+      translationService,
     );
 
     const ctx = createMockContext(mockUser);
@@ -226,12 +236,14 @@ describe('HistoryHandler', () => {
       createMockDeviceRepo(),
       userDeviceRepo,
       createMockPowerEventRepo(),
-      new MessageFormatter(),
+      messageFormatter,
+      translationService,
     );
 
     const ctx = createMockContext(mockUser);
     await handler.handle(ctx);
 
-    expect(ctx.reply).toHaveBeenCalledWith(MESSAGES.ERROR_GENERIC);
+    const msgs = translationService.getMessages('uk');
+    expect(ctx.reply).toHaveBeenCalledWith(msgs.ERROR_GENERIC);
   });
 });

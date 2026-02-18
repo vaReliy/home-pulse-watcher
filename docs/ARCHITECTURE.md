@@ -116,6 +116,38 @@ The root `Dockerfile` uses a 3-stage build:
 
 ---
 
+## Internationalization (i18n)
+
+Translation is a **presentation concern** and lives entirely in the Telegram interface layer (`apps/api/src/modules/telegram/i18n/`).
+
+### Architecture
+
+| Component            | Location               | Purpose                                   |
+| -------------------- | ---------------------- | ----------------------------------------- |
+| `locale.config.ts`   | `telegram/i18n/`       | Supported locales, defaults, Intl mapping |
+| `messages.type.ts`   | `telegram/i18n/`       | `Messages` interface — all string keys    |
+| `messages.uk.ts`     | `telegram/i18n/`       | Ukrainian translations (default)          |
+| `messages.en.ts`     | `telegram/i18n/`       | English translations                      |
+| `TranslationService` | `telegram/i18n/`       | Resolves locale → Messages object         |
+| `MessageFormatter`   | `telegram/formatters/` | Formats messages with locale/timezone     |
+
+### Design Decisions
+
+- **Default locale**: `uk` (Ukrainian) — primary user base is Ukrainian
+- **Default timezone**: `Europe/Kyiv` — stored per user in the database
+- **Per-user settings**: `locale` and `timezone` fields on the User entity allow future per-user language/timezone preferences
+- **Notification grouping**: `PowerStatusListener` groups recipients by `locale:timezone` pair and formats one message per group, minimizing duplicate formatting
+- **Date formatting**: Uses `Intl.DateTimeFormat` via `toLocaleString()` with the user's timezone — no timezone suffix in output
+
+### Adding a New Locale
+
+1. Add the locale code to `SUPPORTED_LOCALES` in `locale.config.ts`
+2. Add the Intl mapping to `LOCALE_INTL_MAP`
+3. Create `messages.<code>.ts` implementing the `Messages` interface
+4. Register the new messages in the `MESSAGES_MAP` in `translation.service.ts`
+
+---
+
 ## Further Reading
 
 - Admin setup workflow: [Admin Guide](./admin-guide.md)

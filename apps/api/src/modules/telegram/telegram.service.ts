@@ -17,7 +17,7 @@ import { StatusHandler } from './handlers/status.handler.js';
 import { DevicesHandler } from './handlers/devices.handler.js';
 import { HelpHandler } from './handlers/help.handler.js';
 import { HistoryHandler } from './handlers/history.handler.js';
-import { MESSAGES } from './constants/messages.constants.js';
+import { TranslationService } from './i18n/index.js';
 
 /**
  * Manages Telegraf bot lifecycle and command registration.
@@ -40,6 +40,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     private readonly devicesHandler: DevicesHandler,
     private readonly helpHandler: HelpHandler,
     private readonly historyHandler: HistoryHandler,
+    private readonly translationService: TranslationService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -74,12 +75,14 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private setupMiddleware(): void {
     if (!this.bot) return;
 
+    const msgs = this.translationService.getMessages();
+
     // Error handling middleware — reply to user so errors aren't silent
     this.bot.catch(async (err, ctx) => {
       this.logger.error(`Error for ${ctx.updateType}`, err);
       try {
         if (ctx.chat) {
-          await ctx.reply(MESSAGES.ERROR_GENERIC);
+          await ctx.reply(msgs.ERROR_GENERIC);
         }
       } catch (replyError) {
         this.logger.error('Failed to send error reply to user', replyError);
@@ -90,13 +93,15 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private setupCommands(): void {
     if (!this.bot) return;
 
+    const msgs = this.translationService.getMessages();
+
     // /start - works without authentication
     this.bot.command('start', async (ctx) => {
       try {
         await this.startHandler.handle(ctx as TelegramContext);
       } catch (error) {
         this.logger.error('Error in /start handler', error);
-        await ctx.reply(MESSAGES.ERROR_GENERIC);
+        await ctx.reply(msgs.ERROR_GENERIC);
       }
     });
 
@@ -106,7 +111,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         await this.helpHandler.handle(ctx as TelegramContext);
       } catch (error) {
         this.logger.error('Error in /help handler', error);
-        await ctx.reply(MESSAGES.ERROR_GENERIC);
+        await ctx.reply(msgs.ERROR_GENERIC);
       }
     });
 
@@ -118,7 +123,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         );
       } catch (error) {
         this.logger.error('Error in /status handler', error);
-        await ctx.reply(MESSAGES.ERROR_GENERIC);
+        await ctx.reply(msgs.ERROR_GENERIC);
       }
     });
 
@@ -130,7 +135,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         );
       } catch (error) {
         this.logger.error('Error in /devices handler', error);
-        await ctx.reply(MESSAGES.ERROR_GENERIC);
+        await ctx.reply(msgs.ERROR_GENERIC);
       }
     });
 
@@ -142,7 +147,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         );
       } catch (error) {
         this.logger.error('Error in /history handler', error);
-        await ctx.reply(MESSAGES.ERROR_GENERIC);
+        await ctx.reply(msgs.ERROR_GENERIC);
       }
     });
   }
@@ -154,10 +159,11 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     ctx: TelegramContext,
     handler: () => Promise<void>,
   ): Promise<void> {
+    const msgs = this.translationService.getMessages();
     const telegramId = ctx.from?.id;
 
     if (!telegramId) {
-      await ctx.reply(MESSAGES.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC);
       return;
     }
 
@@ -166,12 +172,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       user = await this.userRepository.findByTelegramId(BigInt(telegramId));
     } catch (error) {
       this.logger.error('Failed to look up user during authentication', error);
-      await ctx.reply(MESSAGES.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC);
       return;
     }
 
     if (!user) {
-      await ctx.reply(MESSAGES.NOT_REGISTERED, { parse_mode: 'HTML' });
+      await ctx.reply(msgs.NOT_REGISTERED, { parse_mode: 'HTML' });
       return;
     }
 

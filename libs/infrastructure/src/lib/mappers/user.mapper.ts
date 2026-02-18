@@ -9,6 +9,8 @@ export function mapPrismaUserToEntity(prismaUser: PrismaUser): User {
     id: prismaUser.id,
     telegramId: prismaUser.telegramId,
     username: prismaUser.username,
+    locale: prismaUser.locale,
+    timezone: prismaUser.timezone,
     createdAt: prismaUser.createdAt,
   });
 }

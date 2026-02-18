@@ -11,6 +11,8 @@ describe('CreateUserService', () => {
     id: 'user-123',
     telegramId: BigInt('123456789'),
     username: 'testuser',
+    locale: 'uk',
+    timezone: 'Europe/Kyiv',
     createdAt: new Date('2026-01-01'),
   } as User;
 
@@ -54,6 +56,26 @@ describe('CreateUserService', () => {
       });
     });
 
+    it('should create user with locale and timezone', async () => {
+      const mockRepo = createMockRepository();
+      mockRepo.existsByTelegramId.mockResolvedValue(false);
+      mockRepo.create.mockResolvedValue(mockUser);
+
+      const service = new CreateUserService(mockRepo);
+      await service.run({
+        telegramId: '123456789',
+        locale: 'en',
+        timezone: 'America/New_York',
+      });
+
+      expect(mockRepo.create).toHaveBeenCalledWith({
+        telegramId: BigInt('123456789'),
+        username: null,
+        locale: 'en',
+        timezone: 'America/New_York',
+      });
+    });
+
     it('should handle optional username as undefined', async () => {
       const mockRepo = createMockRepository();
       mockRepo.existsByTelegramId.mockResolvedValue(false);
@@ -63,7 +85,7 @@ describe('CreateUserService', () => {
       await service.run({ telegramId: '123456789' });
 
       expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ username: null })
+        expect.objectContaining({ username: null }),
       );
     });
 
@@ -76,7 +98,7 @@ describe('CreateUserService', () => {
       await service.run({ telegramId: '9007199254740993' }); // > MAX_SAFE_INTEGER
 
       expect(mockRepo.existsByTelegramId).toHaveBeenCalledWith(
-        BigInt('9007199254740993')
+        BigInt('9007199254740993'),
       );
     });
   });
@@ -88,12 +110,12 @@ describe('CreateUserService', () => {
 
       const service = new CreateUserService(mockRepo);
 
-      await expect(
-        service.run({ telegramId: '123456789' })
-      ).rejects.toThrow(DomainError);
+      await expect(service.run({ telegramId: '123456789' })).rejects.toThrow(
+        DomainError,
+      );
 
       await expect(
-        service.run({ telegramId: '123456789' })
+        service.run({ telegramId: '123456789' }),
       ).rejects.toMatchObject({
         code: DomainErrorCode.USER_ALREADY_EXISTS,
       });
@@ -105,18 +127,18 @@ describe('CreateUserService', () => {
       const mockRepo = createMockRepository();
       const service = new CreateUserService(mockRepo);
 
-      await expect(
-        service.run({} as { telegramId: string })
-      ).rejects.toThrow(ValidationError);
+      await expect(service.run({} as { telegramId: string })).rejects.toThrow(
+        ValidationError,
+      );
     });
 
     it('should throw ValidationError for empty telegramId', async () => {
       const mockRepo = createMockRepository();
       const service = new CreateUserService(mockRepo);
 
-      await expect(
-        service.run({ telegramId: '' })
-      ).rejects.toThrow(ValidationError);
+      await expect(service.run({ telegramId: '' })).rejects.toThrow(
+        ValidationError,
+      );
     });
   });
 });

@@ -1,13 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import type { Device, PowerEvent } from '@home-pulse-watcher/core';
 import { PowerStatus } from '@home-pulse-watcher/core';
-import { MESSAGES } from '../constants/messages.constants.js';
+import { TranslationService } from '../i18n/index.js';
+import {
+  DEFAULT_LOCALE,
+  DEFAULT_TIMEZONE,
+  LOCALE_INTL_MAP,
+} from '../i18n/locale.config.js';
+import type { SupportedLocale } from '../i18n/locale.config.js';
 
 /**
  * Formats messages for Telegram with HTML formatting.
  */
 @Injectable()
 export class MessageFormatter {
+  constructor(private readonly translationService: TranslationService) {}
+
   /**
    * Escape special HTML characters to prevent formatting issues.
    */
@@ -21,15 +29,21 @@ export class MessageFormatter {
   /**
    * Format a single device status for display.
    */
-  formatDeviceStatus(device: Device, customName?: string | null): string {
+  formatDeviceStatus(
+    device: Device,
+    customName?: string | null,
+    locale?: string,
+    timezone?: string,
+  ): string {
+    const msgs = this.translationService.getMessages(locale);
     const rawLabel = customName ?? device.label ?? device.macAddress;
     const label = this.escapeHtml(rawLabel);
     const status = device.lastStatus === PowerStatus.ON ? 'ON' : 'OFF';
     const lastSeen = device.lastSeenAt
-      ? this.formatDateTime(device.lastSeenAt)
-      : 'Never';
+      ? this.formatDateTime(device.lastSeenAt, locale, timezone)
+      : msgs.LAST_SEEN_NEVER;
 
-    return MESSAGES.DEVICE_STATUS(label, status, lastSeen);
+    return msgs.DEVICE_STATUS(label, status, lastSeen);
   }
 
   /**
@@ -37,15 +51,19 @@ export class MessageFormatter {
    */
   formatAllDevicesStatus(
     devices: Array<{ device: Device; customName?: string | null }>,
+    locale?: string,
+    timezone?: string,
   ): string {
+    const msgs = this.translationService.getMessages(locale);
+
     if (devices.length === 0) {
-      return MESSAGES.NO_DEVICES;
+      return msgs.NO_DEVICES;
     }
 
-    const header = '<b>Device Status:</b>\n';
+    const header = `<b>${msgs.DEVICE_STATUS_HEADER}</b>\n`;
     const statuses = devices
       .map(({ device, customName }) =>
-        this.formatDeviceStatus(device, customName),
+        this.formatDeviceStatus(device, customName, locale, timezone),
       )
       .join('\n\n');
 
@@ -55,9 +73,18 @@ export class MessageFormatter {
   /**
    * Format power lost notification.
    */
-  formatPowerLost(deviceLabel: string, timestamp: Date): string {
+  formatPowerLost(
+    deviceLabel: string,
+    timestamp: Date,
+    locale?: string,
+    timezone?: string,
+  ): string {
+    const msgs = this.translationService.getMessages(locale);
     const label = this.escapeHtml(deviceLabel);
-    return MESSAGES.POWER_LOST(label, this.formatDateTime(timestamp));
+    return msgs.POWER_LOST(
+      label,
+      this.formatDateTime(timestamp, locale, timezone),
+    );
   }
 
   /**
@@ -67,15 +94,18 @@ export class MessageFormatter {
     deviceLabel: string,
     timestamp: Date,
     durationSeconds: number | null,
+    locale?: string,
+    timezone?: string,
   ): string {
+    const msgs = this.translationService.getMessages(locale);
     const label = this.escapeHtml(deviceLabel);
     const duration =
       durationSeconds !== null
-        ? this.formatDuration(durationSeconds)
-        : 'Unknown';
-    return MESSAGES.POWER_RESTORED(
+        ? this.formatDuration(durationSeconds, locale)
+        : msgs.DURATION_UNKNOWN;
+    return msgs.POWER_RESTORED(
       label,
-      this.formatDateTime(timestamp),
+      this.formatDateTime(timestamp, locale, timezone),
       duration,
     );
   }
@@ -83,17 +113,19 @@ export class MessageFormatter {
   /**
    * Format device online notification (first status report).
    */
-  formatDeviceOnline(deviceLabel: string): string {
+  formatDeviceOnline(deviceLabel: string, locale?: string): string {
+    const msgs = this.translationService.getMessages(locale);
     const label = this.escapeHtml(deviceLabel);
-    return MESSAGES.DEVICE_ONLINE(label);
+    return msgs.DEVICE_ONLINE(label);
   }
 
   /**
    * Format device offline notification (first status report).
    */
-  formatDeviceOffline(deviceLabel: string): string {
+  formatDeviceOffline(deviceLabel: string, locale?: string): string {
+    const msgs = this.translationService.getMessages(locale);
     const label = this.escapeHtml(deviceLabel);
-    return MESSAGES.DEVICE_OFFLINE(label);
+    return msgs.DEVICE_OFFLINE(label);
   }
 
   /**
@@ -101,36 +133,47 @@ export class MessageFormatter {
    */
   formatHistory(
     deviceHistories: Array<{ label: string; events: PowerEvent[] }>,
+    locale?: string,
+    timezone?: string,
   ): string {
+    const msgs = this.translationService.getMessages(locale);
+
     if (
       deviceHistories.length === 0 ||
       deviceHistories.every((d) => d.events.length === 0)
     ) {
-      return MESSAGES.NO_HISTORY;
+      return msgs.NO_HISTORY;
     }
 
+    const intlLocale = this.getIntlLocale(locale);
+    const tz = timezone ?? DEFAULT_TIMEZONE;
+
     const now = new Date();
-    const monthName = now.toLocaleString('en-US', {
+    const monthName = now.toLocaleString(intlLocale, {
       month: 'long',
       year: 'numeric',
+      timeZone: tz,
     });
-    const lines = [`<b>Outage History — ${monthName}</b>\n`];
+    const lines = [`<b>${msgs.OUTAGE_HISTORY_HEADER(monthName)}</b>\n`];
 
     for (const { label, events } of deviceHistories) {
       const escapedLabel = this.escapeHtml(label);
       lines.push(`<b>${escapedLabel}</b>`);
 
       if (events.length === 0) {
-        lines.push('  No events this month\n');
+        lines.push(`  ${msgs.NO_EVENTS_THIS_MONTH}\n`);
         continue;
       }
 
       for (const event of events) {
-        const time = this.formatDateTime(event.timestamp);
-        const status = event.status === PowerStatus.ON ? '🟢 ON' : '🔴 OFF';
+        const time = this.formatDateTime(event.timestamp, locale, timezone);
+        const status =
+          event.status === PowerStatus.ON
+            ? `🟢 ${msgs.STATUS_ON}`
+            : `🔴 ${msgs.STATUS_OFF}`;
         const duration =
           event.duration !== null
-            ? ` (${this.formatDuration(event.duration)})`
+            ? ` (${this.formatDuration(event.duration, locale)})`
             : '';
         lines.push(`  ${time} — ${status}${duration}`);
       }
@@ -141,33 +184,42 @@ export class MessageFormatter {
   }
 
   /**
-   * Format a date for display.
+   * Format a date for display in the user's timezone.
    */
-  private formatDateTime(date: Date): string {
-    return date.toLocaleString('en-US', {
+  formatDateTime(date: Date, locale?: string, timezone?: string): string {
+    const intlLocale = this.getIntlLocale(locale);
+    const tz = timezone ?? DEFAULT_TIMEZONE;
+
+    return date.toLocaleString(intlLocale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      timeZoneName: 'short',
+      timeZone: tz,
     });
   }
 
   /**
    * Format duration in seconds to human-readable string.
-   * Matches PowerEvent.formatDuration() for consistency.
    */
-  private formatDuration(seconds: number): string {
+  formatDuration(seconds: number, locale?: string): string {
+    const msgs = this.translationService.getMessages(locale);
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
 
     const parts: string[] = [];
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
+    if (hours > 0) parts.push(`${hours}${msgs.DURATION_HOURS}`);
+    if (minutes > 0) parts.push(`${minutes}${msgs.DURATION_MINUTES}`);
+    if (secs > 0 || parts.length === 0)
+      parts.push(`${secs}${msgs.DURATION_SECONDS}`);
 
     return parts.join(' ');
+  }
+
+  private getIntlLocale(locale?: string): string {
+    const key = (locale ?? DEFAULT_LOCALE) as SupportedLocale;
+    return LOCALE_INTL_MAP[key] ?? LOCALE_INTL_MAP[DEFAULT_LOCALE];
   }
 }

@@ -5,7 +5,7 @@ import type {
 } from '@home-pulse-watcher/core';
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
-import { MESSAGES } from '../constants/messages.constants.js';
+import { TranslationService } from '../i18n/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /**
@@ -22,21 +22,25 @@ export class StatusHandler {
     @Inject(REPOSITORY_TOKENS.USER_DEVICE)
     private readonly userDeviceRepository: IUserDeviceRepository,
     private readonly messageFormatter: MessageFormatter,
+    private readonly translationService: TranslationService,
   ) {}
 
   async handle(ctx: TelegramContext): Promise<void> {
     const user = ctx.user;
     if (!user) {
-      await ctx.reply(MESSAGES.NOT_REGISTERED, { parse_mode: 'HTML' });
+      const msgs = this.translationService.getMessages();
+      await ctx.reply(msgs.NOT_REGISTERED, { parse_mode: 'HTML' });
       return;
     }
+
+    const msgs = this.translationService.getMessages(user.locale);
 
     try {
       // Get user's device associations
       const userDevices = await this.userDeviceRepository.findByUserId(user.id);
 
       if (userDevices.length === 0) {
-        await ctx.reply(MESSAGES.NO_DEVICES, { parse_mode: 'HTML' });
+        await ctx.reply(msgs.NO_DEVICES, { parse_mode: 'HTML' });
         return;
       }
 
@@ -52,12 +56,15 @@ export class StatusHandler {
         (d): d is NonNullable<typeof d> => d !== null,
       );
 
-      const message =
-        this.messageFormatter.formatAllDevicesStatus(validDevices);
+      const message = this.messageFormatter.formatAllDevicesStatus(
+        validDevices,
+        user.locale,
+        user.timezone,
+      );
       await ctx.reply(message, { parse_mode: 'HTML' });
     } catch (error) {
       this.logger.error('Failed to fetch device status', error);
-      await ctx.reply(MESSAGES.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC);
     }
   }
 }

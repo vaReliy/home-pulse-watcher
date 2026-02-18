@@ -24,17 +24,24 @@ export class PrismaUserRepository implements IUserRepository {
   async create(data: {
     telegramId: bigint;
     username?: string | null;
+    locale?: string;
+    timezone?: string;
   }): Promise<User> {
     const user = await this.prisma.user.create({
       data: {
         telegramId: data.telegramId,
         username: data.username ?? null,
+        ...(data.locale !== undefined && { locale: data.locale }),
+        ...(data.timezone !== undefined && { timezone: data.timezone }),
       },
     });
     return mapPrismaUserToEntity(user);
   }
 
-  async update(id: string, data: { username?: string | null }): Promise<User> {
+  async update(
+    id: string,
+    data: { username?: string | null; locale?: string; timezone?: string },
+  ): Promise<User> {
     const user = await this.prisma.user.update({
       where: { id },
       data,

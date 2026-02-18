@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MESSAGES } from '../constants/messages.constants.js';
+import { TranslationService } from '../i18n/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /**
@@ -8,7 +8,10 @@ import type { TelegramContext } from '../types/telegram-context.type.js';
  */
 @Injectable()
 export class HelpHandler {
+  constructor(private readonly translationService: TranslationService) {}
+
   async handle(ctx: TelegramContext): Promise<void> {
-    await ctx.reply(MESSAGES.HELP, { parse_mode: 'HTML' });
+    const msgs = this.translationService.getMessages();
+    await ctx.reply(msgs.HELP, { parse_mode: 'HTML' });
   }
 }

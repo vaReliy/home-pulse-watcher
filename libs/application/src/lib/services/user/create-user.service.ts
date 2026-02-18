@@ -10,6 +10,8 @@ import { BaseService } from '../../base-service.js';
 export interface CreateUserInput {
   telegramId: string;
   username?: string;
+  locale?: string;
+  timezone?: string;
 }
 
 export class CreateUserService extends BaseService<CreateUserInput, User> {
@@ -21,6 +23,8 @@ export class CreateUserService extends BaseService<CreateUserInput, User> {
     return {
       telegramId: ['required', 'string', 'telegramId'],
       username: { max_length: 100 },
+      locale: { max_length: 10 },
+      timezone: { max_length: 50 },
     };
   }
 
@@ -41,6 +45,8 @@ export class CreateUserService extends BaseService<CreateUserInput, User> {
     return this.userRepository.create({
       telegramId,
       username: params.username ?? null,
+      ...(params.locale !== undefined && { locale: params.locale }),
+      ...(params.timezone !== undefined && { timezone: params.timezone }),
     });
   }
 }

@@ -18,12 +18,20 @@ export interface IUserRepository {
   /**
    * Create a new user.
    */
-  create(data: { telegramId: bigint; username?: string | null }): Promise<User>;
+  create(data: {
+    telegramId: bigint;
+    username?: string | null;
+    locale?: string;
+    timezone?: string;
+  }): Promise<User>;
 
   /**
    * Update user data.
    */
-  update(id: string, data: { username?: string | null }): Promise<User>;
+  update(
+    id: string,
+    data: { username?: string | null; locale?: string; timezone?: string },
+  ): Promise<User>;
 
   /**
    * Delete user by ID.

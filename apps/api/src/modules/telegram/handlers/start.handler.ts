@@ -4,7 +4,7 @@ import type { CreateUserService } from '@home-pulse-watcher/application';
 import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
 import { SERVICE_TOKENS } from '../../services/service.tokens.js';
-import { MESSAGES } from '../constants/messages.constants.js';
+import { TranslationService } from '../i18n/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /**
@@ -20,14 +20,16 @@ export class StartHandler {
     private readonly createUserService: CreateUserService,
     @Inject(REPOSITORY_TOKENS.USER)
     private readonly userRepository: IUserRepository,
+    private readonly translationService: TranslationService,
   ) {}
 
   async handle(ctx: TelegramContext): Promise<void> {
     const telegramId = ctx.from?.id;
     const username = ctx.from?.username;
+    const msgs = this.translationService.getMessages();
 
     if (!telegramId) {
-      await ctx.reply(MESSAGES.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC);
       return;
     }
 
@@ -37,7 +39,12 @@ export class StartHandler {
         BigInt(telegramId),
       );
       if (existing) {
-        await ctx.reply(MESSAGES.ALREADY_REGISTERED, { parse_mode: 'HTML' });
+        const existingMsgs = this.translationService.getMessages(
+          existing.locale,
+        );
+        await ctx.reply(existingMsgs.ALREADY_REGISTERED, {
+          parse_mode: 'HTML',
+        });
         return;
       }
 
@@ -47,19 +54,19 @@ export class StartHandler {
         username: username ?? undefined,
       });
 
-      await ctx.reply(MESSAGES.WELCOME, { parse_mode: 'HTML' });
+      await ctx.reply(msgs.WELCOME, { parse_mode: 'HTML' });
       this.logger.log(`New user registered: ${telegramId}`);
     } catch (error) {
       if (
         error instanceof DomainError &&
         error.code === DomainErrorCode.USER_ALREADY_EXISTS
       ) {
-        await ctx.reply(MESSAGES.ALREADY_REGISTERED, { parse_mode: 'HTML' });
+        await ctx.reply(msgs.ALREADY_REGISTERED, { parse_mode: 'HTML' });
         return;
       }
 
       this.logger.error('Failed to register user', error);
-      await ctx.reply(MESSAGES.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC);
     }
   }
 }

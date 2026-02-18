@@ -73,10 +73,11 @@ const device = await userRepo.findByTelegramId(BigInt(123));
 
 - **Library**: Telegraf (TypeScript-native Telegram bot framework)
 - **Module**: `apps/api/src/modules/telegram/`
-- **Commands**: `/start`, `/help`, `/status`, `/devices`
+- **Commands**: `/start`, `/help`, `/status`, `/devices`, `/history`
 - **Notifications**: Event-driven via `@OnEvent(POWER_STATUS_CHANGED_EVENT)`
 - **Authentication**: User verification via `telegramId` lookup before protected commands
 - **Environment**: `TELEGRAM_BOT_TOKEN` (required), `TELEGRAM_ADMIN_CHAT_ID` (optional)
+- **i18n**: `TranslationService` in `telegram/i18n/` — default locale `uk`, default timezone `Europe/Kyiv`. All user-facing strings are translated (Ukrainian + English). Date/time formatting uses per-user timezone via `Intl.DateTimeFormat`.
 
 Bot follows the adapter pattern - handlers call existing Application Services, keeping business logic transport-agnostic.
 
@@ -101,7 +102,7 @@ Bot follows the adapter pattern - handlers call existing Application Services, k
 
 ## Database Models
 
-- **User**: Telegram users (telegramId unique)
+- **User**: Telegram users (telegramId unique, locale default 'uk', timezone default 'Europe/Kyiv')
 - **Device**: ESP32 devices (macAddress unique, encryptedSecret for HMAC verification)
 - **UserDevice**: Many-to-many with role (VIEWER default)
 - **PowerEvent**: Status changes (1=on, 0=off) with optional duration

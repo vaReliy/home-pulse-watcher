@@ -3,6 +3,7 @@ import type { IUserRepository } from '@home-pulse-watcher/core';
 import type { TelegramConfig } from './telegram.config';
 import type { TelegramContext } from './types/telegram-context.type';
 import { TelegramService } from './telegram.service';
+import { TranslationService } from './i18n/index';
 import type { StartHandler } from './handlers/start.handler';
 import type { StatusHandler } from './handlers/status.handler';
 import type { DevicesHandler } from './handlers/devices.handler';
@@ -44,6 +45,7 @@ describe('TelegramService', () => {
       deps.devicesHandler,
       deps.helpHandler,
       deps.historyHandler,
+      new TranslationService(),
     );
   };
 

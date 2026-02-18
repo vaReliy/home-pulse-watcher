@@ -10,6 +10,7 @@ import {
 import { TelegramService } from './telegram.service.js';
 import { TelegramController } from './telegram.controller.js';
 import { MessageFormatter } from './formatters/message.formatter.js';
+import { TranslationService } from './i18n/index.js';
 import { StartHandler } from './handlers/start.handler.js';
 import { StatusHandler } from './handlers/status.handler.js';
 import { DevicesHandler } from './handlers/devices.handler.js';
@@ -46,6 +47,8 @@ import type { TelegramContext } from './types/telegram-context.type.js';
       },
       inject: [TELEGRAM_TOKENS.CONFIG],
     },
+    // i18n
+    TranslationService,
     // Formatters
     MessageFormatter,
     // Handlers
