@@ -31,7 +31,7 @@ export interface ProcessPowerStatusOutput {
  * Interface for event emitter to decouple from specific implementation.
  */
 export interface IEventEmitter {
-  emit(event: string, payload: unknown): boolean;
+  emit(event: string, payload: unknown): boolean | Promise<boolean[]>;
 }
 
 /**
@@ -113,8 +113,9 @@ export class ProcessPowerStatusService extends BaseService<
     });
 
     // 5. Emit domain event for notification system (Phase 4)
+    // Awaited so notification completes before HTTP response (prevents Cloud Run CPU throttling race)
     if (this.eventEmitter && isStatusChange) {
-      this.eventEmitter.emit(
+      await this.eventEmitter.emit(
         POWER_STATUS_CHANGED_EVENT,
         new PowerStatusChangedEvent({
           deviceId,

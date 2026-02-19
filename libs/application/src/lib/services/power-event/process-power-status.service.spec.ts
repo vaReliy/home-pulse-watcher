@@ -66,7 +66,7 @@ describe('ProcessPowerStatusService', () => {
     });
 
   const createMockEventEmitter = (): jest.Mocked<IEventEmitter> => ({
-    emit: jest.fn(),
+    emit: jest.fn().mockResolvedValue([true]),
   });
 
   const validContext = { deviceId: 'device-123' };

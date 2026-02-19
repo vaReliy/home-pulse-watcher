@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import type { IDeviceRepository } from '@home-pulse-watcher/core';
@@ -29,6 +30,8 @@ const TIMESTAMP_TOLERANCE_SECONDS = 300;
  */
 @Injectable()
 export class HmacAuthGuard implements CanActivate {
+  private readonly logger = new Logger(HmacAuthGuard.name);
+
   constructor(
     @Inject(REPOSITORY_TOKENS.DEVICE)
     private readonly deviceRepository: IDeviceRepository,
@@ -43,6 +46,14 @@ export class HmacAuthGuard implements CanActivate {
     const signature = request.headers['x-signature'] as string | undefined;
 
     if (!mac || !timestamp || !signature) {
+      const missing = [
+        !mac && 'X-Device-Mac',
+        !timestamp && 'X-Timestamp',
+        !signature && 'X-Signature',
+      ]
+        .filter(Boolean)
+        .join(', ');
+      this.logger.warn(`MISSING_CREDENTIALS: missing headers: ${missing}`);
       throw new AuthenticationError(
         'Missing required authentication headers (X-Device-Mac, X-Timestamp, X-Signature)',
         AuthenticationErrorCode.MISSING_CREDENTIALS,
@@ -60,7 +71,11 @@ export class HmacAuthGuard implements CanActivate {
       );
     }
 
-    if (Math.abs(now - timestampNum) > TIMESTAMP_TOLERANCE_SECONDS) {
+    const timestampDiff = Math.abs(now - timestampNum);
+    if (timestampDiff > TIMESTAMP_TOLERANCE_SECONDS) {
+      this.logger.warn(
+        `EXPIRED_TIMESTAMP: mac=${mac} diff=${timestampDiff}s (tolerance=${TIMESTAMP_TOLERANCE_SECONDS}s) device=${timestampNum} server=${now}`,
+      );
       throw new AuthenticationError(
         'Request timestamp expired or too far in the future',
         AuthenticationErrorCode.EXPIRED_TIMESTAMP,
@@ -72,6 +87,7 @@ export class HmacAuthGuard implements CanActivate {
     const device = await this.deviceRepository.findByMacAddress(normalizedMac);
 
     if (!device) {
+      this.logger.warn(`DEVICE_NOT_FOUND: mac=${normalizedMac}`);
       throw new AuthenticationError(
         'Device not found',
         AuthenticationErrorCode.DEVICE_NOT_FOUND,
@@ -112,6 +128,7 @@ export class HmacAuthGuard implements CanActivate {
       sigBuffer.length !== expectedBuffer.length ||
       !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
     ) {
+      this.logger.warn(`INVALID_SIGNATURE: mac=${normalizedMac}`);
       throw new AuthenticationError(
         'Invalid signature',
         AuthenticationErrorCode.INVALID_SIGNATURE,

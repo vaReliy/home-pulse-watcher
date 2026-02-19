@@ -21,6 +21,14 @@ import type { TelegramContext } from '../types/telegram-context.type.js';
 const BATCH_SIZE = 25;
 const BATCH_DELAY_MS = 1000;
 
+function resolveMessageType(event: PowerStatusChangedEvent): string {
+  if (event.isPowerLost) return 'power_lost';
+  if (event.isPowerRestored) return 'power_restored';
+  return event.newStatus === PowerStatus.ON
+    ? 'device_online'
+    : 'device_offline';
+}
+
 interface RecipientGroup {
   locale: string;
   timezone: string;
@@ -104,6 +112,16 @@ export class PowerStatusListener {
         });
       }
 
+      const messageType = resolveMessageType(event);
+
+      const totalRecipients = [...groups.values()].reduce(
+        (sum, g) => sum + g.recipients.length,
+        0,
+      );
+      this.logger.log(
+        `Sending notification: type=${messageType} device=${deviceLabel} recipients=${totalRecipients}`,
+      );
+
       // 5. Format and send one message per locale/timezone group
       for (const group of groups.values()) {
         const message = this.formatNotificationMessage(
@@ -115,6 +133,10 @@ export class PowerStatusListener {
         );
         await this.sendWithRateLimit(bot, message, group.recipients);
       }
+
+      this.logger.log(
+        `Notification delivered: type=${messageType} device=${deviceLabel}`,
+      );
     } catch (error) {
       this.logger.error('Failed to process power status notification', error);
     }

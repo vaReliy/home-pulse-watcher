@@ -90,6 +90,16 @@ JavaScript `BigInt` cannot be serialized with `JSON.stringify()`. The Interface 
 
 Services remain plain TypeScript classes (no `@Injectable()`). NestJS binds them via factory providers using Symbol tokens. This keeps the Application layer framework-agnostic while allowing full DI capabilities in the Interface layer.
 
+### Async Event Emission (Cloud Run reliability)
+
+`ProcessPowerStatusService` emits `POWER_STATUS_CHANGED_EVENT` after recording a status change to trigger Telegram notifications via `PowerStatusListener`.
+
+**Why `emitAsync` instead of `emit`**: `EventEmitter2.emit()` fires handlers as fire-and-forget — async handlers continue running after the caller returns. On Cloud Run, CPU is throttled once the HTTP response is sent, which can interrupt in-flight async work (database queries, Telegram API calls) before the notification completes.
+
+`AsyncEventEmitterAdapter` (`apps/api/src/modules/services/async-event-emitter.adapter.ts`) wraps `EventEmitter2.emitAsync()`, which returns a Promise that resolves only after all handlers have completed. The service `await`s this call, ensuring notifications are delivered before the HTTP response goes out.
+
+> ⚠️ Do not replace `emitAsync` with `emit` here — it would silently break notifications under Cloud Run's CPU throttling.
+
 ---
 
 ## Build & Deployment

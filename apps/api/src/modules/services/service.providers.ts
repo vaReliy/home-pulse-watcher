@@ -18,11 +18,11 @@ import {
   UpdateDeviceService,
   DeleteDeviceService,
   RotateDeviceSecretService,
-  type IEventEmitter,
 } from '@home-pulse-watcher/application';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REPOSITORY_TOKENS } from '../repositories/repository.tokens';
 import { SERVICE_TOKENS } from './service.tokens';
+import { AsyncEventEmitterAdapter } from './async-event-emitter.adapter';
 
 export const serviceProviders: Provider[] = [
   {
@@ -58,7 +58,7 @@ export const serviceProviders: Provider[] = [
       new ProcessPowerStatusService(
         deviceRepo,
         powerEventRepo,
-        eventEmitter as IEventEmitter,
+        new AsyncEventEmitterAdapter(eventEmitter),
       ),
     inject: [
       REPOSITORY_TOKENS.DEVICE,
