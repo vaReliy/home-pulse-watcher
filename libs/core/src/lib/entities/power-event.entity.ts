@@ -10,6 +10,7 @@ export class PowerEvent {
   readonly status: PowerStatus;
   readonly timestamp: Date;
   readonly duration: number | null;
+  readonly voltage: number | null;
 
   constructor(props: {
     id: string;
@@ -17,12 +18,14 @@ export class PowerEvent {
     status: PowerStatus;
     timestamp: Date;
     duration: number | null;
+    voltage: number | null;
   }) {
     this.id = props.id;
     this.deviceId = props.deviceId;
     this.status = props.status;
     this.timestamp = props.timestamp;
     this.duration = props.duration;
+    this.voltage = props.voltage;
   }
 
   /**

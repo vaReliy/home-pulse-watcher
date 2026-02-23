@@ -43,7 +43,7 @@ export class DeviceStatusController {
     @DeviceId() deviceId: string,
   ) {
     const result = await this.processPowerStatusService.run(
-      { status: dto.status },
+      { status: dto.status, voltage: dto.voltage ?? null },
       { deviceId },
     );
 
@@ -52,6 +52,7 @@ export class DeviceStatusController {
       eventId: result.data.event.id,
       timestamp: result.data.event.timestamp.toISOString(),
       isStatusChange: result.data.isStatusChange,
+      debounced: result.data.debounced,
     };
   }
 }

@@ -36,6 +36,7 @@ describe('ProcessPowerStatusService', () => {
       status: PowerStatus.ON,
       timestamp: new Date('2026-02-04T10:00:00Z'),
       duration: null,
+      voltage: null,
       ...overrides,
       formatDuration: () => null,
     }) as PowerEvent;
@@ -72,7 +73,7 @@ describe('ProcessPowerStatusService', () => {
   const validContext = { deviceId: 'device-123' };
 
   describe('successful status processing', () => {
-    it('should create power event record', async () => {
+    it('should create power event record with voltage', async () => {
       const deviceRepo = createMockDeviceRepository();
       const eventRepo = createMockPowerEventRepository();
 
@@ -85,7 +86,7 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON },
+        { status: PowerStatus.ON, voltage: 3500 },
         validContext,
       );
 
@@ -94,9 +95,34 @@ describe('ProcessPowerStatusService', () => {
           deviceId: 'device-123',
           status: PowerStatus.ON,
           duration: null,
+          voltage: 3500,
         }),
       );
       expect(result.data.event).toEqual(mockPowerEvent);
+    });
+
+    it('should create power event with null voltage when not provided', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(createMockDevice());
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.ON }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(null);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      await service.run(
+        { status: PowerStatus.ON, voltage: null },
+        validContext,
+      );
+
+      expect(eventRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          voltage: null,
+        }),
+      );
     });
 
     it('should update device lastStatus and lastSeenAt', async () => {
@@ -112,7 +138,10 @@ describe('ProcessPowerStatusService', () => {
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
-      await service.run({ status: PowerStatus.ON }, validContext);
+      await service.run(
+        { status: PowerStatus.ON, voltage: null },
+        validContext,
+      );
 
       const afterTime = Date.now();
 
@@ -158,7 +187,10 @@ describe('ProcessPowerStatusService', () => {
       jest.setSystemTime(now);
 
       try {
-        await service.run({ status: PowerStatus.ON }, validContext);
+        await service.run(
+          { status: PowerStatus.ON, voltage: null },
+          validContext,
+        );
 
         // Duration should be 3600 seconds (1 hour)
         expect(eventRepo.update).toHaveBeenCalledWith('prev-event-123', {
@@ -184,7 +216,7 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON },
+        { status: PowerStatus.ON, voltage: null },
         validContext,
       );
 
@@ -192,11 +224,16 @@ describe('ProcessPowerStatusService', () => {
       expect(eventRepo.update).not.toHaveBeenCalled();
       expect(result.data.isStatusChange).toBe(true); // null -> ON is a change
       expect(result.data.previousStatus).toBeNull();
+      expect(result.data.debounced).toBe(false);
     });
 
     it('should return isStatusChange=true when status changes', async () => {
       const deviceRepo = createMockDeviceRepository();
       const eventRepo = createMockPowerEventRepository();
+
+      const previousEvent = createMockPowerEvent({
+        timestamp: new Date('2026-02-04T09:00:00Z'),
+      });
 
       deviceRepo.findById.mockResolvedValue(
         createMockDevice({ lastStatus: PowerStatus.OFF }),
@@ -204,13 +241,13 @@ describe('ProcessPowerStatusService', () => {
       deviceRepo.updateStatus.mockResolvedValue(
         createMockDevice({ lastStatus: PowerStatus.ON }),
       );
-      eventRepo.findLatestByDeviceId.mockResolvedValue(mockPowerEvent);
-      eventRepo.update.mockResolvedValue(mockPowerEvent);
+      eventRepo.findLatestByDeviceId.mockResolvedValue(previousEvent);
+      eventRepo.update.mockResolvedValue(previousEvent);
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON },
+        { status: PowerStatus.ON, voltage: null },
         validContext,
       );
 
@@ -234,12 +271,13 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON },
+        { status: PowerStatus.ON, voltage: null },
         validContext,
       );
 
       expect(result.data.isStatusChange).toBe(false);
       expect(result.data.previousStatus).toBe(PowerStatus.ON);
+      expect(result.data.debounced).toBe(false);
     });
   });
 
@@ -249,14 +287,18 @@ describe('ProcessPowerStatusService', () => {
       const eventRepo = createMockPowerEventRepository();
       const emitter = createMockEventEmitter();
 
+      const previousEvent = createMockPowerEvent({
+        timestamp: new Date('2026-02-04T09:00:00Z'),
+      });
+
       deviceRepo.findById.mockResolvedValue(
         createMockDevice({ lastStatus: PowerStatus.OFF }),
       );
       deviceRepo.updateStatus.mockResolvedValue(
         createMockDevice({ lastStatus: PowerStatus.ON }),
       );
-      eventRepo.findLatestByDeviceId.mockResolvedValue(mockPowerEvent);
-      eventRepo.update.mockResolvedValue(mockPowerEvent);
+      eventRepo.findLatestByDeviceId.mockResolvedValue(previousEvent);
+      eventRepo.update.mockResolvedValue(previousEvent);
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
       const service = new ProcessPowerStatusService(
@@ -264,7 +306,10 @@ describe('ProcessPowerStatusService', () => {
         eventRepo,
         emitter,
       );
-      await service.run({ status: PowerStatus.ON }, validContext);
+      await service.run(
+        { status: PowerStatus.ON, voltage: 3200 },
+        validContext,
+      );
 
       expect(emitter.emit).toHaveBeenCalledWith(
         POWER_STATUS_CHANGED_EVENT,
@@ -273,6 +318,7 @@ describe('ProcessPowerStatusService', () => {
           deviceLabel: 'Kitchen',
           previousStatus: PowerStatus.OFF,
           newStatus: PowerStatus.ON,
+          voltage: 3200,
         }),
       );
     });
@@ -297,7 +343,10 @@ describe('ProcessPowerStatusService', () => {
         eventRepo,
         emitter,
       );
-      await service.run({ status: PowerStatus.ON }, validContext);
+      await service.run(
+        { status: PowerStatus.ON, voltage: null },
+        validContext,
+      );
 
       expect(emitter.emit).not.toHaveBeenCalled();
     });
@@ -306,25 +355,228 @@ describe('ProcessPowerStatusService', () => {
       const deviceRepo = createMockDeviceRepository();
       const eventRepo = createMockPowerEventRepository();
 
+      const previousEvent = createMockPowerEvent({
+        timestamp: new Date('2026-02-04T09:00:00Z'),
+      });
+
       deviceRepo.findById.mockResolvedValue(
         createMockDevice({ lastStatus: PowerStatus.OFF }),
       );
       deviceRepo.updateStatus.mockResolvedValue(
         createMockDevice({ lastStatus: PowerStatus.ON }),
       );
-      eventRepo.findLatestByDeviceId.mockResolvedValue(mockPowerEvent);
-      eventRepo.update.mockResolvedValue(mockPowerEvent);
+      eventRepo.findLatestByDeviceId.mockResolvedValue(previousEvent);
+      eventRepo.update.mockResolvedValue(previousEvent);
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
       // No event emitter passed
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON },
+        { status: PowerStatus.ON, voltage: null },
         validContext,
       );
 
       // Should complete without errors
       expect(result.data.isStatusChange).toBe(true);
+    });
+  });
+
+  describe('server-side debounce', () => {
+    it('should debounce when status changes within 30s of last event', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+      const emitter = createMockEventEmitter();
+
+      const now = new Date('2026-02-04T10:00:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      try {
+        // Last event was 10 seconds ago
+        const recentEvent = createMockPowerEvent({
+          id: 'recent-event',
+          status: PowerStatus.OFF,
+          timestamp: new Date('2026-02-04T09:59:50Z'), // 10s ago
+        });
+
+        deviceRepo.findById.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.OFF }),
+        );
+        deviceRepo.updateStatus.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.ON }),
+        );
+        eventRepo.findLatestByDeviceId.mockResolvedValue(recentEvent);
+        eventRepo.update.mockResolvedValue(recentEvent);
+        eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+        const service = new ProcessPowerStatusService(
+          deviceRepo,
+          eventRepo,
+          emitter,
+        );
+        const result = await service.run(
+          { status: PowerStatus.ON, voltage: 3000 },
+          validContext,
+        );
+
+        // Event should still be created (for diagnostics)
+        expect(eventRepo.create).toHaveBeenCalled();
+        // Device should still be updated
+        expect(deviceRepo.updateStatus).toHaveBeenCalled();
+        // But notification should NOT be emitted
+        expect(emitter.emit).not.toHaveBeenCalled();
+        // Result should indicate debounce
+        expect(result.data.debounced).toBe(true);
+        expect(result.data.isStatusChange).toBe(true);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should NOT debounce when status changes after 30s', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+      const emitter = createMockEventEmitter();
+
+      const now = new Date('2026-02-04T10:00:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      try {
+        // Last event was 60 seconds ago
+        const oldEvent = createMockPowerEvent({
+          id: 'old-event',
+          status: PowerStatus.OFF,
+          timestamp: new Date('2026-02-04T09:59:00Z'), // 60s ago
+        });
+
+        deviceRepo.findById.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.OFF }),
+        );
+        deviceRepo.updateStatus.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.ON }),
+        );
+        eventRepo.findLatestByDeviceId.mockResolvedValue(oldEvent);
+        eventRepo.update.mockResolvedValue(oldEvent);
+        eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+        const service = new ProcessPowerStatusService(
+          deviceRepo,
+          eventRepo,
+          emitter,
+        );
+        const result = await service.run(
+          { status: PowerStatus.ON, voltage: 3500 },
+          validContext,
+        );
+
+        // Notification should be emitted
+        expect(emitter.emit).toHaveBeenCalledWith(
+          POWER_STATUS_CHANGED_EVENT,
+          expect.objectContaining({
+            deviceId: 'device-123',
+            newStatus: PowerStatus.ON,
+            voltage: 3500,
+          }),
+        );
+        expect(result.data.debounced).toBe(false);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should NOT debounce first status change (no previous event)', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+      const emitter = createMockEventEmitter();
+
+      deviceRepo.findById.mockResolvedValue(
+        createMockDevice({ lastStatus: null }),
+      );
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.ON }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(null);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(
+        deviceRepo,
+        eventRepo,
+        emitter,
+      );
+      const result = await service.run(
+        { status: PowerStatus.ON, voltage: null },
+        validContext,
+      );
+
+      expect(emitter.emit).toHaveBeenCalled();
+      expect(result.data.debounced).toBe(false);
+    });
+
+    it('should debounce at exactly 29s but not at 30s', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+      const emitter = createMockEventEmitter();
+
+      const now = new Date('2026-02-04T10:00:30Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      try {
+        // Last event exactly 29 seconds ago — should debounce
+        const event29sAgo = createMockPowerEvent({
+          id: 'event-29s',
+          status: PowerStatus.OFF,
+          timestamp: new Date('2026-02-04T10:00:01Z'),
+        });
+
+        deviceRepo.findById.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.OFF }),
+        );
+        deviceRepo.updateStatus.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.ON }),
+        );
+        eventRepo.findLatestByDeviceId.mockResolvedValue(event29sAgo);
+        eventRepo.update.mockResolvedValue(event29sAgo);
+        eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+        const service = new ProcessPowerStatusService(
+          deviceRepo,
+          eventRepo,
+          emitter,
+        );
+        const result = await service.run(
+          { status: PowerStatus.ON, voltage: null },
+          validContext,
+        );
+
+        expect(result.data.debounced).toBe(true);
+        expect(emitter.emit).not.toHaveBeenCalled();
+
+        // Now test exactly 30s — should NOT debounce
+        emitter.emit.mockClear();
+        const event30sAgo = createMockPowerEvent({
+          id: 'event-30s',
+          status: PowerStatus.OFF,
+          timestamp: new Date('2026-02-04T10:00:00Z'),
+        });
+
+        deviceRepo.findById.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.OFF }),
+        );
+        eventRepo.findLatestByDeviceId.mockResolvedValue(event30sAgo);
+        eventRepo.update.mockResolvedValue(event30sAgo);
+
+        const result2 = await service.run(
+          { status: PowerStatus.ON, voltage: null },
+          validContext,
+        );
+
+        expect(result2.data.debounced).toBe(false);
+        expect(emitter.emit).toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 
@@ -335,9 +587,9 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
 
-      await expect(service.run({ status: PowerStatus.ON }, {})).rejects.toThrow(
-        'deviceId not provided in service context',
-      );
+      await expect(
+        service.run({ status: PowerStatus.ON, voltage: null }, {}),
+      ).rejects.toThrow('deviceId not provided in service context');
     });
 
     it('should throw NotFoundError if device not found', async () => {
@@ -349,11 +601,11 @@ describe('ProcessPowerStatusService', () => {
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
 
       await expect(
-        service.run({ status: PowerStatus.ON }, validContext),
+        service.run({ status: PowerStatus.ON, voltage: null }, validContext),
       ).rejects.toThrow(NotFoundError);
 
       await expect(
-        service.run({ status: PowerStatus.ON }, validContext),
+        service.run({ status: PowerStatus.ON, voltage: null }, validContext),
       ).rejects.toMatchObject({
         resourceType: 'Device',
         identifier: 'device-123',
@@ -369,7 +621,10 @@ describe('ProcessPowerStatusService', () => {
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
 
       await expect(
-        service.run({} as { status: number }, validContext),
+        service.run(
+          {} as { status: number; voltage: number | null },
+          validContext,
+        ),
       ).rejects.toThrow(ValidationError);
     });
 
@@ -379,13 +634,13 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
 
-      await expect(service.run({ status: 2 }, validContext)).rejects.toThrow(
-        ValidationError,
-      );
+      await expect(
+        service.run({ status: 2, voltage: null }, validContext),
+      ).rejects.toThrow(ValidationError);
 
-      await expect(service.run({ status: -1 }, validContext)).rejects.toThrow(
-        ValidationError,
-      );
+      await expect(
+        service.run({ status: -1, voltage: null }, validContext),
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should accept valid status values (0 and 1)', async () => {
@@ -400,12 +655,12 @@ describe('ProcessPowerStatusService', () => {
 
       // Status 0 (OFF)
       await expect(
-        service.run({ status: 0 }, validContext),
+        service.run({ status: 0, voltage: null }, validContext),
       ).resolves.toBeDefined();
 
       // Status 1 (ON)
       await expect(
-        service.run({ status: 1 }, validContext),
+        service.run({ status: 1, voltage: null }, validContext),
       ).resolves.toBeDefined();
     });
   });

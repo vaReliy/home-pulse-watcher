@@ -45,6 +45,7 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
     status: PowerStatus;
     timestamp?: Date;
     duration?: number | null;
+    voltage?: number | null;
   }): Promise<PowerEvent> {
     const event = await this.prisma.powerEvent.create({
       data: {
@@ -52,6 +53,7 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
         status: data.status,
         timestamp: data.timestamp ?? new Date(),
         duration: data.duration ?? null,
+        voltage: data.voltage ?? null,
       },
     });
     return mapPrismaPowerEventToEntity(event);
@@ -59,7 +61,7 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
 
   async update(
     id: string,
-    data: { duration?: number | null }
+    data: { duration?: number | null },
   ): Promise<PowerEvent> {
     const event = await this.prisma.powerEvent.update({
       where: { id },
@@ -80,14 +82,14 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
   }
 
   async count(
-    options: Omit<PowerEventQueryOptions, 'limit' | 'offset' | 'orderBy'>
+    options: Omit<PowerEventQueryOptions, 'limit' | 'offset' | 'orderBy'>,
   ): Promise<number> {
     const where = this.buildWhereClause(options);
     return this.prisma.powerEvent.count({ where });
   }
 
   private buildWhereClause(
-    options: Omit<PowerEventQueryOptions, 'limit' | 'offset' | 'orderBy'>
+    options: Omit<PowerEventQueryOptions, 'limit' | 'offset' | 'orderBy'>,
   ): Prisma.PowerEventWhereInput {
     const where: Prisma.PowerEventWhereInput = {};
 

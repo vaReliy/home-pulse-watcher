@@ -48,6 +48,7 @@ export interface IPowerEventRepository {
     status: PowerStatus;
     timestamp?: Date;
     duration?: number | null;
+    voltage?: number | null;
   }): Promise<PowerEvent>;
 
   /**
@@ -69,6 +70,6 @@ export interface IPowerEventRepository {
    * Count events matching query options.
    */
   count(
-    options: Omit<PowerEventQueryOptions, 'limit' | 'offset' | 'orderBy'>
+    options: Omit<PowerEventQueryOptions, 'limit' | 'offset' | 'orderBy'>,
   ): Promise<number>;
 }

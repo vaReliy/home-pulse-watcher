@@ -42,6 +42,12 @@ static unsigned long lastCheckTime = 0;
 static bool timeInitialized = false;
 static int wifiFailureCount = 0;
 
+// Anti-flapping state
+static int confirmationCount = 0;          // Consecutive reads of pending new state
+static int pendingStatus = -1;             // State being confirmed (-1 = none)
+static unsigned long lastStateChangeTime = 0;  // millis() of last confirmed transition
+static int lastAdcValue = 0;               // Most recent averaged ADC reading
+
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -175,12 +181,49 @@ void computeHmacSignature(const char* payload, char* output) {
 }
 
 /**
+ * Read averaged ADC value from power sense pin.
+ * Takes ADC_SAMPLES readings with ADC_SAMPLE_DELAY_MS between each.
+ *
+ * @return Averaged 12-bit ADC value (0-4095)
+ */
+int readAdcAverage() {
+    long sum = 0;
+    for (int i = 0; i < ADC_SAMPLES; i++) {
+        sum += analogRead(POWER_SENSE_PIN);
+        delay(ADC_SAMPLE_DELAY_MS);
+    }
+    return (int)(sum / ADC_SAMPLES);
+}
+
+/**
+ * Convert ADC value to power status with hysteresis.
+ * - Above ADC_THRESHOLD_HIGH: power ON
+ * - Below ADC_THRESHOLD_LOW: power OFF
+ * - In between (brownout band): retain current state
+ *
+ * @param adcValue Averaged ADC reading
+ * @param currentStatus Current known power status
+ * @return Resolved power status
+ */
+int adcToStatus(int adcValue, int currentStatus) {
+    if (adcValue >= ADC_THRESHOLD_HIGH) {
+        return POWER_STATUS_ON;
+    }
+    if (adcValue <= ADC_THRESHOLD_LOW) {
+        return POWER_STATUS_OFF;
+    }
+    // Hysteresis band: keep current state (brownout ignored)
+    return (currentStatus >= 0) ? currentStatus : POWER_STATUS_ON;
+}
+
+/**
  * Send power status to backend
  *
  * @param status Power status (0 = off, 1 = on)
+ * @param adcValue ADC reading for voltage diagnostics
  * @return true if request succeeded
  */
-bool sendPowerStatus(int status) {
+bool sendPowerStatus(int status, int adcValue) {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi not connected!");
         return false;
@@ -219,9 +262,9 @@ bool sendPowerStatus(int status) {
     http.addHeader("X-Timestamp", String((unsigned long)timestamp));
     http.addHeader("X-Signature", signature);
 
-    // Build JSON body
-    char body[64];
-    snprintf(body, sizeof(body), "{\"status\":%d}", status);
+    // Build JSON body (voltage is informational, not part of HMAC payload)
+    char body[96];
+    snprintf(body, sizeof(body), "{\"status\":%d,\"voltage\":%d}", status, adcValue);
 
     // Send request
     setLedColor(0, 0, 255);  // Blue during request
@@ -243,23 +286,6 @@ bool sendPowerStatus(int status) {
     return false;
 }
 
-/**
- * Read current power status with debouncing
- *
- * @return 0 (power off) or 1 (power on)
- */
-int readPowerStatus() {
-    // Read multiple times for debouncing
-    int readings = 0;
-    for (int i = 0; i < 5; i++) {
-        readings += digitalRead(POWER_SENSE_PIN);
-        delay(DEBOUNCE_MS / 5);
-    }
-
-    // Majority vote
-    return (readings >= 3) ? POWER_STATUS_ON : POWER_STATUS_OFF;
-}
-
 void setup() {
     setupHardware();
 
@@ -279,14 +305,20 @@ void setup() {
 
     timeInitialized = true;
 
+    // Configure ADC (12-bit resolution, 11dB attenuation for 0-3.3V range)
+    analogReadResolution(12);
+    analogSetAttenuation(ADC_11db);
+
     // Read initial status and send
-    lastPowerStatus = readPowerStatus();
-    Serial.printf("Initial power status: %d\n", lastPowerStatus);
+    lastAdcValue = readAdcAverage();
+    lastPowerStatus = adcToStatus(lastAdcValue, -1);
+    Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(lastPowerStatus);
 
-    if (!sendPowerStatus(lastPowerStatus)) {
+    if (!sendPowerStatus(lastPowerStatus, lastAdcValue)) {
         Serial.println("Failed to send initial status");
     }
+    lastStateChangeTime = millis();
 
     // Initialize hardware watchdog timer
     esp_task_wdt_config_t wdtConfig = {
@@ -332,18 +364,51 @@ void loop() {
     if (currentTime - lastCheckTime >= CHECK_INTERVAL_MS) {
         lastCheckTime = currentTime;
 
-        int currentStatus = readPowerStatus();
+        lastAdcValue = readAdcAverage();
+        int resolvedStatus = adcToStatus(lastAdcValue, lastPowerStatus);
 
-        // Report if status changed
-        if (currentStatus != lastPowerStatus) {
-            Serial.printf("Power status changed: %d -> %d\n", lastPowerStatus, currentStatus);
-            updateStatusLed(currentStatus);
-
-            if (sendPowerStatus(currentStatus)) {
-                lastPowerStatus = currentStatus;
-                Serial.println("Status update sent successfully");
+        if (resolvedStatus != lastPowerStatus) {
+            // Status differs from confirmed state — start/continue confirmation
+            if (resolvedStatus == pendingStatus) {
+                confirmationCount++;
+                Serial.printf("Confirming %d->%d: %d/%d (ADC: %d)\n",
+                    lastPowerStatus, resolvedStatus, confirmationCount, CONFIRMATION_CHECKS, lastAdcValue);
             } else {
-                Serial.println("Failed to send status update, will retry");
+                // New pending state (or first detection)
+                pendingStatus = resolvedStatus;
+                confirmationCount = 1;
+                Serial.printf("New pending state: %d (ADC: %d)\n", resolvedStatus, lastAdcValue);
+            }
+
+            if (confirmationCount >= CONFIRMATION_CHECKS) {
+                // State confirmed — check cooldown
+                if (currentTime - lastStateChangeTime < MIN_STATE_CHANGE_MS) {
+                    Serial.printf("Cooldown active (%lums since last change), suppressing\n",
+                        currentTime - lastStateChangeTime);
+                } else {
+                    Serial.printf("Power status confirmed: %d -> %d (ADC: %d)\n",
+                        lastPowerStatus, resolvedStatus, lastAdcValue);
+                    updateStatusLed(resolvedStatus);
+
+                    if (sendPowerStatus(resolvedStatus, lastAdcValue)) {
+                        lastPowerStatus = resolvedStatus;
+                        lastStateChangeTime = currentTime;
+                        Serial.println("Status update sent successfully");
+                    } else {
+                        Serial.println("Failed to send status update, will retry");
+                    }
+                }
+                // Reset confirmation state either way
+                pendingStatus = -1;
+                confirmationCount = 0;
+            }
+        } else {
+            // Status matches confirmed state — reset any pending confirmation
+            if (pendingStatus != -1) {
+                Serial.printf("Pending state %d cleared, back to %d (ADC: %d)\n",
+                    pendingStatus, lastPowerStatus, lastAdcValue);
+                pendingStatus = -1;
+                confirmationCount = 0;
             }
         }
     }

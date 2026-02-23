@@ -3,7 +3,7 @@ import { PowerStatus } from '../types/power-status.enum.js';
 
 describe('PowerEvent', () => {
   const createPowerEvent = (
-    overrides?: Partial<ConstructorParameters<typeof PowerEvent>[0]>
+    overrides?: Partial<ConstructorParameters<typeof PowerEvent>[0]>,
   ) =>
     new PowerEvent({
       id: 'event-1',
@@ -11,6 +11,7 @@ describe('PowerEvent', () => {
       status: PowerStatus.OFF,
       timestamp: new Date('2024-01-01T12:00:00Z'),
       duration: 3600,
+      voltage: null,
       ...overrides,
     });
 

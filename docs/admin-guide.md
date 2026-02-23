@@ -207,6 +207,55 @@ This removes all user links and power events for the device.
 
 See [CLI Reference](./cli-reference.md#devicedelete) for full options.
 
+## Hardware: Power Sense Circuit
+
+### Voltage Divider Wiring
+
+The ESP32 monitors grid power via a 5V USB adapter and a resistive voltage divider:
+
+```
+5V USB Adapter (powered by grid)
+        │
+        ├── 10kΩ resistor
+        │
+        ├──── GPIO 2 (ADC input)
+        │
+        ├── 20kΩ resistor
+        │
+       GND
+```
+
+- **Full grid power (5V adapter):** 5V × 20k/(10k+20k) = 3.33V at GPIO → ADC ~4095
+- **Brownout (~3V adapter):** 3V × 20k/30k = 2.0V → ADC ~2482 (hysteresis band, ignored)
+- **Grid down (0V adapter):** 0V → ADC ~0
+
+### ADC Thresholds and Anti-Flapping
+
+The firmware uses a three-zone hysteresis model to prevent false triggers during brownouts:
+
+| ADC Range   | Voltage (approx) | Interpretation        |
+| ----------- | ---------------- | --------------------- |
+| 2400 - 4095 | 1.9V - 3.3V      | Power ON (confirmed)  |
+| 800 - 2399  | 0.65V - 1.9V     | Hysteresis (ignored)  |
+| 0 - 799     | 0V - 0.65V       | Power OFF (confirmed) |
+
+Additional protections:
+
+- **Confirmation window:** State must persist for 6 consecutive readings (6 × 500ms = 3s) before sending
+- **Cooldown:** Minimum 30s between transitions (firmware) + 30s server-side debounce
+- **Voltage logging:** Each status report includes the raw ADC value for diagnostics
+
+### Calibrating Thresholds
+
+If your voltage divider uses different resistor values, adjust `ADC_THRESHOLD_HIGH` and `ADC_THRESHOLD_LOW` in `config.h`:
+
+1. Flash firmware and monitor serial output
+2. Observe ADC values during normal operation (should be 3000-4095)
+3. Simulate brownout (use a variable power supply or long extension cord under load)
+4. Set `ADC_THRESHOLD_HIGH` above brownout ADC values
+5. Set `ADC_THRESHOLD_LOW` well below the lowest brownout reading
+6. Keep a wide hysteresis band (at least 500 ADC units) to absorb noise
+
 ## Troubleshooting
 
 ### HMAC Signature Mismatch (`INVALID_SIGNATURE`)

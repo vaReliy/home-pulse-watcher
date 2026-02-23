@@ -50,5 +50,8 @@ model PowerEvent {
   status    Int
   timestamp DateTime @default(now())
   duration  Int?
+  voltage   Int?
   device    Device   @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId, timestamp])
 }
