@@ -8,6 +8,8 @@ HomePulse Watcher is a DIY power outage monitoring system. ESP32-C3/ESP32-C6 dev
 
 **MVP Stage**: This project is in early development. No legacy concerns - database can be recreated from scratch as needed.
 
+> **AI Assistant Shared Mental Model**: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) — load this for a concise overview of architecture, domain rules (ADC sensing, HMAC/AES, debounce), incident history, and doc map.
+
 ## Build & Development Commands
 
 ```bash
@@ -209,3 +211,14 @@ export class ServiceNameService extends BaseService<ServiceNameInput, ServiceNam
   - Complex business logic
 - **Concise descriptions**: One-line summary preferred
 - **Include parameter/return descriptions** for non-obvious cases
+
+### Keeping PROJECT_CONTEXT.md in Sync
+
+After any change that affects the project's architecture, domain rules, tech stack, deployment, or historical context — update [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) to reflect the new state. This file is the shared mental model loaded at the start of every AI session.
+
+Examples of changes that require a PROJECT_CONTEXT.md update:
+- New or removed layers, modules, or significant services
+- Changes to domain rules (debounce thresholds, HMAC parameters, ADC ranges, etc.)
+- Deployment or infrastructure changes
+- New historical incidents worth remembering (like the Flapping Incident)
+- Stack or dependency upgrades that change developer workflow

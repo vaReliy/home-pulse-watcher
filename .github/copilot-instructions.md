@@ -2,3 +2,10 @@
 
 All coding standards, architecture, and conventions are defined in
 [CLAUDE.md](../CLAUDE.md). Please follow those instructions.
+
+For a concise shared mental model (architecture layers, domain rules, ADC sensing
+parameters, incident history, and doc map), see
+[PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md).
+
+When making changes that affect architecture, domain rules, tech stack, deployment,
+or historical context, update `PROJECT_CONTEXT.md` to keep the shared mental model current.
