@@ -155,3 +155,26 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 - Never remove the hysteresis band (the 801–2399 range must hold state, not toggle)
 - Never reduce `CONFIRMATION_CHECKS` below 6 without re-validating on real hardware
 - Server debounce is independent of firmware — both layers must remain active
+
+---
+
+## Future Database Changes
+
+### `firmwareVersion` field on `Device` (required for Phase 5.4 OTA)
+
+When OTA updates (5.4) are implemented, the server needs to know each device's current firmware version in order to:
+- Display firmware status in `/devices` and `/status` Telegram commands
+- Track which devices have received an OTA update
+- Avoid re-flashing devices already on the latest version
+
+**Planned schema addition:**
+```prisma
+model Device {
+  ...
+  firmwareVersion  String?   // e.g. "1.2.0" — reported by device on each status ping
+}
+```
+
+Devices should report their firmware version in the HTTP payload. Until 5.4 is built, this field can be omitted (nullable). Add a Prisma migration when the OTA feature work begins.
+
+**Firmware hosting**: Firmware binaries will be stored on Google Cloud Storage (Always Free tier).

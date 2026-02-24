@@ -223,7 +223,16 @@ docker-compose --profile full up --build
 - [x] Phase 2: Device Provisioning CLI
 - [x] Phase 3: Core Power Status Logic & Event Handling
 - [x] Phase 4: Telegram Bot Integration
-- [ ] Phase 5: Advanced Analytics & Uptime Tracking
+- [ ] **Phase 5: Production Hardening** *(In Progress)*
+  - [x] 5.1: Power Sensing v2 — ADC-based sensing with 3.3V hysteresis, firmware confirmation windows (3s), and server-side notification debounce (30s)
+  - [ ] 5.2: UX/UI Upgrade — Replace text-based /commands with interactive Telegram Inline Buttons
+  - [ ] 5.3: Wi-Fi Provisioning — Implement Captive Portal to remove hardcoded Wi-Fi credentials from firmware
+  - [ ] 5.4: OTA Updates — Remote firmware updates via Google Cloud Storage triggered by Telegram commands; includes "Admin Force Update" to trigger remote flashing of specific devices
+
+## 📋 Changelog
+
+### Power Sensing v2
+Implemented ADC-based sensing with 3.3V hysteresis, firmware confirmation windows (3s), and server-side notification debounce (30s) to eliminate grid flapping noise.
 
 📄 License
 
