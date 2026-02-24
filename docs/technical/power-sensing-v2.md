@@ -4,19 +4,19 @@ Technical summary of the multi-layer power status detection pipeline.
 
 ## 1. ADC Threshold Logic
 
-**Hardware**: 5V USB adapter -> 10k/20k voltage divider -> ESP32-C3 GPIO (12-bit ADC, 0-4095).
+**Hardware**: 5V USB adapter -> 10k/10k voltage divider + 0.1µF cap -> ESP32-C3 GPIO (12-bit ADC, 0-4095).
 
 | Condition               | Voltage at GPIO | ADC Value | Result                      |
 | ----------------------- | --------------- | --------- | --------------------------- |
-| Full power (5V adapter) | ~3.33V          | ~4095     | ON                          |
-| Brownout (~3V adapter)  | ~2.0V           | ~2482     | Hysteresis (retain current) |
+| Full power (5V adapter) | ~2.5V           | ~3100     | ON                          |
+| Brownout (~3V adapter)  | ~1.5V           | ~1860     | Hysteresis (retain current) |
 | Dead adapter (0V)       | 0V              | ~0        | OFF                         |
 
 **Thresholds**:
 
-- `ADC_THRESHOLD_HIGH` >= 2400 -> power **ON**
-- `ADC_THRESHOLD_LOW` <= 800 -> power **OFF**
-- 801-2399 -> hysteresis band, retain current state
+- `ADC_THRESHOLD_HIGH` >= 2200 -> power **ON**
+- `ADC_THRESHOLD_LOW` <= 1000 -> power **OFF**
+- 1001-2199 -> hysteresis band, retain current state
 
 The hysteresis band covers the brownout zone to prevent flapping during unstable supply voltage.
 
@@ -28,8 +28,8 @@ The hysteresis band covers the brownout zone to prevent flapping during unstable
 
 After ADC resolves a state, the firmware requires sustained agreement before acting:
 
-- **Check interval**: 500ms (`CHECK_INTERVAL_MS`)
-- **Confirmation**: 6 consecutive reads (`CONFIRMATION_CHECKS`) must agree -> ~3s minimum detection time
+- **Check interval**: 100ms (`CHECK_INTERVAL_MS`)
+- **Confirmation**: 10 reads (`CONFIRMATION_CHECKS`) with up to 3 noise spikes tolerated (`CONFIRMATION_MAX_NOISE`) -> ~1s minimum detection time
 - **Cooldown**: 30s (`MIN_STATE_CHANGE_MS`) between accepted transitions
 
 **State machine**:

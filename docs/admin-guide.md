@@ -216,18 +216,22 @@ The ESP32 monitors grid power via a 5V USB adapter and a resistive voltage divid
 ```
 5V USB Adapter (powered by grid)
         │
-        ├── 10kΩ resistor
+       [R1]  10kΩ
         │
         ├──── GPIO 2 (ADC input)
-        │
-        ├── 20kΩ resistor
-        │
-       GND
+        │                 │
+       [R2]  10kΩ       [C1] 0.1µF ceramic
+        │                 │
+        └────┬────────────┘
+             │
+            GND
 ```
 
-- **Full grid power (5V adapter):** 5V × 20k/(10k+20k) = 3.33V at GPIO → ADC ~4095
-- **Brownout (~3V adapter):** 3V × 20k/30k = 2.0V → ADC ~2482 (hysteresis band, ignored)
+- **Full grid power (5V adapter):** 5V × 10k/(10k+10k) = 2.5V at GPIO → ADC ~3100
+- **Brownout (~3V adapter):** 3V × 10k/20k = 1.5V → ADC ~1860 (hysteresis band, ignored)
 - **Grid down (0V adapter):** 0V → ADC ~0
+
+The 0.1µF ceramic capacitor across R2 filters high-frequency EMI noise on the ADC input, preventing false readings from floating-input antenna effects.
 
 ### ADC Thresholds and Anti-Flapping
 
@@ -235,13 +239,13 @@ The firmware uses a three-zone hysteresis model to prevent false triggers during
 
 | ADC Range   | Voltage (approx) | Interpretation        |
 | ----------- | ---------------- | --------------------- |
-| 2400 - 4095 | 1.9V - 3.3V      | Power ON (confirmed)  |
-| 800 - 2399  | 0.65V - 1.9V     | Hysteresis (ignored)  |
-| 0 - 799     | 0V - 0.65V       | Power OFF (confirmed) |
+| 2200 - 4095 | 1.75V - 3.3V     | Power ON (confirmed)  |
+| 1001 - 2199 | 0.8V - 1.75V     | Hysteresis (ignored)  |
+| 0 - 1000    | 0V - 0.8V        | Power OFF (confirmed) |
 
 Additional protections:
 
-- **Confirmation window:** State must persist for 6 consecutive readings (6 × 500ms = 3s) before sending
+- **Confirmation window:** State must persist for 10 consecutive readings (10 × 100ms = 1s), tolerating up to 3 noise spikes
 - **Cooldown:** Minimum 30s between transitions (firmware) + 30s server-side debounce
 - **Voltage logging:** Each status report includes the raw ADC value for diagnostics
 
@@ -250,13 +254,30 @@ Additional protections:
 If your voltage divider uses different resistor values, adjust `ADC_THRESHOLD_HIGH` and `ADC_THRESHOLD_LOW` in `config.h`:
 
 1. Flash firmware and monitor serial output
-2. Observe ADC values during normal operation (should be 3000-4095)
+2. Observe ADC values during normal operation (should be ~3100 with the 10k/10k divider)
 3. Simulate brownout (use a variable power supply or long extension cord under load)
 4. Set `ADC_THRESHOLD_HIGH` above brownout ADC values
 5. Set `ADC_THRESHOLD_LOW` well below the lowest brownout reading
 6. Keep a wide hysteresis band (at least 500 ADC units) to absorb noise
 
+### Hardware Evolution
+
+| Version                        | Divider     | Capacitor               | Notes                                                                                                                            |
+| ------------------------------ | ----------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **V2.1 (Current/Recommended)** | 10kΩ / 10kΩ | 0.1µF ceramic across R2 | Eliminates ghost events from EMI noise on the ADC input                                                                          |
+| **V2.0 (Legacy)**              | 10kΩ / 20kΩ | None                    | Prone to "Ghost Power ON" events — high-impedance floating input acts as an antenna, picking up EMI that causes false ADC spikes |
+
+If you are building a new sensor, use V2.1. If you have an existing V2.0 sensor experiencing ghost events, add a 0.1µF ceramic capacitor between GPIO 2 and GND, and replace R2 with a 10kΩ resistor.
+
 ## Troubleshooting
+
+### Ghost Power ON Events
+
+The device reports power restored when the grid is actually still down. This typically manifests as rapid ON/OFF pairs in the event history.
+
+**Cause:** The ADC input is floating at high impedance when the USB adapter is off. The long wire between the adapter and the voltage divider acts as an antenna, picking up EMI (from nearby motors, switching power supplies, etc.) that causes the ADC to briefly spike above `ADC_THRESHOLD_HIGH`.
+
+**Solution:** Upgrade to V2.1 hardware — add a 0.1µF ceramic capacitor between GPIO 2 and GND. This filters high-frequency noise and eliminates the ghost readings. See the [Hardware Evolution](#hardware-evolution) table above for details.
 
 ### HMAC Signature Mismatch (`INVALID_SIGNATURE`)
 

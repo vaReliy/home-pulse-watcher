@@ -11,7 +11,7 @@
  *
  * Hardware:
  * - ESP32-C3 SuperMini or compatible
- * - Optocoupler circuit connected to POWER_SENSE_PIN
+ * - 10k/10k voltage divider + 0.1µF cap on POWER_SENSE_PIN (V2.1)
  *
  * Configuration:
  * - config.h: Hardware settings (GPIO pins, timing)
@@ -26,10 +26,14 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+// PROD: HTTPS (Cloud Run)
 #include <WiFiClientSecure.h>
+// DEV: HTTP (local development) — uncomment below, comment above
+// #include <WiFiClient.h>
 #include <time.h>
 #include <mbedtls/md.h>
 #include <esp_task_wdt.h>
+#include <esp_idf_version.h>
 #include <Adafruit_NeoPixel.h>
 
 #include "config.h"
@@ -46,12 +50,16 @@ static int confirmationCount = 0;          // Consecutive reads of pending new s
 static int pendingStatus = -1;             // State being confirmed (-1 = none)
 static unsigned long lastStateChangeTime = 0;  // millis() of last confirmed transition
 static int lastAdcValue = 0;               // Most recent averaged ADC reading
+static int confirmationNoise = 0;          // Contradicting samples during confirmation
+static unsigned long confirmationStartTime = 0;  // millis() when confirmation window started
 
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
 
-// HTTPS client (setInsecure skips CA verification; HMAC signing provides auth)
+// PROD: HTTPS client (setInsecure skips CA verification; HMAC signing provides auth)
 static WiFiClientSecure secureClient;
+// DEV: HTTP client (local development) — uncomment below, comment above
+// static WiFiClient client;
 
 /** Set WS2812 LED color */
 void setLedColor(uint8_t r, uint8_t g, uint8_t b) {
@@ -252,7 +260,10 @@ bool sendPowerStatus(int status, int adcValue) {
 
     // Send HTTP POST request
     HTTPClient http;
+    // PROD: HTTPS
     http.begin(secureClient, BACKEND_URL);
+    // DEV: HTTP (local development) — uncomment below, comment above
+    // http.begin(client, BACKEND_URL);
     http.setTimeout(HTTP_TIMEOUT_MS);
 
     // Set headers
@@ -294,7 +305,9 @@ void setup() {
         ESP.restart();
     }
 
+    // PROD: HTTPS — skip CA verification (HMAC signing provides auth)
     secureClient.setInsecure();
+    // DEV: HTTP — comment out secureClient.setInsecure() above
 
     if (!initializeTime()) {
         Serial.println("Failed to sync time. Restarting...");
@@ -325,9 +338,13 @@ void setup() {
         .idle_core_mask = 0,
         .trigger_panic = true,
     };
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
+    esp_task_wdt_reconfigure(&wdtConfig);
+#else
     esp_task_wdt_init(&wdtConfig);
+#endif
     esp_task_wdt_add(NULL);
-    Serial.printf("Watchdog initialized: %ds timeout\n", WATCHDOG_TIMEOUT_S);
+    Serial.printf("Watchdog configured: %ds timeout\n", WATCHDOG_TIMEOUT_S);
 
     Serial.println("Setup complete. Monitoring power status...");
 }
@@ -366,27 +383,38 @@ void loop() {
         lastAdcValue = readAdcAverage();
         int resolvedStatus = adcToStatus(lastAdcValue, lastPowerStatus);
 
+        // Determine ADC threshold band for diagnostics
+        const char* adcBand = (lastAdcValue >= ADC_THRESHOLD_HIGH) ? ">HIGH" :
+                              (lastAdcValue <= ADC_THRESHOLD_LOW)  ? "<LOW"  : "HYSTERESIS";
+
         if (resolvedStatus != lastPowerStatus) {
             // Status differs from confirmed state — start/continue confirmation
             if (resolvedStatus == pendingStatus) {
                 confirmationCount++;
-                Serial.printf("Confirming %d->%d: %d/%d (ADC: %d)\n",
-                    lastPowerStatus, resolvedStatus, confirmationCount, CONFIRMATION_CHECKS, lastAdcValue);
+                confirmationNoise = 0;  // Good read resets noise counter
+                unsigned long elapsed = currentTime - confirmationStartTime;
+                Serial.printf("Confirm %d->%d: %d/%d (ADC: %d [%s]) noise=%d/%d elapsed=%lums\n",
+                    lastPowerStatus, resolvedStatus, confirmationCount, CONFIRMATION_CHECKS,
+                    lastAdcValue, adcBand, confirmationNoise, CONFIRMATION_MAX_NOISE, elapsed);
             } else {
                 // New pending state (or first detection)
                 pendingStatus = resolvedStatus;
                 confirmationCount = 1;
-                Serial.printf("New pending state: %d (ADC: %d)\n", resolvedStatus, lastAdcValue);
+                confirmationNoise = 0;
+                confirmationStartTime = currentTime;
+                Serial.printf("New pending state: %d (ADC: %d [%s])\n",
+                    resolvedStatus, lastAdcValue, adcBand);
             }
 
             if (confirmationCount >= CONFIRMATION_CHECKS) {
                 // State confirmed — check cooldown
+                unsigned long elapsed = currentTime - confirmationStartTime;
                 if (currentTime - lastStateChangeTime < MIN_STATE_CHANGE_MS) {
                     Serial.printf("Cooldown active (%lums since last change), suppressing\n",
                         currentTime - lastStateChangeTime);
                 } else {
-                    Serial.printf("Power status confirmed: %d -> %d (ADC: %d)\n",
-                        lastPowerStatus, resolvedStatus, lastAdcValue);
+                    Serial.printf("Power status confirmed: %d -> %d (ADC: %d [%s]) total=%lums\n",
+                        lastPowerStatus, resolvedStatus, lastAdcValue, adcBand, elapsed);
                     updateStatusLed(resolvedStatus);
 
                     if (sendPowerStatus(resolvedStatus, lastAdcValue)) {
@@ -400,14 +428,24 @@ void loop() {
                 // Reset confirmation state either way
                 pendingStatus = -1;
                 confirmationCount = 0;
+                confirmationNoise = 0;
             }
         } else {
-            // Status matches confirmed state — reset any pending confirmation
+            // Status matches confirmed state — check spike tolerance
             if (pendingStatus != -1) {
-                Serial.printf("Pending state %d cleared, back to %d (ADC: %d)\n",
-                    pendingStatus, lastPowerStatus, lastAdcValue);
-                pendingStatus = -1;
-                confirmationCount = 0;
+                confirmationNoise++;
+                unsigned long elapsed = currentTime - confirmationStartTime;
+                if (confirmationNoise >= CONFIRMATION_MAX_NOISE) {
+                    Serial.printf("Pending state %d cleared after %d noise samples (ADC: %d [%s]) elapsed=%lums\n",
+                        pendingStatus, confirmationNoise, lastAdcValue, adcBand, elapsed);
+                    pendingStatus = -1;
+                    confirmationCount = 0;
+                    confirmationNoise = 0;
+                } else {
+                    Serial.printf("Noise spike %d/%d during %d->%d (ADC: %d [%s]) elapsed=%lums\n",
+                        confirmationNoise, CONFIRMATION_MAX_NOISE,
+                        lastPowerStatus, pendingStatus, lastAdcValue, adcBand, elapsed);
+                }
             }
         }
     }

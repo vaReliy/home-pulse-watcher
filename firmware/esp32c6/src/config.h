@@ -17,23 +17,24 @@
 #define LED_BRIGHTNESS 10       // WS2812 brightness (0-255)
 
 // Timing Configuration
-#define CHECK_INTERVAL_MS 500       // Power status check interval (milliseconds)
+#define CHECK_INTERVAL_MS 100       // Power status check interval (milliseconds)
 #define WIFI_TIMEOUT_MS 30000       // WiFi connection timeout
 #define HTTP_TIMEOUT_MS 10000       // HTTP request timeout
 #define RETRY_DELAY_MS 5000         // Delay between retries on failure
 
 // Anti-flapping Configuration
-#define CONFIRMATION_CHECKS 6           // State must persist N consecutive reads before sending
+#define CONFIRMATION_CHECKS 10          // State must persist N consecutive reads before sending (10 × 100ms = 1s)
 #define MIN_STATE_CHANGE_MS 30000       // 30s cooldown between transitions
+#define CONFIRMATION_MAX_NOISE 3        // Max spike/noise samples tolerated during confirmation
 
-// ADC Configuration (voltage divider: 5V adapter -> 10k/20k -> GPIO)
-// Full power: 5V × 20/30 = 3.33V -> ADC ~4095
-// Brownout ~3V: 3V × 20/30 = 2.0V -> ADC ~2482 (hysteresis band, ignored)
+// ADC Configuration (voltage divider: 5V adapter -> 10k/10k + 0.1µF cap -> GPIO)
+// Full power: 5V × 10/20 = 2.5V -> ADC ~3100
+// Brownout ~3V: 3V × 10/20 = 1.5V -> ADC ~1860 (hysteresis band, ignored)
 // Dead adapter: 0V -> ADC ~0
 #define ADC_SAMPLES 16                  // Averaged ADC reading
 #define ADC_SAMPLE_DELAY_MS 5           // Delay between ADC samples (total: ~80ms)
-#define ADC_THRESHOLD_HIGH 2400         // Above = power ON (adapter healthy)
-#define ADC_THRESHOLD_LOW 800           // Below = power OFF (adapter dead)
+#define ADC_THRESHOLD_HIGH 2200         // Above = power ON (adapter healthy)
+#define ADC_THRESHOLD_LOW 1000          // Below = power OFF (adapter dead)
 
 // NTP Configuration
 #define NTP_SERVER "pool.ntp.org"

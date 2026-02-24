@@ -8,29 +8,29 @@
 
 **HomePulse Watcher** is a DIY, high-reliability IoT system that monitors household mains power and delivers instant Telegram alerts to users.
 
-| Field | Value |
-|---|---|
-| Current phase | **Phase 5 — Production Hardening** |
-| Active devices | 2 (real users, live data) |
-| Deployment | Google Cloud Run + Neon.tech (PostgreSQL) |
+| Field             | Value                                         |
+| ----------------- | --------------------------------------------- |
+| Current phase     | **Phase 5 — Production Hardening**            |
+| Active devices    | 2 (real users, live data)                     |
+| Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)     |
 | Codebase maturity | MVP — no legacy concerns; DB can be recreated |
-| Stack type | Nx monorepo, NestJS, Prisma, ESP32 firmware |
+| Stack type        | Nx monorepo, NestJS, Prisma, ESP32 firmware   |
 
 ---
 
 ## Core Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Monorepo | Nx 22.4 (`@home-pulse-watcher/*` prefix) |
-| Backend | NestJS 11, TypeScript (NodeNext modules) |
-| ORM | Prisma 7.3 + PostgreSQL (`pg` adapter) |
-| Validation | LIVR (custom rules: `macAddress`, `hmacFormat`) |
-| Bot | Telegraf (manual NestJS integration) |
-| Testing | Jest 30 + SWC compiler |
-| CLI | nest-commander |
-| Firmware | PlatformIO + Arduino, ESP32-C3 and ESP32-C6 |
-| Bundler | Webpack (all deps bundled; Prisma externals only) |
+| Layer      | Technology                                        |
+| ---------- | ------------------------------------------------- |
+| Monorepo   | Nx 22.4 (`@home-pulse-watcher/*` prefix)          |
+| Backend    | NestJS 11, TypeScript (NodeNext modules)          |
+| ORM        | Prisma 7.3 + PostgreSQL (`pg` adapter)            |
+| Validation | LIVR (custom rules: `macAddress`, `hmacFormat`)   |
+| Bot        | Telegraf (manual NestJS integration)              |
+| Testing    | Jest 30 + SWC compiler                            |
+| CLI        | nest-commander                                    |
+| Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6       |
+| Bundler    | Webpack (all deps bundled; Prisma externals only) |
 
 ---
 
@@ -51,6 +51,7 @@
 ```
 
 **Rules that must never break:**
+
 - Core has zero framework imports
 - Application services are plain TypeScript classes (no `@Injectable()`)
 - NestJS DI wiring lives only in the Interface layer, via Symbol tokens and factory providers
@@ -77,13 +78,13 @@ class MyService extends BaseService<MyInput, MyOutput> {
 
 ### Security
 
-| Mechanism | Details |
-|---|---|
-| Transport auth | HMAC-SHA256; payload = `MAC:TIMESTAMP:STATUS` |
-| Replay prevention | Timestamp tolerance: **±5 minutes** |
-| Timing safety | `crypto.timingSafeEqual()` on all signature comparisons |
-| Secret storage | AES-256-GCM; format on disk: `iv:authTag:ciphertext` |
-| Key size | 32-byte encryption key (64 hex chars) |
+| Mechanism         | Details                                                 |
+| ----------------- | ------------------------------------------------------- |
+| Transport auth    | HMAC-SHA256; payload = `MAC:TIMESTAMP:STATUS`           |
+| Replay prevention | Timestamp tolerance: **±5 minutes**                     |
+| Timing safety     | `crypto.timingSafeEqual()` on all signature comparisons |
+| Secret storage    | AES-256-GCM; format on disk: `iv:authTag:ciphertext`    |
+| Key size          | 32-byte encryption key (64 hex chars)                   |
 
 ### Power Sensing — 4-Layer Pipeline
 
@@ -91,19 +92,21 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 #### Layer 1 — ADC Hysteresis (Firmware)
 
-| ADC Range | Voltage | Decision |
-|---|---|---|
-| ≥ 2400 | ~1.9–3.3 V | **POWER ON** |
-| 801–2399 | ~0.65–1.9 V | **Hold current state** (hysteresis band) |
-| ≤ 800 | ~0–0.65 V | **POWER OFF** |
+| ADC Range | Voltage     | Decision                                 |
+| --------- | ----------- | ---------------------------------------- |
+| ≥ 2200    | ~1.75–2.5 V | **POWER ON**                             |
+| 1001–2199 | ~0.8–1.75 V | **Hold current state** (hysteresis band) |
+| ≤ 1000    | ~0–0.8 V    | **POWER OFF**                            |
 
 - 16 samples averaged, 5 ms between samples (~80 ms per read)
-- Hardware: 5V USB → 10 kΩ / 20 kΩ divider → GPIO2
+- Hardware V2.1: 5V USB → 10 kΩ / 10 kΩ divider + 0.1 µF ceramic cap → GPIO2
+- Full power: 5V × 10/20 = 2.5V → ADC ~3100
 
 #### Layer 2 — Firmware Confirmation Window
 
-- 6 consecutive identical reads required before accepting a transition (~3 s)
-- Check interval: 500 ms (`CHECK_INTERVAL_MS`)
+- 10 consecutive identical reads required before accepting a transition (~1 s)
+- Check interval: 100 ms (`CHECK_INTERVAL_MS`) — hardware cap handles noise filtering
+- **Spike tolerance**: up to 3 contradicting (noise) samples tolerated during confirmation (`CONFIRMATION_MAX_NOISE`); a single ADC spike from parasitic capacitance discharge no longer resets the confirmation window — only 3+ sustained contradicting reads cancel it
 - Prevents acceptance of momentary glitches
 
 #### Layer 3 — Firmware Cooldown
@@ -129,14 +132,14 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 ## Documentation Map
 
-| Document | Path | Purpose |
-|---|---|---|
-| README | [`README.md`](README.md) | Quick start, feature overview |
-| Architecture | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layer diagrams, DI patterns, Webpack config |
-| Power Sensing v2 | [`docs/technical/power-sensing-v2.md`](docs/technical/power-sensing-v2.md) | Full 4-layer pipeline spec with ADC values |
-| Admin Guide | [`docs/admin-guide.md`](docs/admin-guide.md) | Device provisioning, hardware wiring, troubleshooting |
-| CLI Reference | [`docs/cli-reference.md`](docs/cli-reference.md) | All nest-commander commands with flags and exit codes |
-| Flashing Guide | [`firmware/docs/FLASHING_GUIDE.md`](firmware/docs/FLASHING_GUIDE.md) | PlatformIO build, upload, serial monitor |
+| Document         | Path                                                                       | Purpose                                               |
+| ---------------- | -------------------------------------------------------------------------- | ----------------------------------------------------- |
+| README           | [`README.md`](README.md)                                                   | Quick start, feature overview                         |
+| Architecture     | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                             | Layer diagrams, DI patterns, Webpack config           |
+| Power Sensing v2 | [`docs/technical/power-sensing-v2.md`](docs/technical/power-sensing-v2.md) | Full 4-layer pipeline spec with ADC values            |
+| Admin Guide      | [`docs/admin-guide.md`](docs/admin-guide.md)                               | Device provisioning, hardware wiring, troubleshooting |
+| CLI Reference    | [`docs/cli-reference.md`](docs/cli-reference.md)                           | All nest-commander commands with flags and exit codes |
+| Flashing Guide   | [`firmware/docs/FLASHING_GUIDE.md`](firmware/docs/FLASHING_GUIDE.md)       | PlatformIO build, upload, serial monitor              |
 
 ---
 
@@ -151,9 +154,11 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 **Solution** (commit `5f133ef`, Feb 19, 2026): The 4-layer pipeline described above — ADC hysteresis band eliminates noise in the middle range; confirmation window requires sustained state change; firmware cooldown prevents re-triggering; server debounce is last-resort protection.
 
 **Do not regress**:
+
 - Never replace ADC-based sensing with a simple `digitalRead()` on GPIO2
 - Never remove the hysteresis band (the 801–2399 range must hold state, not toggle)
-- Never reduce `CONFIRMATION_CHECKS` below 6 without re-validating on real hardware
+- Never reduce `CONFIRMATION_CHECKS` below 6 without re-validating on real hardware (currently 10)
+- Never remove spike tolerance (`CONFIRMATION_MAX_NOISE`) — single ADC spikes from parasitic capacitance discharge during unplug are a proven real-world issue
 - Server debounce is independent of firmware — both layers must remain active
 
 ---
@@ -163,11 +168,13 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 ### `firmwareVersion` field on `Device` (required for Phase 5.4 OTA)
 
 When OTA updates (5.4) are implemented, the server needs to know each device's current firmware version in order to:
+
 - Display firmware status in `/devices` and `/status` Telegram commands
 - Track which devices have received an OTA update
 - Avoid re-flashing devices already on the latest version
 
 **Planned schema addition:**
+
 ```prisma
 model Device {
   ...
