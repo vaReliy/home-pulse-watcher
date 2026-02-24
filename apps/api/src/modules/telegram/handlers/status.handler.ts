@@ -6,10 +6,11 @@ import type {
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
 import { TranslationService } from '../i18n/index.js';
+import { buildMainMenuKeyboard } from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /**
- * Handles /status command - shows all devices power status.
+ * Handles status display — shows all devices power status.
  * Requires authenticated user.
  */
 @Injectable()
@@ -29,7 +30,10 @@ export class StatusHandler {
     const user = ctx.user;
     if (!user) {
       const msgs = this.translationService.getMessages();
-      await ctx.reply(msgs.NOT_REGISTERED, { parse_mode: 'HTML' });
+      await ctx.reply(msgs.NOT_REGISTERED, {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
       return;
     }
 
@@ -40,7 +44,10 @@ export class StatusHandler {
       const userDevices = await this.userDeviceRepository.findByUserId(user.id);
 
       if (userDevices.length === 0) {
-        await ctx.reply(msgs.NO_DEVICES, { parse_mode: 'HTML' });
+        await ctx.reply(msgs.NO_DEVICES, {
+          parse_mode: 'MarkdownV2',
+          ...buildMainMenuKeyboard(msgs),
+        });
         return;
       }
 
@@ -61,10 +68,16 @@ export class StatusHandler {
         user.locale,
         user.timezone,
       );
-      await ctx.reply(message, { parse_mode: 'HTML' });
+      await ctx.reply(message, {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
     } catch (error) {
       this.logger.error('Failed to fetch device status', error);
-      await ctx.reply(msgs.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC, {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
     }
   }
 }

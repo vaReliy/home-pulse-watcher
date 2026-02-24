@@ -11,6 +11,29 @@ export interface Messages {
   // Commands
   HELP: string;
 
+  // Reply keyboard buttons
+  BUTTON_STATUS: string;
+  BUTTON_DEVICES: string;
+  BUTTON_SETTINGS: string;
+  BUTTON_HELP: string;
+
+  // Inline keyboard buttons
+  BUTTON_CHECK_STATUS: string;
+  BUTTON_VIEW_HISTORY: string;
+
+  // Settings
+  SETTINGS_HEADER: string;
+  SETTINGS_LANGUAGE: string;
+  SETTINGS_TIMEZONE: string;
+  SETTINGS_LANGUAGE_HEADER: string;
+  SETTINGS_TIMEZONE_HEADER: string;
+  SETTINGS_LANGUAGE_UPDATED: string;
+  SETTINGS_TIMEZONE_UPDATED: string;
+  SETTINGS_CURRENT: (locale: string, timezone: string) => string;
+
+  // Catch-all
+  UNKNOWN_COMMAND: string;
+
   // Status
   NO_DEVICES: string;
   DEVICE_STATUS_HEADER: string;

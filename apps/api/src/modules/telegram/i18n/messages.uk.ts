@@ -1,35 +1,62 @@
 import type { Messages } from './messages.type.js';
 
 /**
- * Ukrainian translations for Telegram bot messages.
+ * Ukrainian translations for Telegram bot messages (MarkdownV2).
  */
 export const messagesUk: Messages = {
   // Welcome & Registration
-  WELCOME: `<b>Ласкаво просимо до HomePulse Watcher!</b>
+  WELCOME: `*Ласкаво просимо до HomePulse Watcher\\!*
 
-Ваш обліковий запис створено. Використовуйте /devices щоб побачити ваші пристрої.`,
+Ваш обліковий запис створено\\. Використовуйте меню нижче для навігації\\.`,
 
-  ALREADY_REGISTERED: `Ви вже зареєстровані! Використовуйте /help щоб побачити доступні команди.`,
+  ALREADY_REGISTERED:
+    'Ви вже зареєстровані\\! Використовуйте меню нижче для навігації\\.',
 
-  NOT_REGISTERED: `Ви не зареєстровані. Використовуйте /start щоб створити обліковий запис.`,
+  NOT_REGISTERED:
+    'Ви не зареєстровані\\. Використовуйте /start щоб створити обліковий запис\\.',
 
   // Commands
-  HELP: `<b>Доступні команди:</b>
+  HELP: `*Як користуватися ботом:*
 
-/start - Зареєструвати обліковий запис
-/status - Показати статус живлення пристроїв
-/devices - Список ваших пристроїв
-/history - Історія відключень за поточний місяць
-/help - Показати цю довідку`,
+Використовуйте кнопки меню внизу екрану:
+📊 *Статус* — поточний стан пристроїв
+📱 *Пристрої* — список ваших пристроїв
+⚙️ *Налаштування* — мова та часовий пояс
+❓ *Довідка* — ця довідка`,
+
+  // Reply keyboard buttons
+  BUTTON_STATUS: '📊 Статус',
+  BUTTON_DEVICES: '📱 Пристрої',
+  BUTTON_SETTINGS: '⚙️ Налаштування',
+  BUTTON_HELP: '❓ Довідка',
+
+  // Inline keyboard buttons
+  BUTTON_CHECK_STATUS: '📊 Перевірити статус',
+  BUTTON_VIEW_HISTORY: '📋 Переглянути історію',
+
+  // Settings
+  SETTINGS_HEADER: '*Налаштування*',
+  SETTINGS_LANGUAGE: '🌐 Мова',
+  SETTINGS_TIMEZONE: '🕐 Часовий пояс',
+  SETTINGS_LANGUAGE_HEADER: 'Оберіть мову:',
+  SETTINGS_TIMEZONE_HEADER: 'Оберіть часовий пояс:',
+  SETTINGS_LANGUAGE_UPDATED: 'Мову змінено\\!',
+  SETTINGS_TIMEZONE_UPDATED: 'Часовий пояс змінено\\!',
+  SETTINGS_CURRENT: (locale, timezone) =>
+    `Мова: ${locale}\nЧасовий пояс: ${timezone}`,
+
+  // Catch-all
+  UNKNOWN_COMMAND:
+    'Будь ласка, використовуйте кнопки меню нижче для навігації\\.',
 
   // Status
-  NO_DEVICES: `У вас ще немає підключених пристроїв.
+  NO_DEVICES: `У вас ще немає підключених пристроїв\\.
 
-Зверніться до адміністратора для підключення пристрою.`,
+Зверніться до адміністратора для підключення пристрою\\.`,
 
   DEVICE_STATUS_HEADER: 'Статус пристроїв:',
   DEVICE_STATUS: (label, status, lastSeen) =>
-    `<b>${label}</b>: ${status === 'ON' ? '🟢' : '🔴'} ${status === 'ON' ? 'Увімк' : 'Вимк'}\nОстаннє з'єднання: ${lastSeen}`,
+    `*${label}*: ${status === 'ON' ? '🟢' : '🔴'} ${status === 'ON' ? 'Увімк' : 'Вимк'}\nОстаннє з\\'єднання: ${lastSeen}`,
 
   // Devices list
   YOUR_DEVICES_HEADER: 'Ваші пристрої:',
@@ -38,24 +65,24 @@ export const messagesUk: Messages = {
 
   // Notifications
   POWER_LOST: (label, time) =>
-    `⚡️ <b>Зникло електропостачання</b>
+    `⚡️ *Зникло електропостачання*
 
-Пристрій: <b>${label}</b>
+Пристрій: *${label}*
 Час: ${time}`,
 
   POWER_RESTORED: (label, time, duration) =>
-    `✅ <b>Електропостачання відновлено</b>
+    `✅ *Електропостачання відновлено*
 
-Пристрій: <b>${label}</b>
+Пристрій: *${label}*
 Час: ${time}
 Тривалість відключення: ${duration}`,
 
-  DEVICE_ONLINE: (label) => `📡 Пристрій <b>${label}</b> в мережі`,
+  DEVICE_ONLINE: (label) => `📡 Пристрій *${label}* в мережі`,
 
-  DEVICE_OFFLINE: (label) => `📡 Пристрій <b>${label}</b> офлайн`,
+  DEVICE_OFFLINE: (label) => `📡 Пристрій *${label}* офлайн`,
 
   // History
-  NO_HISTORY: 'Немає подій за поточний місяць.',
+  NO_HISTORY: 'Немає подій за поточний місяць\\.',
   NO_EVENTS_THIS_MONTH: 'Немає подій за цей місяць',
   OUTAGE_HISTORY_HEADER: (monthName) => `Історія відключень — ${monthName}`,
 
@@ -71,10 +98,11 @@ export const messagesUk: Messages = {
   STATUS_OFF: 'Вимк',
 
   // Errors
-  ERROR_GENERIC: 'Щось пішло не так. Спробуйте пізніше.',
-  ERROR_DEVICE_ALREADY_REGISTERED: 'Цей пристрій вже зареєстрований у системі.',
-  ERROR_DEVICE_NOT_OWNED: 'У вас немає доступу до цього пристрою.',
+  ERROR_GENERIC: 'Щось пішло не так\\. Спробуйте пізніше\\.',
+  ERROR_DEVICE_ALREADY_REGISTERED:
+    'Цей пристрій вже зареєстрований у системі\\.',
+  ERROR_DEVICE_NOT_OWNED: 'У вас немає доступу до цього пристрою\\.',
   ERROR_USER_ALREADY_EXISTS:
-    'Ви вже зареєстровані! Використовуйте /help щоб побачити доступні команди.',
-  ERROR_UNAUTHORIZED: 'У вас немає прав для виконання цієї дії.',
+    'Ви вже зареєстровані\\! Використовуйте меню нижче для навігації\\.',
+  ERROR_UNAUTHORIZED: 'У вас немає прав для виконання цієї дії\\.',
 };

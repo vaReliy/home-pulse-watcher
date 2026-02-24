@@ -9,16 +9,23 @@ import type { StatusHandler } from './handlers/status.handler';
 import type { DevicesHandler } from './handlers/devices.handler';
 import type { HelpHandler } from './handlers/help.handler';
 import type { HistoryHandler } from './handlers/history.handler';
+import type { SettingsHandler } from './handlers/settings.handler';
 
 describe('TelegramService', () => {
   const createMockBot = (): jest.Mocked<Telegraf<TelegramContext>> =>
     ({
       command: jest.fn(),
+      hears: jest.fn(),
+      action: jest.fn(),
+      on: jest.fn(),
       catch: jest.fn(),
       launch: jest.fn(),
       stop: jest.fn(),
       telegram: {
         setWebhook: jest.fn().mockResolvedValue(true),
+        getWebhookInfo: jest
+          .fn()
+          .mockResolvedValue({ url: '', pending_update_count: 0 }),
       },
     }) as unknown as jest.Mocked<Telegraf<TelegramContext>>;
 
@@ -29,6 +36,7 @@ describe('TelegramService', () => {
     devicesHandler: {} as DevicesHandler,
     helpHandler: {} as HelpHandler,
     historyHandler: {} as HistoryHandler,
+    settingsHandler: {} as SettingsHandler,
   });
 
   const createService = (
@@ -45,6 +53,7 @@ describe('TelegramService', () => {
       deps.devicesHandler,
       deps.helpHandler,
       deps.historyHandler,
+      deps.settingsHandler,
       new TranslationService(),
     );
   };
@@ -53,6 +62,31 @@ describe('TelegramService', () => {
     it('should skip initialization when bot is null', async () => {
       const service = createService(null, null);
       await expect(service.onModuleInit()).resolves.toBeUndefined();
+    });
+
+    it('should register /start command and hears handlers', async () => {
+      const bot = createMockBot();
+      const config: TelegramConfig = {
+        botToken: 'test-token',
+        useWebhook: true,
+        webhookDomain: 'https://example.com',
+      };
+      const service = createService(bot, config);
+
+      await service.onModuleInit();
+
+      // Only /start slash command
+      expect(bot.command).toHaveBeenCalledTimes(1);
+      expect(bot.command).toHaveBeenCalledWith('start', expect.any(Function));
+
+      // 4 hears: status, devices, settings, help
+      expect(bot.hears).toHaveBeenCalledTimes(4);
+
+      // 6 actions: check_status, view_history, settings:language, settings:timezone, /^lang:/, /^tz:/
+      expect(bot.action).toHaveBeenCalledTimes(6);
+
+      // 1 catch-all text handler
+      expect(bot.on).toHaveBeenCalledWith('text', expect.any(Function));
     });
 
     it('should set webhook in webhook mode', async () => {

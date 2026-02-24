@@ -5,6 +5,7 @@ import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
 import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { TranslationService } from '../i18n/index.js';
+import { buildMainMenuKeyboard } from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /**
@@ -29,7 +30,7 @@ export class StartHandler {
     const msgs = this.translationService.getMessages();
 
     if (!telegramId) {
-      await ctx.reply(msgs.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
       return;
     }
 
@@ -43,7 +44,8 @@ export class StartHandler {
           existing.locale,
         );
         await ctx.reply(existingMsgs.ALREADY_REGISTERED, {
-          parse_mode: 'HTML',
+          parse_mode: 'MarkdownV2',
+          ...buildMainMenuKeyboard(existingMsgs),
         });
         return;
       }
@@ -54,19 +56,28 @@ export class StartHandler {
         username: username ?? undefined,
       });
 
-      await ctx.reply(msgs.WELCOME, { parse_mode: 'HTML' });
+      await ctx.reply(msgs.WELCOME, {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
       this.logger.log(`New user registered: ${telegramId}`);
     } catch (error) {
       if (
         error instanceof DomainError &&
         error.code === DomainErrorCode.USER_ALREADY_EXISTS
       ) {
-        await ctx.reply(msgs.ALREADY_REGISTERED, { parse_mode: 'HTML' });
+        await ctx.reply(msgs.ALREADY_REGISTERED, {
+          parse_mode: 'MarkdownV2',
+          ...buildMainMenuKeyboard(msgs),
+        });
         return;
       }
 
       this.logger.error('Failed to register user', error);
-      await ctx.reply(msgs.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC, {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
     }
   }
 }

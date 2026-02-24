@@ -114,9 +114,13 @@ describe('HistoryHandler', () => {
     await handler.handle(ctx);
 
     const msgs = translationService.getMessages();
-    expect(ctx.reply).toHaveBeenCalledWith(msgs.NOT_REGISTERED, {
-      parse_mode: 'HTML',
-    });
+    expect(ctx.reply).toHaveBeenCalledWith(
+      msgs.NOT_REGISTERED,
+      expect.objectContaining({
+        parse_mode: 'MarkdownV2',
+        reply_markup: expect.objectContaining({ keyboard: expect.any(Array) }),
+      }),
+    );
   });
 
   it('should reply NO_DEVICES when user has no devices', async () => {
@@ -135,9 +139,13 @@ describe('HistoryHandler', () => {
     await handler.handle(ctx);
 
     const msgs = translationService.getMessages('uk');
-    expect(ctx.reply).toHaveBeenCalledWith(msgs.NO_DEVICES, {
-      parse_mode: 'HTML',
-    });
+    expect(ctx.reply).toHaveBeenCalledWith(
+      msgs.NO_DEVICES,
+      expect.objectContaining({
+        parse_mode: 'MarkdownV2',
+        reply_markup: expect.objectContaining({ keyboard: expect.any(Array) }),
+      }),
+    );
   });
 
   it('should display history for user devices in Ukrainian', async () => {
@@ -170,6 +178,11 @@ describe('HistoryHandler', () => {
     const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
     expect(message).toContain('Історія відключень');
     expect(message).toContain('Kitchen');
+
+    expect(ctx.reply).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ parse_mode: 'MarkdownV2' }),
+    );
   });
 
   it('should show NO_HISTORY when no events this month', async () => {
@@ -244,6 +257,12 @@ describe('HistoryHandler', () => {
     await handler.handle(ctx);
 
     const msgs = translationService.getMessages('uk');
-    expect(ctx.reply).toHaveBeenCalledWith(msgs.ERROR_GENERIC);
+    expect(ctx.reply).toHaveBeenCalledWith(
+      msgs.ERROR_GENERIC,
+      expect.objectContaining({
+        parse_mode: 'MarkdownV2',
+        reply_markup: expect.objectContaining({ keyboard: expect.any(Array) }),
+      }),
+    );
   });
 });

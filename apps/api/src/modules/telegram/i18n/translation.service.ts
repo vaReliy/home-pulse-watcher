@@ -10,6 +10,12 @@ const MESSAGES_MAP: Record<SupportedLocale, Messages> = {
   uk: messagesUk,
 };
 
+type ButtonKey =
+  | 'BUTTON_STATUS'
+  | 'BUTTON_DEVICES'
+  | 'BUTTON_SETTINGS'
+  | 'BUTTON_HELP';
+
 /**
  * Provides locale-aware message strings for the Telegram bot.
  */
@@ -21,5 +27,10 @@ export class TranslationService {
       return MESSAGES_MAP[locale as SupportedLocale];
     }
     return MESSAGES_MAP[DEFAULT_LOCALE];
+  }
+
+  /** Returns button text strings across all supported locales for a given button key. */
+  getAllButtonTexts(buttonKey: ButtonKey): string[] {
+    return SUPPORTED_LOCALES.map((locale) => MESSAGES_MAP[locale][buttonKey]);
   }
 }

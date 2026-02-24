@@ -14,7 +14,12 @@ import {
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
 import { TELEGRAM_TOKENS } from '../telegram.tokens.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
+import { TranslationService } from '../i18n/index.js';
 import { DEFAULT_LOCALE, DEFAULT_TIMEZONE } from '../i18n/locale.config.js';
+import {
+  buildCheckStatusButton,
+  buildViewHistoryButton,
+} from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /** Rate limiting constants for Telegram API */
@@ -53,6 +58,7 @@ export class PowerStatusListener {
     @Inject(REPOSITORY_TOKENS.DEVICE)
     private readonly deviceRepository: IDeviceRepository,
     private readonly messageFormatter: MessageFormatter,
+    private readonly translationService: TranslationService,
   ) {}
 
   @OnEvent(POWER_STATUS_CHANGED_EVENT)
@@ -131,7 +137,20 @@ export class PowerStatusListener {
           group.locale,
           group.timezone,
         );
-        await this.sendWithRateLimit(bot, message, group.recipients);
+
+        const msgs = this.translationService.getMessages(group.locale);
+        const inlineKeyboard = event.isPowerLost
+          ? buildCheckStatusButton(msgs)
+          : event.isPowerRestored
+            ? buildViewHistoryButton(msgs)
+            : undefined;
+
+        await this.sendWithRateLimit(
+          bot,
+          message,
+          group.recipients,
+          inlineKeyboard,
+        );
       }
 
       this.logger.log(
@@ -149,6 +168,7 @@ export class PowerStatusListener {
     bot: Telegraf<TelegramContext>,
     message: string,
     recipients: Array<{ chatId: string; userId: string }>,
+    inlineKeyboard?: ReturnType<typeof buildCheckStatusButton>,
   ): Promise<void> {
     for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
       const batch = recipients.slice(i, i + BATCH_SIZE);
@@ -156,7 +176,8 @@ export class PowerStatusListener {
       const sendPromises = batch.map(async ({ chatId, userId }) => {
         try {
           await bot.telegram.sendMessage(chatId, message, {
-            parse_mode: 'HTML',
+            parse_mode: 'MarkdownV2',
+            ...(inlineKeyboard ? inlineKeyboard : {}),
           });
           this.logger.debug(`Notification sent to user ${chatId}`);
         } catch (error) {

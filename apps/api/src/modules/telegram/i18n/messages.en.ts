@@ -1,35 +1,61 @@
 import type { Messages } from './messages.type.js';
 
 /**
- * English translations for Telegram bot messages.
+ * English translations for Telegram bot messages (MarkdownV2).
  */
 export const messagesEn: Messages = {
   // Welcome & Registration
-  WELCOME: `<b>Welcome to HomePulse Watcher!</b>
+  WELCOME: `*Welcome to HomePulse Watcher\\!*
 
-Your account has been created. Use /devices to see your linked devices.`,
+Your account has been created\\. Use the menu below to navigate\\.`,
 
-  ALREADY_REGISTERED: `You are already registered! Use /help to see available commands.`,
+  ALREADY_REGISTERED:
+    'You are already registered\\! Use the menu below to navigate\\.',
 
-  NOT_REGISTERED: `You are not registered. Use /start to create an account.`,
+  NOT_REGISTERED:
+    'You are not registered\\. Use /start to create an account\\.',
 
   // Commands
-  HELP: `<b>Available Commands:</b>
+  HELP: `*How to use the bot:*
 
-/start - Register your account
-/status - Show power status of all devices
-/devices - List your linked devices
-/history - Show outage history for current month
-/help - Show this help message`,
+Use the menu buttons at the bottom of the screen:
+📊 *Status* — current device status
+📱 *My Devices* — list your devices
+⚙️ *Settings* — language and timezone
+❓ *Help* — this help message`,
+
+  // Reply keyboard buttons
+  BUTTON_STATUS: '📊 Status',
+  BUTTON_DEVICES: '📱 My Devices',
+  BUTTON_SETTINGS: '⚙️ Settings',
+  BUTTON_HELP: '❓ Help',
+
+  // Inline keyboard buttons
+  BUTTON_CHECK_STATUS: '📊 Check Status',
+  BUTTON_VIEW_HISTORY: '📋 View History',
+
+  // Settings
+  SETTINGS_HEADER: '*Settings*',
+  SETTINGS_LANGUAGE: '🌐 Language',
+  SETTINGS_TIMEZONE: '🕐 Timezone',
+  SETTINGS_LANGUAGE_HEADER: 'Choose language:',
+  SETTINGS_TIMEZONE_HEADER: 'Choose timezone:',
+  SETTINGS_LANGUAGE_UPDATED: 'Language updated\\!',
+  SETTINGS_TIMEZONE_UPDATED: 'Timezone updated\\!',
+  SETTINGS_CURRENT: (locale, timezone) =>
+    `Language: ${locale}\nTimezone: ${timezone}`,
+
+  // Catch-all
+  UNKNOWN_COMMAND: 'Please use the menu buttons below to navigate\\.',
 
   // Status
-  NO_DEVICES: `You don't have any devices linked yet.
+  NO_DEVICES: `You don't have any devices linked yet\\.
 
-Contact your administrator to link a device to your account.`,
+Contact your administrator to link a device to your account\\.`,
 
   DEVICE_STATUS_HEADER: 'Device Status:',
   DEVICE_STATUS: (label, status, lastSeen) =>
-    `<b>${label}</b>: ${status === 'ON' ? '🟢' : '🔴'} ${status}\nLast seen: ${lastSeen}`,
+    `*${label}*: ${status === 'ON' ? '🟢' : '🔴'} ${status}\nLast seen: ${lastSeen}`,
 
   // Devices list
   YOUR_DEVICES_HEADER: 'Your Devices:',
@@ -38,24 +64,24 @@ Contact your administrator to link a device to your account.`,
 
   // Notifications
   POWER_LOST: (label, time) =>
-    `⚡️ <b>Power Lost</b>
+    `⚡️ *Power Lost*
 
-Device: <b>${label}</b>
+Device: *${label}*
 Time: ${time}`,
 
   POWER_RESTORED: (label, time, duration) =>
-    `✅ <b>Power Restored</b>
+    `✅ *Power Restored*
 
-Device: <b>${label}</b>
+Device: *${label}*
 Time: ${time}
 Outage duration: ${duration}`,
 
-  DEVICE_ONLINE: (label) => `📡 Device <b>${label}</b> is now online`,
+  DEVICE_ONLINE: (label) => `📡 Device *${label}* is now online`,
 
-  DEVICE_OFFLINE: (label) => `📡 Device <b>${label}</b> is now offline`,
+  DEVICE_OFFLINE: (label) => `📡 Device *${label}* is now offline`,
 
   // History
-  NO_HISTORY: 'No power events recorded this month.',
+  NO_HISTORY: 'No power events recorded this month\\.',
   NO_EVENTS_THIS_MONTH: 'No events this month',
   OUTAGE_HISTORY_HEADER: (monthName) => `Outage History — ${monthName}`,
 
@@ -71,11 +97,11 @@ Outage duration: ${duration}`,
   STATUS_OFF: 'OFF',
 
   // Errors
-  ERROR_GENERIC: 'Something went wrong. Please try again later.',
+  ERROR_GENERIC: 'Something went wrong\\. Please try again later\\.',
   ERROR_DEVICE_ALREADY_REGISTERED:
-    'This device is already registered in the system.',
-  ERROR_DEVICE_NOT_OWNED: `You don't have permission to access this device.`,
+    'This device is already registered in the system\\.',
+  ERROR_DEVICE_NOT_OWNED: `You don't have permission to access this device\\.`,
   ERROR_USER_ALREADY_EXISTS:
-    'You are already registered! Use /help to see available commands.',
-  ERROR_UNAUTHORIZED: 'You are not authorized to perform this action.',
+    'You are already registered\\! Use the menu below to navigate\\.',
+  ERROR_UNAUTHORIZED: 'You are not authorized to perform this action\\.',
 };

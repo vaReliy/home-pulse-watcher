@@ -4,12 +4,17 @@ import type {
   IUserDeviceRepository,
 } from '@home-pulse-watcher/core';
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
-import { MessageFormatter } from '../formatters/message.formatter.js';
 import { TranslationService } from '../i18n/index.js';
+import {
+  escapeMarkdownV2,
+  boldMd,
+  codeMd,
+} from '../formatters/escape-markdown.js';
+import { buildMainMenuKeyboard } from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /**
- * Handles /devices command - lists user's linked devices.
+ * Handles devices display — lists user's linked devices.
  * Requires authenticated user.
  */
 @Injectable()
@@ -21,7 +26,6 @@ export class DevicesHandler {
     private readonly deviceRepository: IDeviceRepository,
     @Inject(REPOSITORY_TOKENS.USER_DEVICE)
     private readonly userDeviceRepository: IUserDeviceRepository,
-    private readonly messageFormatter: MessageFormatter,
     private readonly translationService: TranslationService,
   ) {}
 
@@ -29,7 +33,10 @@ export class DevicesHandler {
     const user = ctx.user;
     if (!user) {
       const msgs = this.translationService.getMessages();
-      await ctx.reply(msgs.NOT_REGISTERED, { parse_mode: 'HTML' });
+      await ctx.reply(msgs.NOT_REGISTERED, {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
       return;
     }
 
@@ -39,30 +46,38 @@ export class DevicesHandler {
       const userDevices = await this.userDeviceRepository.findByUserId(user.id);
 
       if (userDevices.length === 0) {
-        await ctx.reply(msgs.NO_DEVICES, { parse_mode: 'HTML' });
+        await ctx.reply(msgs.NO_DEVICES, {
+          parse_mode: 'MarkdownV2',
+          ...buildMainMenuKeyboard(msgs),
+        });
         return;
       }
 
       // Build device list message
-      const lines = [`<b>${msgs.YOUR_DEVICES_HEADER}</b>\n`];
+      const lines = [`${boldMd(escapeMarkdownV2(msgs.YOUR_DEVICES_HEADER))}\n`];
 
       for (const ud of userDevices) {
         const device = await this.deviceRepository.findById(ud.deviceId);
         if (device) {
           const rawLabel = ud.customName ?? device.label ?? device.macAddress;
-          const label = this.messageFormatter.escapeHtml(rawLabel);
-          const mac = this.messageFormatter.escapeHtml(device.macAddress);
+          const label = escapeMarkdownV2(rawLabel);
           const online = device.isOnline() ? '🟢' : '🔴';
-          lines.push(`${online} <b>${label}</b>`);
-          lines.push(`   ${msgs.MAC_LABEL} <code>${mac}</code>`);
-          lines.push(`   ${msgs.ROLE_LABEL} ${ud.role}\n`);
+          lines.push(`${online} ${boldMd(label)}`);
+          lines.push(`   ${msgs.MAC_LABEL} ${codeMd(device.macAddress)}`);
+          lines.push(`   ${msgs.ROLE_LABEL} ${escapeMarkdownV2(ud.role)}\n`);
         }
       }
 
-      await ctx.reply(lines.join('\n'), { parse_mode: 'HTML' });
+      await ctx.reply(lines.join('\n'), {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
     } catch (error) {
       this.logger.error('Failed to list devices', error);
-      await ctx.reply(msgs.ERROR_GENERIC);
+      await ctx.reply(msgs.ERROR_GENERIC, {
+        parse_mode: 'MarkdownV2',
+        ...buildMainMenuKeyboard(msgs),
+      });
     }
   }
 }

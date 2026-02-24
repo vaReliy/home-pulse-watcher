@@ -8,23 +8,14 @@ import {
   LOCALE_INTL_MAP,
 } from '../i18n/locale.config.js';
 import type { SupportedLocale } from '../i18n/locale.config.js';
+import { escapeMarkdownV2, boldMd } from './escape-markdown.js';
 
 /**
- * Formats messages for Telegram with HTML formatting.
+ * Formats messages for Telegram with MarkdownV2 formatting.
  */
 @Injectable()
 export class MessageFormatter {
   constructor(private readonly translationService: TranslationService) {}
-
-  /**
-   * Escape special HTML characters to prevent formatting issues.
-   */
-  escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-  }
 
   /**
    * Format a single device status for display.
@@ -37,10 +28,12 @@ export class MessageFormatter {
   ): string {
     const msgs = this.translationService.getMessages(locale);
     const rawLabel = customName ?? device.label ?? device.macAddress;
-    const label = this.escapeHtml(rawLabel);
+    const label = escapeMarkdownV2(rawLabel);
     const status = device.lastStatus === PowerStatus.ON ? 'ON' : 'OFF';
     const lastSeen = device.lastSeenAt
-      ? this.formatDateTime(device.lastSeenAt, locale, timezone)
+      ? escapeMarkdownV2(
+          this.formatDateTime(device.lastSeenAt, locale, timezone),
+        )
       : msgs.LAST_SEEN_NEVER;
 
     return msgs.DEVICE_STATUS(label, status, lastSeen);
@@ -60,7 +53,7 @@ export class MessageFormatter {
       return msgs.NO_DEVICES;
     }
 
-    const header = `<b>${msgs.DEVICE_STATUS_HEADER}</b>\n`;
+    const header = `${boldMd(escapeMarkdownV2(msgs.DEVICE_STATUS_HEADER))}\n`;
     const statuses = devices
       .map(({ device, customName }) =>
         this.formatDeviceStatus(device, customName, locale, timezone),
@@ -80,10 +73,10 @@ export class MessageFormatter {
     timezone?: string,
   ): string {
     const msgs = this.translationService.getMessages(locale);
-    const label = this.escapeHtml(deviceLabel);
+    const label = escapeMarkdownV2(deviceLabel);
     return msgs.POWER_LOST(
       label,
-      this.formatDateTime(timestamp, locale, timezone),
+      escapeMarkdownV2(this.formatDateTime(timestamp, locale, timezone)),
     );
   }
 
@@ -98,14 +91,14 @@ export class MessageFormatter {
     timezone?: string,
   ): string {
     const msgs = this.translationService.getMessages(locale);
-    const label = this.escapeHtml(deviceLabel);
+    const label = escapeMarkdownV2(deviceLabel);
     const duration =
       durationSeconds !== null
-        ? this.formatDuration(durationSeconds, locale)
+        ? escapeMarkdownV2(this.formatDuration(durationSeconds, locale))
         : msgs.DURATION_UNKNOWN;
     return msgs.POWER_RESTORED(
       label,
-      this.formatDateTime(timestamp, locale, timezone),
+      escapeMarkdownV2(this.formatDateTime(timestamp, locale, timezone)),
       duration,
     );
   }
@@ -115,7 +108,7 @@ export class MessageFormatter {
    */
   formatDeviceOnline(deviceLabel: string, locale?: string): string {
     const msgs = this.translationService.getMessages(locale);
-    const label = this.escapeHtml(deviceLabel);
+    const label = escapeMarkdownV2(deviceLabel);
     return msgs.DEVICE_ONLINE(label);
   }
 
@@ -124,7 +117,7 @@ export class MessageFormatter {
    */
   formatDeviceOffline(deviceLabel: string, locale?: string): string {
     const msgs = this.translationService.getMessages(locale);
-    const label = this.escapeHtml(deviceLabel);
+    const label = escapeMarkdownV2(deviceLabel);
     return msgs.DEVICE_OFFLINE(label);
   }
 
@@ -154,11 +147,16 @@ export class MessageFormatter {
       year: 'numeric',
       timeZone: tz,
     });
-    const lines = [`<b>${msgs.OUTAGE_HISTORY_HEADER(monthName)}</b>\n`];
+    const lines = [
+      `${boldMd(escapeMarkdownV2(msgs.OUTAGE_HISTORY_HEADER(monthName)))}\n`,
+    ];
+
+    let totalOutages = 0;
+    let totalDowntimeSeconds = 0;
 
     for (const { label, events } of deviceHistories) {
-      const escapedLabel = this.escapeHtml(label);
-      lines.push(`<b>${escapedLabel}</b>`);
+      const escapedLabel = escapeMarkdownV2(label);
+      lines.push(boldMd(escapedLabel));
 
       if (events.length === 0) {
         lines.push(`  ${msgs.NO_EVENTS_THIS_MONTH}\n`);
@@ -166,18 +164,38 @@ export class MessageFormatter {
       }
 
       for (const event of events) {
-        const time = this.formatDateTime(event.timestamp, locale, timezone);
+        const time = escapeMarkdownV2(
+          this.formatDateTime(event.timestamp, locale, timezone),
+        );
         const status =
           event.status === PowerStatus.ON
             ? `🟢 ${msgs.STATUS_ON}`
             : `🔴 ${msgs.STATUS_OFF}`;
+
+        if (event.status === PowerStatus.OFF) {
+          totalOutages++;
+        }
+        if (event.duration !== null) {
+          totalDowntimeSeconds += event.duration;
+        }
+
         const duration =
           event.duration !== null
-            ? ` (${this.formatDuration(event.duration, locale)})`
+            ? ` \\(${escapeMarkdownV2(this.formatDuration(event.duration, locale))}\\)`
             : '';
         lines.push(`  ${time} — ${status}${duration}`);
       }
       lines.push('');
+    }
+
+    // Outage summary
+    if (totalOutages > 0) {
+      const summaryDuration = escapeMarkdownV2(
+        this.formatDuration(totalDowntimeSeconds, locale),
+      );
+      lines.push(
+        `\u{1F4CA} ${escapeMarkdownV2(String(totalOutages))} / ${summaryDuration}`,
+      );
     }
 
     return lines.join('\n').trimEnd();
