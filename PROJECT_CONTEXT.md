@@ -100,6 +100,7 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 - 16 samples averaged, 5 ms between samples (~80 ms per read)
 - Hardware V2.1: 5V USB → 10 kΩ / 10 kΩ divider + 0.1 µF ceramic cap → GPIO2
+- Voltage divider formula: V_out = V_in × R2/(R1+R2); target 2.2–3.0V (see [Admin Guide](docs/admin-guide.md#voltage-divider-formula) for non-standard adapters)
 - Full power: 5V × 10/20 = 2.5V → ADC ~3100
 
 #### Layer 2 — Firmware Confirmation Window (V3)

@@ -5,6 +5,7 @@ Technical summary of the multi-layer power status detection pipeline.
 ## 1. ADC Threshold Logic
 
 **Hardware**: 5V USB adapter -> 10k/10k voltage divider + 0.1µF cap -> ESP32-C3 GPIO (12-bit ADC, 0-4095).
+For non-standard input voltages, adjust R1/R2 per the voltage divider formula in the [Admin Guide](../admin-guide.md#voltage-divider-formula).
 
 | Condition               | Voltage at GPIO | ADC Value | Result                      |
 | ----------------------- | --------------- | --------- | --------------------------- |

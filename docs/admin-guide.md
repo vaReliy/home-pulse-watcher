@@ -216,22 +216,43 @@ The ESP32 monitors grid power via a 5V USB adapter and a resistive voltage divid
 ```
 5V USB Adapter (powered by grid)
         │
-       [R1]  10kΩ
+       [R1]  10kΩ  ← Input-side (connects to V_in)
         │
         ├──── GPIO 2 (ADC input)
         │                 │
-       [R2]  10kΩ       [C1] 0.1µF ceramic
+       [R2]  10kΩ       [C1] 0.1µF ceramic (always in parallel with R2)
         │                 │
         └────┬────────────┘
              │
             GND
 ```
 
-- **Full grid power (5V adapter):** 5V × 10k/(10k+10k) = 2.5V at GPIO → ADC ~3100
-- **Brownout (~3V adapter):** 3V × 10k/20k = 1.5V → ADC ~1860 (hysteresis band, ignored)
+- **Full grid power (5V adapter):** 5V × R2/(R1+R2) = 5V × 10k/(10k+10k) = 2.5V at GPIO → ADC ~3100
+- **Brownout (~3V adapter):** 3V × R2/(R1+R2) = 3V × 10k/(10k+10k) = 1.5V → ADC ~1860 (hysteresis band, ignored)
 - **Grid down (0V adapter):** 0V → ADC ~0
 
 The 0.1µF ceramic capacitor across R2 filters high-frequency EMI noise on the ADC input, preventing false readings from floating-input antenna effects.
+
+### Voltage Divider Formula
+
+The output voltage at GPIO is determined by:
+
+```
+V_out = V_in × R2 / (R1 + R2)
+```
+
+**Target range:** V_out should be **2.2V–3.0V** — above the ADC threshold (2200 ≈ 1.75V) with margin, and safely below the 3.3V GPIO absolute maximum.
+
+**Worked examples for different adapters:**
+
+| Adapter           | V_in | R1   | R2   | V_out | ADC (approx) |
+| ----------------- | ---- | ---- | ---- | ----- | ------------ |
+| Standard USB (5V) | 5V   | 10kΩ | 10kΩ | 2.5V  | ~3100        |
+| Nokia/High-V (7V) | 7V   | 20kΩ | 10kΩ | 2.33V | ~2890        |
+
+> **Safety warning:** V_out must **never** exceed 3.3V — this is the ESP32 GPIO absolute maximum. Always calculate before wiring.
+
+> **Capacitor note:** The 0.1µF (104) ceramic capacitor **must always** be placed in parallel with R2, regardless of resistor values chosen. It provides EMI filtering at the hardware level and prevents ghost readings.
 
 ### ADC Thresholds and Anti-Flapping
 
