@@ -382,7 +382,7 @@ describe('ProcessPowerStatusService', () => {
   });
 
   describe('server-side debounce', () => {
-    it('should debounce when status changes within 30s of last event', async () => {
+    it('should debounce when status changes within 5s of last event', async () => {
       const deviceRepo = createMockDeviceRepository();
       const eventRepo = createMockPowerEventRepository();
       const emitter = createMockEventEmitter();
@@ -392,11 +392,11 @@ describe('ProcessPowerStatusService', () => {
       jest.setSystemTime(now);
 
       try {
-        // Last event was 10 seconds ago
+        // Last event was 3 seconds ago
         const recentEvent = createMockPowerEvent({
           id: 'recent-event',
           status: PowerStatus.OFF,
-          timestamp: new Date('2026-02-04T09:59:50Z'), // 10s ago
+          timestamp: new Date('2026-02-04T09:59:57Z'), // 3s ago
         });
 
         deviceRepo.findById.mockResolvedValue(
@@ -433,7 +433,7 @@ describe('ProcessPowerStatusService', () => {
       }
     });
 
-    it('should NOT debounce when status changes after 30s', async () => {
+    it('should NOT debounce when status changes after 5s', async () => {
       const deviceRepo = createMockDeviceRepository();
       const eventRepo = createMockPowerEventRepository();
       const emitter = createMockEventEmitter();
@@ -443,11 +443,11 @@ describe('ProcessPowerStatusService', () => {
       jest.setSystemTime(now);
 
       try {
-        // Last event was 60 seconds ago
+        // Last event was 10 seconds ago
         const oldEvent = createMockPowerEvent({
           id: 'old-event',
           status: PowerStatus.OFF,
-          timestamp: new Date('2026-02-04T09:59:00Z'), // 60s ago
+          timestamp: new Date('2026-02-04T09:59:50Z'), // 10s ago
         });
 
         deviceRepo.findById.mockResolvedValue(
@@ -513,19 +513,19 @@ describe('ProcessPowerStatusService', () => {
       expect(result.data.debounced).toBe(false);
     });
 
-    it('should debounce at exactly 29s but not at 30s', async () => {
+    it('should debounce at exactly 4s but not at 5s', async () => {
       const deviceRepo = createMockDeviceRepository();
       const eventRepo = createMockPowerEventRepository();
       const emitter = createMockEventEmitter();
 
-      const now = new Date('2026-02-04T10:00:30Z');
+      const now = new Date('2026-02-04T10:00:05Z');
       jest.useFakeTimers();
       jest.setSystemTime(now);
 
       try {
-        // Last event exactly 29 seconds ago — should debounce
-        const event29sAgo = createMockPowerEvent({
-          id: 'event-29s',
+        // Last event exactly 4 seconds ago — should debounce
+        const event4sAgo = createMockPowerEvent({
+          id: 'event-4s',
           status: PowerStatus.OFF,
           timestamp: new Date('2026-02-04T10:00:01Z'),
         });
@@ -536,8 +536,8 @@ describe('ProcessPowerStatusService', () => {
         deviceRepo.updateStatus.mockResolvedValue(
           createMockDevice({ lastStatus: PowerStatus.ON }),
         );
-        eventRepo.findLatestByDeviceId.mockResolvedValue(event29sAgo);
-        eventRepo.update.mockResolvedValue(event29sAgo);
+        eventRepo.findLatestByDeviceId.mockResolvedValue(event4sAgo);
+        eventRepo.update.mockResolvedValue(event4sAgo);
         eventRepo.create.mockResolvedValue(mockPowerEvent);
 
         const service = new ProcessPowerStatusService(
@@ -553,10 +553,10 @@ describe('ProcessPowerStatusService', () => {
         expect(result.data.debounced).toBe(true);
         expect(emitter.emit).not.toHaveBeenCalled();
 
-        // Now test exactly 30s — should NOT debounce
+        // Now test exactly 5s — should NOT debounce
         emitter.emit.mockClear();
-        const event30sAgo = createMockPowerEvent({
-          id: 'event-30s',
+        const event5sAgo = createMockPowerEvent({
+          id: 'event-5s',
           status: PowerStatus.OFF,
           timestamp: new Date('2026-02-04T10:00:00Z'),
         });
@@ -564,8 +564,8 @@ describe('ProcessPowerStatusService', () => {
         deviceRepo.findById.mockResolvedValue(
           createMockDevice({ lastStatus: PowerStatus.OFF }),
         );
-        eventRepo.findLatestByDeviceId.mockResolvedValue(event30sAgo);
-        eventRepo.update.mockResolvedValue(event30sAgo);
+        eventRepo.findLatestByDeviceId.mockResolvedValue(event5sAgo);
+        eventRepo.update.mockResolvedValue(event5sAgo);
 
         const result2 = await service.run(
           { status: PowerStatus.ON, voltage: null },

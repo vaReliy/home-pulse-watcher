@@ -27,10 +27,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-// DEV: HTTP (local development)
-// #include <WiFiClient.h>
+// DEV: HTTP (local development) — active by default
+#include <WiFiClient.h>
 // PROD: HTTPS (Cloud Run) — uncomment below, comment above
-#include <WiFiClientSecure.h>
+// #include <WiFiClientSecure.h>
 #include <time.h>
 #include <mbedtls/md.h>
 #include <esp_task_wdt.h>
@@ -44,22 +44,23 @@ static int lastPowerStatus = -1;  // -1 = unknown, 0 = off, 1 = on
 static unsigned long lastCheckTime = 0;
 static bool timeInitialized = false;
 static int wifiFailureCount = 0;
-
-// Anti-flapping state
-static int confirmationCount = 0;          // Consecutive reads of pending new state
-static int pendingStatus = -1;             // State being confirmed (-1 = none)
-static unsigned long lastStateChangeTime = 0;  // millis() of last confirmed transition
 static int lastAdcValue = 0;               // Most recent averaged ADC reading
-static int confirmationNoise = 0;          // Contradicting samples during confirmation
-static unsigned long confirmationStartTime = 0;  // millis() when confirmation window started
+
+// Confirmation state (2 consecutive reads to confirm)
+static int consecutiveNewState = 0;        // Consecutive reads of a new state
+static int pendingStatus = -1;             // What that new state is (-1 = none)
+
+// Messaging state (decoupled from internal state)
+static unsigned long lastSendTime = 0;     // Last successful HTTP send
+static unsigned long lastHeartbeatTime = 0; // Last heartbeat send
 
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
 
-// DEV: HTTP client (local development)
-// static WiFiClient client;
+// DEV: HTTP client (local development) — active by default
+static WiFiClient client;
 // PROD: HTTPS client — uncomment below, comment above
-static WiFiClientSecure secureClient;
+// static WiFiClientSecure secureClient;
 
 /** Set WS2812 LED color */
 void setLedColor(uint8_t r, uint8_t g, uint8_t b) {
@@ -260,10 +261,10 @@ bool sendPowerStatus(int status, int adcValue) {
 
     // Send HTTP POST request
     HTTPClient http;
-    // DEV: HTTP
-    // http.begin(client, BACKEND_URL);
+    // DEV: HTTP (local development) — active by default
+    http.begin(client, BACKEND_URL);
     // PROD: HTTPS — uncomment below, comment above
-    http.begin(secureClient, BACKEND_URL);
+    // http.begin(secureClient, BACKEND_URL);
     http.setTimeout(HTTP_TIMEOUT_MS);
 
     // Set headers
@@ -305,9 +306,9 @@ void setup() {
         ESP.restart();
     }
 
-    // PROD: HTTPS — uncomment below
-    secureClient.setInsecure();
     // DEV: HTTP — no TLS setup needed
+    // PROD: HTTPS — uncomment below
+    // secureClient.setInsecure();
 
     if (!initializeTime()) {
         Serial.println("Failed to sync time. Restarting...");
@@ -327,10 +328,12 @@ void setup() {
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(lastPowerStatus);
 
-    if (!sendPowerStatus(lastPowerStatus, lastAdcValue)) {
+    if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
+        lastSendTime = millis();
+    } else {
         Serial.println("Failed to send initial status");
     }
-    lastStateChangeTime = millis();
+    lastHeartbeatTime = millis();
 
     // Initialize hardware watchdog timer
     esp_task_wdt_config_t wdtConfig = {
@@ -384,65 +387,62 @@ void loop() {
                               (lastAdcValue <= ADC_THRESHOLD_LOW)  ? "<LOW"  : "HYSTERESIS";
 
         if (resolvedStatus != lastPowerStatus) {
-            // Status differs from confirmed state — start/continue confirmation
+            // Status differs — start/continue confirmation
             if (resolvedStatus == pendingStatus) {
-                confirmationCount++;
-                confirmationNoise = 0;  // Good read resets noise counter
-                unsigned long elapsed = currentTime - confirmationStartTime;
-                Serial.printf("Confirm %d->%d: %d/%d (ADC: %d [%s]) noise=%d/%d elapsed=%lums\n",
-                    lastPowerStatus, resolvedStatus, confirmationCount, CONFIRMATION_CHECKS,
-                    lastAdcValue, adcBand, confirmationNoise, CONFIRMATION_MAX_NOISE, elapsed);
+                consecutiveNewState++;
             } else {
-                // New pending state (or first detection)
                 pendingStatus = resolvedStatus;
-                confirmationCount = 1;
-                confirmationNoise = 0;
-                confirmationStartTime = currentTime;
-                Serial.printf("New pending state: %d (ADC: %d [%s])\n",
-                    resolvedStatus, lastAdcValue, adcBand);
+                consecutiveNewState = 1;
             }
 
-            if (confirmationCount >= CONFIRMATION_CHECKS) {
-                // State confirmed — check cooldown
-                unsigned long elapsed = currentTime - confirmationStartTime;
-                if (currentTime - lastStateChangeTime < MIN_STATE_CHANGE_MS) {
-                    Serial.printf("Cooldown active (%lums since last change), suppressing\n",
-                        currentTime - lastStateChangeTime);
-                } else {
-                    Serial.printf("Power status confirmed: %d -> %d (ADC: %d [%s]) total=%lums\n",
-                        lastPowerStatus, resolvedStatus, lastAdcValue, adcBand, elapsed);
-                    updateStatusLed(resolvedStatus);
+            Serial.printf("Confirm %d->%d: %d/%d (ADC: %d [%s])\n",
+                lastPowerStatus, resolvedStatus, consecutiveNewState, CONFIRMATION_READS,
+                lastAdcValue, adcBand);
 
-                    if (sendPowerStatus(resolvedStatus, lastAdcValue)) {
-                        lastPowerStatus = resolvedStatus;
-                        lastStateChangeTime = currentTime;
+            if (consecutiveNewState >= CONFIRMATION_READS) {
+                // State confirmed — always update internal state and LED
+                Serial.printf("State confirmed: %d -> %d (ADC: %d [%s])\n",
+                    lastPowerStatus, pendingStatus, lastAdcValue, adcBand);
+                lastPowerStatus = pendingStatus;
+                updateStatusLed(lastPowerStatus);
+
+                // Reset confirmation
+                pendingStatus = -1;
+                consecutiveNewState = 0;
+
+                // Send HTTP only if cooldown elapsed
+                if (currentTime - lastSendTime >= MIN_STATE_CHANGE_MS) {
+                    if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
+                        lastSendTime = currentTime;
                         Serial.println("Status update sent successfully");
                     } else {
-                        Serial.println("Failed to send status update, will retry");
+                        Serial.println("Failed to send status update, heartbeat will resync");
                     }
+                } else {
+                    Serial.printf("Cooldown active (%lums since last send), state updated locally\n",
+                        currentTime - lastSendTime);
                 }
-                // Reset confirmation state either way
-                pendingStatus = -1;
-                confirmationCount = 0;
-                confirmationNoise = 0;
             }
         } else {
-            // Status matches confirmed state — check spike tolerance
+            // Status matches confirmed state — reset any pending confirmation
             if (pendingStatus != -1) {
-                confirmationNoise++;
-                unsigned long elapsed = currentTime - confirmationStartTime;
-                if (confirmationNoise >= CONFIRMATION_MAX_NOISE) {
-                    Serial.printf("Pending state %d cleared after %d noise samples (ADC: %d [%s]) elapsed=%lums\n",
-                        pendingStatus, confirmationNoise, lastAdcValue, adcBand, elapsed);
-                    pendingStatus = -1;
-                    confirmationCount = 0;
-                    confirmationNoise = 0;
-                } else {
-                    Serial.printf("Noise spike %d/%d during %d->%d (ADC: %d [%s]) elapsed=%lums\n",
-                        confirmationNoise, CONFIRMATION_MAX_NOISE,
-                        lastPowerStatus, pendingStatus, lastAdcValue, adcBand, elapsed);
-                }
+                Serial.printf("Pending state %d cleared (ADC: %d [%s])\n",
+                    pendingStatus, lastAdcValue, adcBand);
+                pendingStatus = -1;
+                consecutiveNewState = 0;
             }
+        }
+    }
+
+    // Heartbeat — periodic sync to backend
+    if (currentTime - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
+        lastHeartbeatTime = currentTime;
+        Serial.printf("Heartbeat: status=%d, ADC=%d\n", lastPowerStatus, lastAdcValue);
+        if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
+            lastSendTime = currentTime;
+            Serial.println("Heartbeat sent");
+        } else {
+            Serial.println("Heartbeat failed, will retry next interval");
         }
     }
 

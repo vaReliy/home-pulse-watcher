@@ -245,8 +245,8 @@ The firmware uses a three-zone hysteresis model to prevent false triggers during
 
 Additional protections:
 
-- **Confirmation window:** State must persist for 10 consecutive readings (10 × 100ms = 1s), tolerating up to 3 noise spikes
-- **Cooldown:** Minimum 30s between transitions (firmware) + 30s server-side debounce
+- **Confirmation window:** 2 consecutive matching reads (2 × 200ms = ~400ms) — the 0.1µF cap handles noise filtering at the hardware level
+- **Cooldown:** Minimum 2s between transitions (firmware) + 5s server-side debounce
 - **Voltage logging:** Each status report includes the raw ADC value for diagnostics
 
 ### Calibrating Thresholds

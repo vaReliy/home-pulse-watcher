@@ -14,15 +14,15 @@
 #define LED_BRIGHTNESS 10       // WS2812 brightness (0-255)
 
 // Timing Configuration
-#define CHECK_INTERVAL_MS 100       // Power status check interval (milliseconds)
+#define CHECK_INTERVAL_MS 200       // Power status check interval (milliseconds)
 #define WIFI_TIMEOUT_MS 30000       // WiFi connection timeout
 #define HTTP_TIMEOUT_MS 10000       // HTTP request timeout
 #define RETRY_DELAY_MS 5000         // Delay between retries on failure
 
-// Anti-flapping Configuration
-#define CONFIRMATION_CHECKS 10          // State must persist N consecutive reads before sending (10 × 100ms = 1s)
-#define MIN_STATE_CHANGE_MS 30000       // 30s cooldown between transitions
-#define CONFIRMATION_MAX_NOISE 3        // Max spike/noise samples tolerated during confirmation
+// State Confirmation & Messaging
+#define CONFIRMATION_READS 2            // Consecutive matching reads to confirm state change (2 × 200ms = 400ms)
+#define MIN_STATE_CHANGE_MS 2000        // 2s cooldown between HTTP sends (state always updates locally)
+#define HEARTBEAT_INTERVAL_MS 300000    // 5 min — periodic status sync to backend
 
 // ADC Configuration (voltage divider: 5V adapter -> 10k/10k + 0.1µF cap -> GPIO)
 // Full power: 5V × 10/20 = 2.5V -> ADC ~3100

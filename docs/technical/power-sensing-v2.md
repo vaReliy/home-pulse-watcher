@@ -28,36 +28,37 @@ The hysteresis band covers the brownout zone to prevent flapping during unstable
 
 After ADC resolves a state, the firmware requires sustained agreement before acting:
 
-- **Check interval**: 100ms (`CHECK_INTERVAL_MS`)
-- **Confirmation**: 10 reads (`CONFIRMATION_CHECKS`) with up to 3 noise spikes tolerated (`CONFIRMATION_MAX_NOISE`) -> ~1s minimum detection time
-- **Cooldown**: 30s (`MIN_STATE_CHANGE_MS`) between accepted transitions
+- **Check interval**: 200ms (`CHECK_INTERVAL_MS`)
+- **Confirmation**: 2 consecutive matching reads (`CONFIRMATION_READS`) → ~400ms minimum detection time
+- **Cooldown**: 2s (`MIN_STATE_CHANGE_MS`) between HTTP sends (state always updates locally)
+- No software spike tolerance — the 0.1µF ceramic cap on the voltage divider filters high-frequency noise at the hardware level
 
 **State machine**:
 
-1. `resolvedStatus != lastPowerStatus` -> start/continue pending confirmation
+1. `resolvedStatus != lastPowerStatus` → start/continue pending confirmation
 2. If pending status matches resolved, increment `confirmationCount`
 3. If resolved flips to something else, reset to new pending with count=1
 4. If resolved matches confirmed state, clear any pending confirmation
-5. At `confirmationCount >= CONFIRMATION_CHECKS`, check cooldown -> send or suppress
+5. At `confirmationCount >= CONFIRMATION_READS`, accept transition — update `lastPowerStatus` and LED immediately, then check cooldown for HTTP send
 
-**Failed HTTP**: `lastPowerStatus` is only updated on successful send, so the firmware retries on the next loop iteration.
+**`lastPowerStatus`** is updated immediately on confirmation — never gated by HTTP success or cooldown. This ensures the device's internal state always tracks the hardware.
 
-**Source**: `firmware/esp32c3/src/config.h:17-24`, `main.cpp:369-413`
+**Source**: `firmware/esp32c3/src/config.h:17-24`, `main.cpp`
 
 ## 3. Server-Side Debounce
 
 Even after firmware filtering, the server applies a final notification debounce:
 
-- **Window**: 30 seconds (`MIN_DEBOUNCE_SECONDS`)
+- **Window**: 5 seconds (`MIN_DEBOUNCE_SECONDS`)
 - **PowerEvent is always created** and device status is always updated (data integrity preserved)
-- **Telegram notification is suppressed** only when: status actually changed AND `secondsSinceLastEvent < 30`
-- At exactly 30s, notification fires (strict `<` comparison)
+- **Telegram notification is suppressed** only when: status actually changed AND `secondsSinceLastEvent < 5`
+- At exactly 5s, notification fires (strict `<` comparison)
 
 **Not debounced**:
 
 - First-ever event for a device (no `lastEvent`)
 - Heartbeats (same status repeated) — `isStatusChange` is false, no debounce check
-- Events >= 30s after the previous event
+- Events >= 5s after the previous event
 
 **Response** includes `debounced: boolean` so firmware can log suppression.
 

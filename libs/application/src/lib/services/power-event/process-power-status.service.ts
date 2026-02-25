@@ -17,7 +17,7 @@ import {
 } from '../../events/power-status-changed.event.js';
 
 /** Minimum seconds between status-change notifications for the same device. */
-const MIN_DEBOUNCE_SECONDS = 30;
+const MIN_DEBOUNCE_SECONDS = 5;
 
 export interface ProcessPowerStatusInput {
   status: number;

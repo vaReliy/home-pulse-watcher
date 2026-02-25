@@ -102,24 +102,26 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 - Hardware V2.1: 5V USB → 10 kΩ / 10 kΩ divider + 0.1 µF ceramic cap → GPIO2
 - Full power: 5V × 10/20 = 2.5V → ADC ~3100
 
-#### Layer 2 — Firmware Confirmation Window
+#### Layer 2 — Firmware Confirmation Window (V3)
 
-- 10 consecutive identical reads required before accepting a transition (~1 s)
-- Check interval: 100 ms (`CHECK_INTERVAL_MS`) — hardware cap handles noise filtering
-- **Spike tolerance**: up to 3 contradicting (noise) samples tolerated during confirmation (`CONFIRMATION_MAX_NOISE`); a single ADC spike from parasitic capacitance discharge no longer resets the confirmation window — only 3+ sustained contradicting reads cancel it
-- Prevents acceptance of momentary glitches
+- 2 consecutive identical reads required before accepting a transition (~400 ms)
+- Check interval: 200 ms (`CHECK_INTERVAL_MS`)
+- No software spike tolerance — the 0.1 µF ceramic cap on the voltage divider filters high-frequency noise at the hardware level
+- Confirmation time: ~400 ms (was ~1 s in V2.1)
 
-#### Layer 3 — Firmware Cooldown
+#### Layer 3 — Firmware Cooldown & Heartbeat (V3.1)
 
-- 30 s minimum between accepted state changes (`MIN_STATE_CHANGE_MS`)
-- `lastPowerStatus` only updated on **successful HTTP send** (retry safety)
+- 2 s minimum between HTTP sends (`MIN_STATE_CHANGE_MS`)
+- `lastPowerStatus` updated **immediately** on confirmation — never gated by HTTP success or cooldown
+- Cooldown only suppresses HTTP sends, not internal state or LED updates
+- **Heartbeat**: every 5 min (`HEARTBEAT_INTERVAL_MS`), firmware sends current status to backend — ensures eventual sync even if a state-change HTTP send was suppressed or failed
 
 #### Layer 4 — Server-Side Debounce
 
-- 30 s window (`MIN_DEBOUNCE_SECONDS` in `process-power-status.service.ts`)
+- 5 s window (`MIN_DEBOUNCE_SECONDS` in `process-power-status.service.ts`)
 - PowerEvent **always** written to DB; Telegram notification suppressed if within window
 - Response includes `debounced: boolean` for firmware logging
-- **Not debounced**: first event ever, heartbeats (same status), events ≥ 30 s apart
+- **Not debounced**: first event ever, heartbeats (same status), events ≥ 5 s apart
 
 ### Telegram Bot
 
@@ -153,13 +155,16 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 **Solution** (commit `5f133ef`, Feb 19, 2026): The 4-layer pipeline described above — ADC hysteresis band eliminates noise in the middle range; confirmation window requires sustained state change; firmware cooldown prevents re-triggering; server debounce is last-resort protection.
 
+**Hardware V2.1 resolution**: The 10k/10k divider + 0.1 µF ceramic cap is the definitive hardware fix. The capacitor filters high-frequency noise at the source, eliminating the need for software spike tolerance. Firmware V3 removed `CONFIRMATION_MAX_NOISE` and reduced confirmation reads to 2 (from 10) as a result.
+
 **Do not regress**:
 
 - Never replace ADC-based sensing with a simple `digitalRead()` on GPIO2
-- Never remove the hysteresis band (the 801–2399 range must hold state, not toggle)
-- Never reduce `CONFIRMATION_CHECKS` below 6 without re-validating on real hardware (currently 10)
-- Never remove spike tolerance (`CONFIRMATION_MAX_NOISE`) — single ADC spikes from parasitic capacitance discharge during unplug are a proven real-world issue
+- Never remove the hysteresis band (the 1001–2199 range must hold state, not toggle)
+- Never remove the 0.1 µF ceramic cap from the voltage divider — it is the primary noise filter
+- Never gate `lastPowerStatus` updates on HTTP send success — state must track hardware
 - Server debounce is independent of firmware — both layers must remain active
+- Keep debounce windows short (single-digit seconds) — Hardware V2.1 (0.1 µF cap) is the primary noise filter; firmware/server should stay lean and responsive
 
 ---
 
