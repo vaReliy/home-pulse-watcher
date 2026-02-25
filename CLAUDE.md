@@ -75,7 +75,11 @@ const device = await userRepo.findByTelegramId(BigInt(123));
 
 - **Library**: Telegraf (TypeScript-native Telegram bot framework)
 - **Module**: `apps/api/src/modules/telegram/`
-- **Commands**: `/start`, `/help`, `/status`, `/devices`, `/history`
+- **Interaction model**: Button-driven; `/start` is the only slash command (user registration)
+  - **Reply Keyboard**: Status, Devices, Settings, Help (persistent bottom menu)
+  - **Inline Buttons**: Check Status, View History (in power event notifications)
+  - **Settings**: Stateless inline keyboard menu for locale and timezone selection
+- **Parse mode**: MarkdownV2 for all bot messages (`escape-markdown.ts` utility, `keyboard.builder.ts` for keyboard construction)
 - **Notifications**: Event-driven via `@OnEvent(POWER_STATUS_CHANGED_EVENT)`
 - **Authentication**: User verification via `telegramId` lookup before protected commands
 - **Environment**: `TELEGRAM_BOT_TOKEN` (required), `TELEGRAM_ADMIN_CHAT_ID` (optional)
@@ -97,7 +101,7 @@ Bot follows the adapter pattern - handlers call existing Application Services, k
 - **Framework**: NestJS 11
 - **Bundler**: Webpack via `@nx/webpack` (serverless bundling — all deps bundled except Prisma)
 - **ORM**: Prisma 7.3 with PostgreSQL
-- **Validation**: LIVR (custom rules use camelCase: `macAddress`, `hmacFormat`)
+- **Validation**: LIVR (custom rules use camelCase: `macAddress`, `hmacFormat`, `powerStatus`, `telegramId`)
 - **Testing**: Jest 30 with SWC compiler
 - **CLI**: nest-commander for admin tasks
 - **Deployment**: Google Cloud Run (Docker multi-stage build)

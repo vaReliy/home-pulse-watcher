@@ -125,6 +125,10 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 ### Telegram Bot
 
+- **Interaction model**: Button-driven via Reply Keyboard (Status, Devices, Settings, Help); `/start` is the only slash command (user registration)
+- **Inline Buttons**: Notifications include "Check Status" and "View History" action buttons
+- **Settings**: Stateless inline keyboard menu for locale and timezone selection
+- **Parse mode**: MarkdownV2 for all bot messages (utility: `escape-markdown.ts`)
 - i18n: default locale `uk` (Ukrainian), default timezone `Europe/Kyiv`; per-user overrides stored in DB
 - Rate limiting: 25 messages/batch, 1 s delay between batches
 - All user-facing strings go through `TranslationService` — no hardcoded display text
