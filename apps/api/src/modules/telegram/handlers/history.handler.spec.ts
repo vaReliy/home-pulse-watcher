@@ -32,6 +32,7 @@ describe('HistoryHandler', () => {
     label: 'Kitchen',
     lastStatus: PowerStatus.ON,
     lastSeenAt: new Date(),
+    firmwareVersion: null,
     isOnline: () => true,
   } as Device;
 

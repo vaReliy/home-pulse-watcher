@@ -93,6 +93,7 @@ void setupHardware() {
     Serial.println();
     Serial.println("=================================");
     Serial.println("HomePulse Watcher - ESP32-C3");
+    Serial.println("Firmware: v" FIRMWARE_VERSION);
     Serial.println("=================================");
 
     // Configure GPIO
@@ -273,9 +274,9 @@ bool sendPowerStatus(int status, int adcValue) {
     http.addHeader("X-Timestamp", String((unsigned long)timestamp));
     http.addHeader("X-Signature", signature);
 
-    // Build JSON body (voltage is informational, not part of HMAC payload)
-    char body[96];
-    snprintf(body, sizeof(body), "{\"status\":%d,\"voltage\":%d}", status, adcValue);
+    // Build JSON body (voltage and firmwareVersion are informational, not part of HMAC payload)
+    char body[128];
+    snprintf(body, sizeof(body), "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\"}", status, adcValue, FIRMWARE_VERSION);
 
     // Send request
     setLedColor(0, 0, 255);  // Blue during request

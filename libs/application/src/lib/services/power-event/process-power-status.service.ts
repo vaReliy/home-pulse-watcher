@@ -22,6 +22,7 @@ const MIN_DEBOUNCE_SECONDS = 5;
 export interface ProcessPowerStatusInput {
   status: number;
   voltage: number | null;
+  firmwareVersion: string | null;
 }
 
 export interface ProcessPowerStatusOutput {
@@ -65,6 +66,7 @@ export class ProcessPowerStatusService extends BaseService<
     return {
       status: ['required', 'powerStatus'],
       voltage: ['integer', { minNumber: 0 }, { maxNumber: 4095 }],
+      firmwareVersion: [{ maxLength: 20 }],
     };
   }
 
@@ -115,10 +117,11 @@ export class ProcessPowerStatusService extends BaseService<
       voltage: params.voltage,
     });
 
-    // 4. Update device status
+    // 4. Update device status (and firmware version if reported)
     const updatedDevice = await this.deviceRepository.updateStatus(deviceId, {
       lastStatus: newStatus,
       lastSeenAt: timestamp,
+      firmwareVersion: params.firmwareVersion ?? undefined,
     });
 
     // 5. Server-side debounce: suppress notification if status changed too quickly

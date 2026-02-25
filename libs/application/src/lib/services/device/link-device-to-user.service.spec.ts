@@ -30,6 +30,7 @@ describe('LinkDeviceToUserService', () => {
     label: 'Test Device',
     lastStatus: null,
     lastSeenAt: null,
+    firmwareVersion: null,
     isOnline: () => false,
   } as Device;
 

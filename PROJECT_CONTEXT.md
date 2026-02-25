@@ -168,25 +168,11 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 ---
 
-## Future Database Changes
+## Firmware Version Tracking
 
-### `firmwareVersion` field on `Device` (required for Phase 5.4 OTA)
+- Current firmware version: **3.1.0** (defined in `FIRMWARE_VERSION` constant in each `config.h`)
+- Devices report `firmwareVersion` in the JSON body of every status ping
+- Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
+- Older firmware without the field is handled gracefully (field remains `null`)
 
-When OTA updates (5.4) are implemented, the server needs to know each device's current firmware version in order to:
-
-- Display firmware status in `/devices` and `/status` Telegram commands
-- Track which devices have received an OTA update
-- Avoid re-flashing devices already on the latest version
-
-**Planned schema addition:**
-
-```prisma
-model Device {
-  ...
-  firmwareVersion  String?   // e.g. "1.2.0" — reported by device on each status ping
-}
-```
-
-Devices should report their firmware version in the HTTP payload. Until 5.4 is built, this field can be omitted (nullable). Add a Prisma migration when the OTA feature work begins.
-
-**Firmware hosting**: Firmware binaries will be stored on Google Cloud Storage (Always Free tier).
+**Firmware hosting** (future Phase 5.4 OTA): Firmware binaries will be stored on Google Cloud Storage (Always Free tier).

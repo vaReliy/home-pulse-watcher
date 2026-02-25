@@ -43,7 +43,11 @@ export class DeviceStatusController {
     @DeviceId() deviceId: string,
   ) {
     const result = await this.processPowerStatusService.run(
-      { status: dto.status, voltage: dto.voltage ?? null },
+      {
+        status: dto.status,
+        voltage: dto.voltage ?? null,
+        firmwareVersion: dto.firmwareVersion ?? null,
+      },
       { deviceId },
     );
 

@@ -29,6 +29,7 @@ model Device {
   label           String?
   lastStatus      Int?
   lastSeenAt      DateTime?    @updatedAt
+  firmwareVersion String?
   users           UserDevice[]
   events          PowerEvent[]
 }

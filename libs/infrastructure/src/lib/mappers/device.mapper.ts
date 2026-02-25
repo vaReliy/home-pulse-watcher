@@ -15,5 +15,6 @@ export function mapPrismaDeviceToEntity(prismaDevice: PrismaDevice): Device {
         ? (prismaDevice.lastStatus as PowerStatus)
         : null,
     lastSeenAt: prismaDevice.lastSeenAt,
+    firmwareVersion: prismaDevice.firmwareVersion,
   });
 }

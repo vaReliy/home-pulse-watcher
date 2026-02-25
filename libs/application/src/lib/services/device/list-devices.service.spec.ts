@@ -23,6 +23,7 @@ describe('ListDevicesService', () => {
       label: 'Living Room',
       lastStatus: 1,
       lastSeenAt: new Date(),
+      firmwareVersion: null,
       isOnline: () => true,
     } as Device,
     {
@@ -32,6 +33,7 @@ describe('ListDevicesService', () => {
       label: null,
       lastStatus: null,
       lastSeenAt: null,
+      firmwareVersion: null,
       isOnline: () => false,
     } as Device,
   ];

@@ -53,13 +53,20 @@ export class PrismaDeviceRepository implements IDeviceRepository {
 
   async updateStatus(
     id: string,
-    data: { lastStatus: PowerStatus; lastSeenAt: Date },
+    data: {
+      lastStatus: PowerStatus;
+      lastSeenAt: Date;
+      firmwareVersion?: string;
+    },
   ): Promise<Device> {
     const device = await this.prisma.device.update({
       where: { id },
       data: {
         lastStatus: data.lastStatus,
         lastSeenAt: data.lastSeenAt,
+        ...(data.firmwareVersion !== undefined && {
+          firmwareVersion: data.firmwareVersion,
+        }),
       },
     });
     return mapPrismaDeviceToEntity(device);

@@ -10,6 +10,7 @@ describe('mapPrismaDeviceToEntity', () => {
       label: 'Kitchen',
       lastStatus: 1,
       lastSeenAt: new Date('2024-01-01'),
+      firmwareVersion: '3.1.0',
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -21,6 +22,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.label).toBe('Kitchen');
     expect(result.lastStatus).toBe(PowerStatus.ON);
     expect(result.lastSeenAt).toEqual(new Date('2024-01-01'));
+    expect(result.firmwareVersion).toBe('3.1.0');
   });
 
   it('should handle null optional fields', () => {
@@ -31,6 +33,7 @@ describe('mapPrismaDeviceToEntity', () => {
       label: null,
       lastStatus: null,
       lastSeenAt: null,
+      firmwareVersion: null,
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -38,6 +41,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.label).toBeNull();
     expect(result.lastStatus).toBeNull();
     expect(result.lastSeenAt).toBeNull();
+    expect(result.firmwareVersion).toBeNull();
   });
 
   it('should map lastStatus 0 to PowerStatus.OFF', () => {
@@ -48,6 +52,7 @@ describe('mapPrismaDeviceToEntity', () => {
       label: null,
       lastStatus: 0,
       lastSeenAt: null,
+      firmwareVersion: null,
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);

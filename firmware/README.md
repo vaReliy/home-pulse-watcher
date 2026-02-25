@@ -95,13 +95,14 @@ See `secrets.h.example` for the full template.
 
 ### config.h (Hardware-specific)
 
-| Setting             | Default      | Description                   |
-| ------------------- | ------------ | ----------------------------- |
-| `POWER_SENSE_PIN`   | 2            | GPIO for power detection      |
-| `STATUS_LED_PIN`    | 8            | Onboard WS2812B RGB LED       |
-| `LED_BRIGHTNESS`    | 10           | WS2812 LED brightness (0-255) |
-| `CHECK_INTERVAL_MS` | 1000         | Power check interval          |
-| `NTP_SERVER`        | pool.ntp.org | Time sync server              |
+| Setting             | Default      | Description                              |
+| ------------------- | ------------ | ---------------------------------------- |
+| `FIRMWARE_VERSION`  | `"3.1.0"`    | Reported to backend on every status ping |
+| `POWER_SENSE_PIN`   | 2            | GPIO for power detection                 |
+| `STATUS_LED_PIN`    | 8            | Onboard WS2812B RGB LED                  |
+| `LED_BRIGHTNESS`    | 10           | WS2812 LED brightness (0-255)            |
+| `CHECK_INTERVAL_MS` | 200          | Power check interval (ms)                |
+| `NTP_SERVER`        | pool.ntp.org | Time sync server                         |
 
 ## Device Setup
 
@@ -130,12 +131,12 @@ The onboard WS2812B RGB LED shows device status:
 
 The serial output shows the error code from the backend (e.g. `HTTP 401: {"code":"...","message":"..."}`). Common causes:
 
-| Error Code           | Cause                                              | Fix                                              |
-| -------------------- | -------------------------------------------------- | ------------------------------------------------ |
-| `DEVICE_NOT_FOUND`   | Device MAC not registered in this environment's DB  | Run `device:register` against the correct backend |
-| `INVALID_SIGNATURE`  | `DEVICE_SECRET` in firmware doesn't match backend   | Re-register or verify the secret                  |
-| `EXPIRED_TIMESTAMP`  | Device clock >5 min off from server                 | Check NTP sync in serial output                   |
-| `MISSING_CREDENTIALS`| Auth headers not sent                               | Firmware bug — check `X-Device-Mac/Timestamp/Signature` headers |
+| Error Code            | Cause                                              | Fix                                                             |
+| --------------------- | -------------------------------------------------- | --------------------------------------------------------------- |
+| `DEVICE_NOT_FOUND`    | Device MAC not registered in this environment's DB | Run `device:register` against the correct backend               |
+| `INVALID_SIGNATURE`   | `DEVICE_SECRET` in firmware doesn't match backend  | Re-register or verify the secret                                |
+| `EXPIRED_TIMESTAMP`   | Device clock >5 min off from server                | Check NTP sync in serial output                                 |
+| `MISSING_CREDENTIALS` | Auth headers not sent                              | Firmware bug — check `X-Device-Mac/Timestamp/Signature` headers |
 
 ### WiFi Connection Failed
 

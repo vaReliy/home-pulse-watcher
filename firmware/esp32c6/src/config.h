@@ -11,6 +11,9 @@
  * Adjust pins according to your board variant.
  */
 
+// Firmware Version (reported to backend on every status ping)
+#define FIRMWARE_VERSION "3.1.0"
+
 // GPIO Configuration (ESP32-C6 SuperMini pinout)
 #define POWER_SENSE_PIN 2       // GPIO for power detection (connect to optocoupler output)
 #define STATUS_LED_PIN 8        // Onboard WS2812B RGB LED
