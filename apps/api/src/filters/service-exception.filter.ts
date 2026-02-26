@@ -18,11 +18,21 @@ export class ServiceExceptionFilter implements ExceptionFilter {
 
     const status = exception.httpStatus ?? HttpStatus.INTERNAL_SERVER_ERROR;
 
-    this.logger.warn(
-      `${exception.constructor.name}: ${exception.message}`,
-      exception.stack
-    );
-
-    response.status(status).json(exception.toJSON());
+    if (status >= 500) {
+      this.logger.error(
+        `${exception.constructor.name}: ${exception.message}`,
+        exception.stack,
+      );
+      response.status(status).json({
+        code: exception.code,
+        message: 'An unexpected error occurred',
+      });
+    } else {
+      this.logger.warn(
+        `${exception.constructor.name}: ${exception.message}`,
+        exception.stack,
+      );
+      response.status(status).json(exception.toJSON());
+    }
   }
 }

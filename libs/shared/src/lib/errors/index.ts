@@ -11,3 +11,8 @@ export {
   AuthenticationErrorCode,
   type AuthenticationErrorCodeType,
 } from './authentication.error.js';
+export {
+  DatabaseError,
+  DatabaseErrorCode,
+  type DatabaseErrorCodeType,
+} from './database.error.js';

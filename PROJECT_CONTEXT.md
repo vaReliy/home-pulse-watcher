@@ -56,6 +56,7 @@
 - Application services are plain TypeScript classes (no `@Injectable()`)
 - NestJS DI wiring lives only in the Interface layer, via Symbol tokens and factory providers
 - Config injected via `ServiceContext`, never via `process.env` directly (testability)
+- All Prisma calls wrapped with `withPrismaError()` — raw Prisma errors never leak past repositories
 
 ### Chista Service Pattern
 

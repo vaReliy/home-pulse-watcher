@@ -5,6 +5,7 @@ import type {
   DeviceRole,
 } from '@home-pulse-watcher/core';
 import { mapPrismaUserDeviceToEntity } from '../mappers/user-device.mapper.js';
+import { withPrismaError } from './prisma-error.wrapper.js';
 
 /**
  * Prisma implementation of IUserDeviceRepository.
@@ -17,23 +18,25 @@ export class PrismaUserDeviceRepository implements IUserDeviceRepository {
     userId: string,
     deviceId: string
   ): Promise<UserDevice | null> {
-    const userDevice = await this.prisma.userDevice.findUnique({
-      where: { userId_deviceId: { userId, deviceId } },
-    });
+    const userDevice = await withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.findUnique({
+        where: { userId_deviceId: { userId, deviceId } },
+      }),
+    );
     return userDevice ? mapPrismaUserDeviceToEntity(userDevice) : null;
   }
 
   async findByUserId(userId: string): Promise<UserDevice[]> {
-    const userDevices = await this.prisma.userDevice.findMany({
-      where: { userId },
-    });
+    const userDevices = await withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.findMany({ where: { userId } }),
+    );
     return userDevices.map(mapPrismaUserDeviceToEntity);
   }
 
   async findByDeviceId(deviceId: string): Promise<UserDevice[]> {
-    const userDevices = await this.prisma.userDevice.findMany({
-      where: { deviceId },
-    });
+    const userDevices = await withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.findMany({ where: { deviceId } }),
+    );
     return userDevices.map(mapPrismaUserDeviceToEntity);
   }
 
@@ -43,14 +46,16 @@ export class PrismaUserDeviceRepository implements IUserDeviceRepository {
     customName?: string | null;
     role?: DeviceRole;
   }): Promise<UserDevice> {
-    const userDevice = await this.prisma.userDevice.create({
-      data: {
-        userId: data.userId,
-        deviceId: data.deviceId,
-        customName: data.customName ?? null,
-        role: data.role ?? 'VIEWER',
-      },
-    });
+    const userDevice = await withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.create({
+        data: {
+          userId: data.userId,
+          deviceId: data.deviceId,
+          customName: data.customName ?? null,
+          role: data.role ?? 'VIEWER',
+        },
+      }),
+    );
     return mapPrismaUserDeviceToEntity(userDevice);
   }
 
@@ -63,29 +68,33 @@ export class PrismaUserDeviceRepository implements IUserDeviceRepository {
     if (data.customName !== undefined) updateData['customName'] = data.customName;
     if (data.role !== undefined) updateData['role'] = data.role;
 
-    const userDevice = await this.prisma.userDevice.update({
-      where: { userId_deviceId: { userId, deviceId } },
-      data: updateData,
-    });
+    const userDevice = await withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.update({
+        where: { userId_deviceId: { userId, deviceId } },
+        data: updateData,
+      }),
+    );
     return mapPrismaUserDeviceToEntity(userDevice);
   }
 
   async delete(userId: string, deviceId: string): Promise<void> {
-    await this.prisma.userDevice.delete({
-      where: { userId_deviceId: { userId, deviceId } },
-    });
+    await withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.delete({
+        where: { userId_deviceId: { userId, deviceId } },
+      }),
+    );
   }
 
   async exists(userId: string, deviceId: string): Promise<boolean> {
-    const count = await this.prisma.userDevice.count({
-      where: { userId, deviceId },
-    });
+    const count = await withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.count({ where: { userId, deviceId } }),
+    );
     return count > 0;
   }
 
   async countByDeviceId(deviceId: string): Promise<number> {
-    return this.prisma.userDevice.count({
-      where: { deviceId },
-    });
+    return withPrismaError('UserDevice', () =>
+      this.prisma.userDevice.count({ where: { deviceId } }),
+    );
   }
 }

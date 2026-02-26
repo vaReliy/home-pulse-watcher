@@ -71,8 +71,34 @@ A typical service follows this lifecycle:
 
 ### Error Handling
 
-- Use specific Error classes (e.g., `NotFoundError`, `DomainError`, `ValidationError`).
-- The Transport layer (NestJS) is responsible for mapping these to HTTP Status Codes via `ServiceExceptionFilter`.
+The error system provides defense-in-depth across three layers:
+
+**Error Class Hierarchy** (all extend `BaseError` in `@home-pulse-watcher/shared`):
+
+| Class                 | HTTP Status       | Purpose                                |
+| --------------------- | ----------------- | -------------------------------------- |
+| `ValidationError`     | 400               | LIVR validation failures               |
+| `AuthenticationError` | 401               | HMAC/credential failures               |
+| `NotFoundError`       | 404               | Resource not found                     |
+| `DomainError`         | 409 / 403 / 422   | Business rule violations               |
+| `DatabaseError`       | 409 / 500 / 503   | Translated Prisma errors               |
+
+**Repository Error Translation** (`withPrismaError` wrapper in Infrastructure layer):
+
+All Prisma calls in repositories are wrapped with `withPrismaError('EntityName', () => ...)`, which translates Prisma-specific errors into domain errors:
+- `P2025` (record not found) → `NotFoundError`
+- `P2002` (unique constraint) → `DatabaseError(UNIQUE_CONSTRAINT)` → 409
+- `P2003` (foreign key) → `DatabaseError(FOREIGN_KEY_CONSTRAINT)` → 500
+- `PrismaClientValidationError` → `DatabaseError(QUERY_ERROR)` → 500
+- `PrismaClientInitializationError` → `DatabaseError(CONNECTION_FAILED)` → 503
+- Non-Prisma errors re-thrown unchanged
+
+**Exception Filter Chain** (Interface layer):
+
+1. `ServiceExceptionFilter` — catches `BaseError` subclasses, sanitizes 500+ responses (logs full details, returns generic message to client)
+2. `AllExceptionsFilter` — catch-all for anything else (`HttpException`, raw `Error`), returns `{ code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' }`
+
+This ensures Prisma internals never leak outside the Infrastructure layer, and internal error details never reach API clients.
 
 ---
 

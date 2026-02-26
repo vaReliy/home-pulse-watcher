@@ -8,6 +8,7 @@ import { RepositoriesModule } from '../modules/repositories/repositories.module'
 import { ServicesModule } from '../modules/services/services.module';
 import { DeviceStatusModule } from '../modules/device-status/device-status.module';
 import { TelegramModule } from '../modules/telegram/telegram.module';
+import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { ServiceExceptionFilter } from '../filters/service-exception.filter';
 import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.interceptor';
 
@@ -23,6 +24,10 @@ import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.i
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
     {
       provide: APP_FILTER,
       useClass: ServiceExceptionFilter,

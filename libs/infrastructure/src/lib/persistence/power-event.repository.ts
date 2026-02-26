@@ -6,6 +6,7 @@ import type {
   PowerStatus,
 } from '@home-pulse-watcher/core';
 import { mapPrismaPowerEventToEntity } from '../mappers/power-event.mapper.js';
+import { withPrismaError } from './prisma-error.wrapper.js';
 
 /**
  * Prisma implementation of IPowerEventRepository.
@@ -15,28 +16,34 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async findById(id: string): Promise<PowerEvent | null> {
-    const event = await this.prisma.powerEvent.findUnique({ where: { id } });
+    const event = await withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.findUnique({ where: { id } }),
+    );
     return event ? mapPrismaPowerEventToEntity(event) : null;
   }
 
   async findMany(options: PowerEventQueryOptions): Promise<PowerEvent[]> {
     const where = this.buildWhereClause(options);
 
-    const events = await this.prisma.powerEvent.findMany({
-      where,
-      take: options.limit,
-      skip: options.offset,
-      orderBy: { timestamp: options.orderBy ?? 'desc' },
-    });
+    const events = await withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.findMany({
+        where,
+        take: options.limit,
+        skip: options.offset,
+        orderBy: { timestamp: options.orderBy ?? 'desc' },
+      }),
+    );
 
     return events.map(mapPrismaPowerEventToEntity);
   }
 
   async findLatestByDeviceId(deviceId: string): Promise<PowerEvent | null> {
-    const event = await this.prisma.powerEvent.findFirst({
-      where: { deviceId },
-      orderBy: { timestamp: 'desc' },
-    });
+    const event = await withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.findFirst({
+        where: { deviceId },
+        orderBy: { timestamp: 'desc' },
+      }),
+    );
     return event ? mapPrismaPowerEventToEntity(event) : null;
   }
 
@@ -47,15 +54,17 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
     duration?: number | null;
     voltage?: number | null;
   }): Promise<PowerEvent> {
-    const event = await this.prisma.powerEvent.create({
-      data: {
-        deviceId: data.deviceId,
-        status: data.status,
-        timestamp: data.timestamp ?? new Date(),
-        duration: data.duration ?? null,
-        voltage: data.voltage ?? null,
-      },
-    });
+    const event = await withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.create({
+        data: {
+          deviceId: data.deviceId,
+          status: data.status,
+          timestamp: data.timestamp ?? new Date(),
+          duration: data.duration ?? null,
+          voltage: data.voltage ?? null,
+        },
+      }),
+    );
     return mapPrismaPowerEventToEntity(event);
   }
 
@@ -63,21 +72,22 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
     id: string,
     data: { duration?: number | null },
   ): Promise<PowerEvent> {
-    const event = await this.prisma.powerEvent.update({
-      where: { id },
-      data,
-    });
+    const event = await withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.update({ where: { id }, data }),
+    );
     return mapPrismaPowerEventToEntity(event);
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.powerEvent.delete({ where: { id } });
+    await withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.delete({ where: { id } }),
+    );
   }
 
   async deleteByDeviceId(deviceId: string): Promise<number> {
-    const result = await this.prisma.powerEvent.deleteMany({
-      where: { deviceId },
-    });
+    const result = await withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.deleteMany({ where: { deviceId } }),
+    );
     return result.count;
   }
 
@@ -85,7 +95,9 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
     options: Omit<PowerEventQueryOptions, 'limit' | 'offset' | 'orderBy'>,
   ): Promise<number> {
     const where = this.buildWhereClause(options);
-    return this.prisma.powerEvent.count({ where });
+    return withPrismaError('PowerEvent', () =>
+      this.prisma.powerEvent.count({ where }),
+    );
   }
 
   private buildWhereClause(

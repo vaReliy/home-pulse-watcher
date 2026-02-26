@@ -5,6 +5,7 @@ import type {
   PowerStatus,
 } from '@home-pulse-watcher/core';
 import { mapPrismaDeviceToEntity } from '../mappers/device.mapper.js';
+import { withPrismaError } from './prisma-error.wrapper.js';
 
 /**
  * Prisma implementation of IDeviceRepository.
@@ -14,14 +15,16 @@ export class PrismaDeviceRepository implements IDeviceRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async findById(id: string): Promise<Device | null> {
-    const device = await this.prisma.device.findUnique({ where: { id } });
+    const device = await withPrismaError('Device', () =>
+      this.prisma.device.findUnique({ where: { id } }),
+    );
     return device ? mapPrismaDeviceToEntity(device) : null;
   }
 
   async findByMacAddress(macAddress: string): Promise<Device | null> {
-    const device = await this.prisma.device.findUnique({
-      where: { macAddress },
-    });
+    const device = await withPrismaError('Device', () =>
+      this.prisma.device.findUnique({ where: { macAddress } }),
+    );
     return device ? mapPrismaDeviceToEntity(device) : null;
   }
 
@@ -30,13 +33,15 @@ export class PrismaDeviceRepository implements IDeviceRepository {
     encryptedSecret: string;
     label?: string | null;
   }): Promise<Device> {
-    const device = await this.prisma.device.create({
-      data: {
-        macAddress: data.macAddress,
-        encryptedSecret: data.encryptedSecret,
-        label: data.label ?? null,
-      },
-    });
+    const device = await withPrismaError('Device', () =>
+      this.prisma.device.create({
+        data: {
+          macAddress: data.macAddress,
+          encryptedSecret: data.encryptedSecret,
+          label: data.label ?? null,
+        },
+      }),
+    );
     return mapPrismaDeviceToEntity(device);
   }
 
@@ -44,10 +49,9 @@ export class PrismaDeviceRepository implements IDeviceRepository {
     id: string,
     data: { label?: string | null; encryptedSecret?: string },
   ): Promise<Device> {
-    const device = await this.prisma.device.update({
-      where: { id },
-      data,
-    });
+    const device = await withPrismaError('Device', () =>
+      this.prisma.device.update({ where: { id }, data }),
+    );
     return mapPrismaDeviceToEntity(device);
   }
 
@@ -59,38 +63,40 @@ export class PrismaDeviceRepository implements IDeviceRepository {
       firmwareVersion?: string;
     },
   ): Promise<Device> {
-    const device = await this.prisma.device.update({
-      where: { id },
-      data: {
-        lastStatus: data.lastStatus,
-        lastSeenAt: data.lastSeenAt,
-        ...(data.firmwareVersion !== undefined && {
-          firmwareVersion: data.firmwareVersion,
-        }),
-      },
-    });
+    const device = await withPrismaError('Device', () =>
+      this.prisma.device.update({
+        where: { id },
+        data: {
+          lastStatus: data.lastStatus,
+          lastSeenAt: data.lastSeenAt,
+          ...(data.firmwareVersion !== undefined && {
+            firmwareVersion: data.firmwareVersion,
+          }),
+        },
+      }),
+    );
     return mapPrismaDeviceToEntity(device);
   }
 
   async delete(id: string): Promise<void> {
-    await this.prisma.device.delete({ where: { id } });
+    await withPrismaError('Device', () =>
+      this.prisma.device.delete({ where: { id } }),
+    );
   }
 
   async existsByMacAddress(macAddress: string): Promise<boolean> {
-    const count = await this.prisma.device.count({
-      where: { macAddress },
-    });
+    const count = await withPrismaError('Device', () =>
+      this.prisma.device.count({ where: { macAddress } }),
+    );
     return count > 0;
   }
 
   async findByUserId(userId: string): Promise<Device[]> {
-    const devices = await this.prisma.device.findMany({
-      where: {
-        users: {
-          some: { userId },
-        },
-      },
-    });
+    const devices = await withPrismaError('Device', () =>
+      this.prisma.device.findMany({
+        where: { users: { some: { userId } } },
+      }),
+    );
     return devices.map(mapPrismaDeviceToEntity);
   }
 }
