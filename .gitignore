@@ -56,3 +56,5 @@ test-output
 firmware/**/.pio/
 firmware/**/.vscode/
 firmware/**/include/secrets.h
+
+.nx/polygraph
