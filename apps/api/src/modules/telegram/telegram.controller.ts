@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Req,
   Res,
@@ -67,5 +68,81 @@ export class TelegramController {
       this.logger.error('Error processing webhook update', error);
       res.sendStatus(HttpStatus.OK);
     }
+  }
+
+  /**
+   * [DIAGNOSTIC] Returns current Telegram webhook state for debugging.
+   * TODO: protect with auth or remove after debugging.
+   */
+  @Get('debug-webhook')
+  async debugWebhook(): Promise<Record<string, unknown>> {
+    if (!this.bot || !this.config) {
+      return {
+        error: 'Bot or config not available',
+        botConfigured: !!this.bot,
+        configLoaded: !!this.config,
+      };
+    }
+
+    const info = await this.bot.telegram.getWebhookInfo();
+    const expectedUrl = this.config.webhookDomain
+      ? `${this.config.webhookDomain}/api/telegram/webhook`
+      : null;
+
+    return {
+      currentUrl: info.url || null,
+      expectedUrl,
+      urlMatch: !!expectedUrl && info.url === expectedUrl,
+      hasCustomCertificate: info.has_custom_certificate,
+      pendingUpdateCount: info.pending_update_count,
+      lastErrorDate: info.last_error_date
+        ? new Date(info.last_error_date * 1000).toISOString()
+        : null,
+      lastErrorMessage: info.last_error_message ?? null,
+      lastSynchronizationErrorDate: info.last_synchronization_error_date
+        ? new Date(info.last_synchronization_error_date * 1000).toISOString()
+        : null,
+      maxConnections: info.max_connections,
+      ipAddress: info.ip_address ?? null,
+    };
+  }
+
+  /**
+   * [DIAGNOSTIC] Re-registers the webhook with Telegram.
+   * TODO: protect with auth or remove after debugging.
+   */
+  @Post('reset-webhook')
+  async resetWebhook(): Promise<Record<string, unknown>> {
+    if (!this.bot || !this.config) {
+      return {
+        success: false,
+        error: 'Bot or config not available',
+        botConfigured: !!this.bot,
+        configLoaded: !!this.config,
+      };
+    }
+
+    if (!this.config.webhookDomain) {
+      return {
+        success: false,
+        error: 'No webhookDomain configured (TELEGRAM_WEBHOOK_DOMAIN env var)',
+      };
+    }
+
+    const webhookUrl = `${this.config.webhookDomain}/api/telegram/webhook`;
+
+    await this.bot.telegram.setWebhook(webhookUrl, {
+      secret_token: this.config.webhookSecret,
+    });
+
+    const info = await this.bot.telegram.getWebhookInfo();
+
+    return {
+      success: info.url === webhookUrl,
+      registeredUrl: info.url || null,
+      expectedUrl: webhookUrl,
+      pendingUpdateCount: info.pending_update_count,
+      lastErrorMessage: info.last_error_message ?? null,
+    };
   }
 }
