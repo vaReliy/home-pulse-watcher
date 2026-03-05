@@ -2,6 +2,15 @@ import { TranslationService } from '../i18n/index.js';
 import { MessageFormatter } from './message.formatter.js';
 
 describe('MessageFormatter', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-02-15T12:00:00Z'));
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   const translationService = new TranslationService();
   const formatter = new MessageFormatter(translationService);
 

@@ -24,6 +24,7 @@
 - **ORM:** [Prisma v7+](https://www.prisma.io/)
 - **Database:** PostgreSQL (Dockerized)
 - **Validation:** LIVR (Robust runtime validation)
+- **Logging:** [nestjs-pino](https://github.com/iamolegga/nestjs-pino) (JSON in prod, pretty in dev)
 
 ## 📁 Project Structure (Onion Architecture)
 
@@ -226,9 +227,10 @@ docker-compose --profile full up --build
 - [ ] **Phase 5: Production Hardening** _(In Progress)_
   - [x] 5.1: Power Sensing v2 — ADC-based sensing with ADC hysteresis, firmware confirmation (~400 ms), and server-side notification debounce (5 s)
   - [x] 5.2: Telegram UX/UI Upgrade — Migrated from slash commands to interactive Reply/Inline keyboards with MarkdownV2 formatting and stateless Settings menu
-  - [ ] 5.3: Wi-Fi Provisioning — Implement Captive Portal to remove hardcoded Wi-Fi credentials from firmware
-  - [ ] 5.4: OTA Updates — Remote firmware updates via Google Cloud Storage triggered by Telegram commands; includes "Admin Force Update" to trigger remote flashing of specific devices
-  - [ ] 5.5: Admin CLI Integration — Specialized slash commands for remote device management (reboot, log retrieval) restricted to owners
+  - [x] 5.3: Observability — Structured JSON logging (pino), health check endpoints (`/health/live`, `/health/ready`), startup env validation
+  - [ ] 5.4: Wi-Fi Provisioning — Implement Captive Portal to remove hardcoded Wi-Fi credentials from firmware
+  - [ ] 5.5: OTA Updates — Remote firmware updates via Google Cloud Storage triggered by Telegram commands; includes "Admin Force Update" to trigger remote flashing of specific devices
+  - [ ] 5.6: Admin CLI Integration — Specialized slash commands for remote device management (reboot, log retrieval) restricted to owners
 
 ## 📋 Changelog
 

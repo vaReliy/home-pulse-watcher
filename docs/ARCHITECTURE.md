@@ -75,17 +75,18 @@ The error system provides defense-in-depth across three layers:
 
 **Error Class Hierarchy** (all extend `BaseError` in `@home-pulse-watcher/shared`):
 
-| Class                 | HTTP Status       | Purpose                                |
-| --------------------- | ----------------- | -------------------------------------- |
-| `ValidationError`     | 400               | LIVR validation failures               |
-| `AuthenticationError` | 401               | HMAC/credential failures               |
-| `NotFoundError`       | 404               | Resource not found                     |
-| `DomainError`         | 409 / 403 / 422   | Business rule violations               |
-| `DatabaseError`       | 409 / 500 / 503   | Translated Prisma errors               |
+| Class                 | HTTP Status     | Purpose                  |
+| --------------------- | --------------- | ------------------------ |
+| `ValidationError`     | 400             | LIVR validation failures |
+| `AuthenticationError` | 401             | HMAC/credential failures |
+| `NotFoundError`       | 404             | Resource not found       |
+| `DomainError`         | 409 / 403 / 422 | Business rule violations |
+| `DatabaseError`       | 409 / 500 / 503 | Translated Prisma errors |
 
 **Repository Error Translation** (`withPrismaError` wrapper in Infrastructure layer):
 
 All Prisma calls in repositories are wrapped with `withPrismaError('EntityName', () => ...)`, which translates Prisma-specific errors into domain errors:
+
 - `P2025` (record not found) → `NotFoundError`
 - `P2002` (unique constraint) → `DatabaseError(UNIQUE_CONSTRAINT)` → 409
 - `P2003` (foreign key) → `DatabaseError(FOREIGN_KEY_CONSTRAINT)` → 500
@@ -99,6 +100,24 @@ All Prisma calls in repositories are wrapped with `withPrismaError('EntityName',
 2. `AllExceptionsFilter` — catch-all for anything else (`HttpException`, raw `Error`), returns `{ code: 'INTERNAL_ERROR', message: 'An unexpected error occurred' }`
 
 This ensures Prisma internals never leak outside the Infrastructure layer, and internal error details never reach API clients.
+
+### Observability
+
+**Structured Logging** — `nestjs-pino` + `pino-http`:
+
+- Production (`NODE_ENV=production`): JSON with `messageKey: 'message'` and Google Cloud Logging severity levels
+- Development: `pino-pretty` with colorized single-line output
+- Bootstrap: `bufferLogs: true` ensures startup logs go through Pino
+
+**Health Check Endpoints** (`HealthModule`):
+
+- `GET /api/health/live` — always 200 (process is running)
+- `GET /api/health/ready` — 200 if DB reachable (`SELECT 1`), 503 otherwise
+
+**Startup Env Validation** (`validateEnv()` in `main.ts`):
+
+- Runs before `NestFactory.create()` — validates `DATABASE_URL` and `DEVICE_SECRET_ENCRYPTION_KEY`
+- Exits with code 1 on failure; structured JSON in production, plain text in dev
 
 ---
 

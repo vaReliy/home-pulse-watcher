@@ -138,6 +138,34 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 ---
 
+## Technical Standards
+
+### Structured Logging (Pino)
+
+- **Library**: `nestjs-pino` + `pino-http`
+- **Production** (`NODE_ENV=production`): JSON output with `messageKey: 'message'` and severity mapping for Google Cloud Logging (`INFO`, `WARNING`, `ERROR`, `CRITICAL`)
+- **Development**: `pino-pretty` transport with colorized, single-line output
+- **Bootstrap buffering**: `NestFactory.create(AppModule, { bufferLogs: true })` + `app.useLogger(app.get(Logger))` — ensures all startup logs go through Pino
+- **Pre-bootstrap logging**: `validateEnv()` runs before NestJS — uses `console.error()` directly since neither NestJS Logger nor Pino are available
+
+### Mandatory Env Validation
+
+- **Timing**: Runs before `NestFactory.create()` in `main.ts`
+- **Failure mode**: Logs `[EnvValidation] CRITICAL: ...` via `console.error` and calls `process.exit(1)`
+- **Required vars**: `DATABASE_URL`, `DEVICE_SECRET_ENCRYPTION_KEY` (64 hex chars)
+
+### Health Check Endpoints
+
+| Route               | Method | Success (200)                           | Failure (503)                                 |
+| ------------------- | ------ | --------------------------------------- | --------------------------------------------- |
+| `/api/health/live`  | GET    | `{ "status": "ok" }`                    | N/A (always 200)                              |
+| `/api/health/ready` | GET    | `{ "status": "ok", "db": "connected" }` | `{ "status": "error", "db": "disconnected" }` |
+
+- **Liveness**: Confirms the process is running (no dependency checks)
+- **Readiness**: Verifies database connectivity via `SELECT 1`; returns 503 if the DB is unreachable
+
+---
+
 ## Documentation Map
 
 | Document         | Path                                                                       | Purpose                                               |
