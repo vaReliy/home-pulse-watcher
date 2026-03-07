@@ -10,6 +10,12 @@ import { TranslationService } from '../i18n/index.js';
 import { buildMainMenuKeyboard } from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
+/** History window: 7 days in milliseconds. */
+const HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Maximum events per device in history view. */
+const HISTORY_EVENT_LIMIT = 50;
+
 /**
  * Handles history display — shows current month's power events for all user devices.
  * Requires authenticated user.
@@ -53,9 +59,9 @@ export class HistoryHandler {
         return;
       }
 
-      // First day of current month
+      // Last 7 days
       const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startDate = new Date(now.getTime() - HISTORY_WINDOW_MS);
 
       const deviceHistories = await Promise.all(
         userDevices.map(async (ud) => {
@@ -67,6 +73,7 @@ export class HistoryHandler {
             deviceId: ud.deviceId,
             startDate,
             orderBy: 'asc',
+            limit: HISTORY_EVENT_LIMIT,
           });
 
           return { label, events };
@@ -83,7 +90,10 @@ export class HistoryHandler {
         ...buildMainMenuKeyboard(msgs),
       });
     } catch (error) {
-      this.logger.error('Failed to fetch power history', error);
+      this.logger.error(
+        'Failed to fetch power history',
+        error instanceof Error ? error.stack : String(error),
+      );
       await ctx.reply(msgs.ERROR_GENERIC, {
         parse_mode: 'MarkdownV2',
         ...buildMainMenuKeyboard(msgs),

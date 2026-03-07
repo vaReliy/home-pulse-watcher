@@ -19,7 +19,10 @@ async function bootstrap(): Promise<void> {
       },
     });
   } catch (error) {
-    logger.error('CLI execution failed', error);
+    logger.error(
+      'CLI execution failed',
+      error instanceof Error ? error.stack : String(error),
+    );
     process.exit(1);
   }
 }

@@ -73,7 +73,10 @@ export class StartHandler {
         return;
       }
 
-      this.logger.error('Failed to register user', error);
+      this.logger.error(
+        'Failed to register user',
+        error instanceof Error ? error.stack : String(error),
+      );
       await ctx.reply(msgs.ERROR_GENERIC, {
         parse_mode: 'MarkdownV2',
         ...buildMainMenuKeyboard(msgs),

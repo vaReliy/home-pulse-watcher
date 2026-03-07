@@ -73,7 +73,10 @@ export class StatusHandler {
         ...buildMainMenuKeyboard(msgs),
       });
     } catch (error) {
-      this.logger.error('Failed to fetch device status', error);
+      this.logger.error(
+        'Failed to fetch device status',
+        error instanceof Error ? error.stack : String(error),
+      );
       await ctx.reply(msgs.ERROR_GENERIC, {
         parse_mode: 'MarkdownV2',
         ...buildMainMenuKeyboard(msgs),

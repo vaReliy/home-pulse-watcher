@@ -65,7 +65,10 @@ export class TelegramController {
       await this.bot.handleUpdate(req.body);
       res.sendStatus(HttpStatus.OK);
     } catch (error) {
-      this.logger.error('Error processing webhook update', error);
+      this.logger.error(
+        'Error processing webhook update',
+        error instanceof Error ? error.stack : String(error),
+      );
       res.sendStatus(HttpStatus.OK);
     }
   }

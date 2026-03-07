@@ -81,9 +81,12 @@ Outage duration: ${duration}`,
   DEVICE_OFFLINE: (label) => `📡 Device *${label}* is now offline`,
 
   // History
-  NO_HISTORY: 'No power events recorded this month\\.',
-  NO_EVENTS_THIS_MONTH: 'No events this month',
-  OUTAGE_HISTORY_HEADER: (monthName) => `Outage History — ${monthName}`,
+  NO_HISTORY: 'No power events in the last 7 days\\.',
+  NO_EVENTS_IN_PERIOD: 'No events',
+  OUTAGE_HISTORY_HEADER: (period) => `Outage History — ${period}`,
+  HISTORY_LAST_7_DAYS: 'last 7 days',
+  HISTORY_TRUNCATED: (shown, total) =>
+    `\\.\\.\\.showing ${shown} of ${total} events`,
 
   // Duration units
   DURATION_HOURS: 'h',

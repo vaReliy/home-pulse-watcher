@@ -157,7 +157,10 @@ export class PowerStatusListener {
         `Notification delivered: type=${messageType} device=${deviceLabel}`,
       );
     } catch (error) {
-      this.logger.error('Failed to process power status notification', error);
+      this.logger.error(
+        'Failed to process power status notification',
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 
@@ -183,7 +186,7 @@ export class PowerStatusListener {
         } catch (error) {
           this.logger.warn(
             `Failed to send notification to user ${userId}`,
-            error,
+            error instanceof Error ? error.stack : String(error),
           );
         }
       });

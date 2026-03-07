@@ -89,7 +89,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         this.bot.stop('SIGTERM');
         this.logger.log('Telegram bot stopped');
       } catch (error) {
-        this.logger.error('Error stopping Telegram bot', error);
+        this.logger.error(
+          'Error stopping Telegram bot',
+          error instanceof Error ? error.stack : String(error),
+        );
       }
     }
   }
@@ -101,13 +104,19 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     // Error handling middleware — reply to user so errors aren't silent
     this.bot.catch(async (err, ctx) => {
-      this.logger.error(`Error for ${ctx.updateType}`, err);
+      this.logger.error(
+        `Error for ${ctx.updateType}`,
+        err instanceof Error ? err.stack : String(err),
+      );
       try {
         if (ctx.chat) {
           await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
         }
       } catch (replyError) {
-        this.logger.error('Failed to send error reply to user', replyError);
+        this.logger.error(
+          'Failed to send error reply to user',
+          replyError instanceof Error ? replyError.stack : String(replyError),
+        );
       }
     });
   }
@@ -122,7 +131,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.startHandler.handle(ctx as TelegramContext);
       } catch (error) {
-        this.logger.error('Error in /start handler', error);
+        this.logger.error(
+          'Error in /start handler',
+          error instanceof Error ? error.stack : String(error),
+        );
         await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
       }
     });
@@ -142,7 +154,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             this.statusHandler.handle(ctx as TelegramContext),
           );
         } catch (error) {
-          this.logger.error('Error in status handler', error);
+          this.logger.error(
+            'Error in status handler',
+            error instanceof Error ? error.stack : String(error),
+          );
           await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
         }
       },
@@ -157,7 +172,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             this.devicesHandler.handle(ctx as TelegramContext),
           );
         } catch (error) {
-          this.logger.error('Error in devices handler', error);
+          this.logger.error(
+            'Error in devices handler',
+            error instanceof Error ? error.stack : String(error),
+          );
           await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
         }
       },
@@ -172,7 +190,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             this.settingsHandler.handle(ctx as TelegramContext),
           );
         } catch (error) {
-          this.logger.error('Error in settings handler', error);
+          this.logger.error(
+            'Error in settings handler',
+            error instanceof Error ? error.stack : String(error),
+          );
           await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
         }
       },
@@ -195,7 +216,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           }
           await this.helpHandler.handle(ctx as TelegramContext);
         } catch (error) {
-          this.logger.error('Error in help handler', error);
+          this.logger.error(
+            'Error in help handler',
+            error instanceof Error ? error.stack : String(error),
+          );
           await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
         }
       },
@@ -213,7 +237,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           this.statusHandler.handle(ctx as TelegramContext),
         );
       } catch (error) {
-        this.logger.error('Error in check_status action', error);
+        this.logger.error(
+          'Error in check_status action',
+          error instanceof Error ? error.stack : String(error),
+        );
         await ctx.answerCbQuery().catch(() => {
           /* already handled */
         });
@@ -228,7 +255,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           this.historyHandler.handle(ctx as TelegramContext),
         );
       } catch (error) {
-        this.logger.error('Error in view_history action', error);
+        this.logger.error(
+          'Error in view_history action',
+          error instanceof Error ? error.stack : String(error),
+        );
         await ctx.answerCbQuery().catch(() => {
           /* already handled */
         });
@@ -246,7 +276,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           ...buildLanguageKeyboard(),
         });
       } catch (error) {
-        this.logger.error('Error in settings:language action', error);
+        this.logger.error(
+          'Error in settings:language action',
+          error instanceof Error ? error.stack : String(error),
+        );
         await ctx.answerCbQuery().catch(() => {
           /* already handled */
         });
@@ -264,7 +297,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           ...buildTimezoneKeyboard(userMsgs),
         });
       } catch (error) {
-        this.logger.error('Error in settings:timezone action', error);
+        this.logger.error(
+          'Error in settings:timezone action',
+          error instanceof Error ? error.stack : String(error),
+        );
         await ctx.answerCbQuery().catch(() => {
           /* already handled */
         });
@@ -293,7 +329,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           ...buildMainMenuKeyboard(newMsgs),
         });
       } catch (error) {
-        this.logger.error('Error in lang action', error);
+        this.logger.error(
+          'Error in lang action',
+          error instanceof Error ? error.stack : String(error),
+        );
         await ctx.answerCbQuery().catch(() => {
           /* already handled */
         });
@@ -318,7 +357,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           parse_mode: 'MarkdownV2',
         });
       } catch (error) {
-        this.logger.error('Error in tz action', error);
+        this.logger.error(
+          'Error in tz action',
+          error instanceof Error ? error.stack : String(error),
+        );
         await ctx.answerCbQuery().catch(() => {
           /* already handled */
         });
@@ -346,7 +388,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           ...buildMainMenuKeyboard(userMsgs),
         });
       } catch (error) {
-        this.logger.error('Error in catch-all handler', error);
+        this.logger.error(
+          'Error in catch-all handler',
+          error instanceof Error ? error.stack : String(error),
+        );
       }
     });
   }
@@ -370,7 +415,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     try {
       user = await this.userRepository.findByTelegramId(BigInt(telegramId));
     } catch (error) {
-      this.logger.error('Failed to look up user during authentication', error);
+      this.logger.error(
+        'Failed to look up user during authentication',
+        error instanceof Error ? error.stack : String(error),
+      );
       await ctx.reply(msgs.ERROR_GENERIC, { parse_mode: 'MarkdownV2' });
       return;
     }
@@ -451,14 +499,19 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
               `last_error=${info.last_error_message ?? 'none'}`,
           );
         } catch (verifyError) {
-          this.logger.warn('Failed to verify webhook info', verifyError);
+          this.logger.warn(
+            'Failed to verify webhook info',
+            verifyError instanceof Error
+              ? verifyError.stack
+              : String(verifyError),
+          );
         }
 
         return;
       } catch (error) {
         this.logger.error(
           `Failed to set webhook (attempt ${attempt}/${maxRetries})`,
-          error,
+          error instanceof Error ? error.stack : String(error),
         );
         if (attempt < maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));

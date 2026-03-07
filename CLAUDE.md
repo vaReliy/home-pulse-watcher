@@ -129,6 +129,8 @@ Webpack bundles **all** `node_modules` into `main.js` and `cli.js`, eliminating 
 - **Interface-First**: Infrastructure adapters implement Core/Application interfaces
 - **Descriptive Names**: `lastSeenAt` not `date`
 - **camelCase Everywhere**: Including LIVR rules (`macAddress` not `mac_address`)
+- **No Magic Numbers**: Extract numeric literals into named constants with JSDoc comments (`HISTORY_WINDOW_MS`, `TELEGRAM_MESSAGE_MAX_LENGTH`). Thresholds, limits, and configuration values must never appear inline.
+- **Single Responsibility Methods**: Keep methods focused on one concern. Extract secondary logic (truncation, pagination, retry) into separate private methods that can be tested and reasoned about independently.
 
 ## Code Formatting Rules
 

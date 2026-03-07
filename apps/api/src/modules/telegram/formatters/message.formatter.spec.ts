@@ -95,7 +95,7 @@ describe('MessageFormatter', () => {
       expect(result).toContain('Kitchen');
     });
 
-    it('should use English month name for en locale', () => {
+    it('should use English period label for en locale', () => {
       const events = [
         {
           label: 'Kitchen',
@@ -117,7 +117,36 @@ describe('MessageFormatter', () => {
         'America/New_York',
       );
       expect(result).toContain('Outage History');
-      expect(result).toContain('February');
+      expect(result).toContain('last 7 days');
+    });
+
+    it('should truncate message exceeding 4096 characters', () => {
+      // Generate enough events to exceed the 4096-char Telegram limit
+      const makeEvents = (count: number) =>
+        Array.from({ length: count }, (_, i) => ({
+          id: String(i),
+          deviceId: 'd1',
+          status: i % 2 === 0 ? 0 : 1,
+          timestamp: new Date(
+            `2026-02-${String((i % 28) + 1).padStart(2, '0')}T${String(i % 24).padStart(2, '0')}:00:00Z`,
+          ),
+          duration: 3600 + i * 60,
+        }));
+
+      const deviceHistories = Array.from({ length: 5 }, (_, i) => ({
+        label: `Device ${String.fromCharCode(65 + i)}`,
+        events: makeEvents(50),
+      }));
+
+      const result = formatter.formatHistory(
+        deviceHistories as Parameters<typeof formatter.formatHistory>[0],
+        'en',
+        'Europe/Kyiv',
+      );
+
+      expect(result.length).toBeLessThanOrEqual(4096);
+      expect(result).toContain('showing');
+      expect(result).toMatch(/showing \d+ of \d+ events/);
     });
   });
 });

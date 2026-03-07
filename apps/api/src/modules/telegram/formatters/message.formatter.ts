@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Device, PowerEvent } from '@home-pulse-watcher/core';
 import { PowerStatus } from '@home-pulse-watcher/core';
 import { TranslationService } from '../i18n/index.js';
+import type { Messages } from '../i18n/index.js';
 import {
   DEFAULT_LOCALE,
   DEFAULT_TIMEZONE,
@@ -9,6 +10,12 @@ import {
 } from '../i18n/locale.config.js';
 import type { SupportedLocale } from '../i18n/locale.config.js';
 import { escapeMarkdownV2, boldMd } from './escape-markdown.js';
+
+/** Telegram MarkdownV2 message character limit. */
+const TELEGRAM_MESSAGE_MAX_LENGTH = 4096;
+
+/** Safe limit leaving room for the truncation notice. */
+const TRUNCATION_SAFE_LENGTH = 3900;
 
 /**
  * Formats messages for Telegram with MarkdownV2 formatting.
@@ -138,17 +145,8 @@ export class MessageFormatter {
       return msgs.NO_HISTORY;
     }
 
-    const intlLocale = this.getIntlLocale(locale);
-    const tz = timezone ?? DEFAULT_TIMEZONE;
-
-    const now = new Date();
-    const monthName = now.toLocaleString(intlLocale, {
-      month: 'long',
-      year: 'numeric',
-      timeZone: tz,
-    });
     const lines = [
-      `${boldMd(escapeMarkdownV2(msgs.OUTAGE_HISTORY_HEADER(monthName)))}\n`,
+      `${boldMd(escapeMarkdownV2(msgs.OUTAGE_HISTORY_HEADER(msgs.HISTORY_LAST_7_DAYS)))}\n`,
     ];
 
     let totalOutages = 0;
@@ -159,7 +157,7 @@ export class MessageFormatter {
       lines.push(boldMd(escapedLabel));
 
       if (events.length === 0) {
-        lines.push(`  ${msgs.NO_EVENTS_THIS_MONTH}\n`);
+        lines.push(`  ${msgs.NO_EVENTS_IN_PERIOD}\n`);
         continue;
       }
 
@@ -197,6 +195,47 @@ export class MessageFormatter {
         `\u{1F4CA} ${escapeMarkdownV2(String(totalOutages))} / ${summaryDuration}`,
       );
     }
+
+    const totalEvents = deviceHistories.reduce(
+      (sum, d) => sum + d.events.length,
+      0,
+    );
+
+    const result = lines.join('\n').trimEnd();
+
+    return this.truncateMessage(result, totalEvents, msgs);
+  }
+
+  /**
+   * Truncate a history message to fit within Telegram's character limit.
+   * Removes event lines from the end and appends a truncation notice.
+   */
+  private truncateMessage(
+    message: string,
+    totalEvents: number,
+    msgs: Messages,
+  ): string {
+    if (message.length <= TELEGRAM_MESSAGE_MAX_LENGTH) {
+      return message;
+    }
+
+    const lines = message.split('\n');
+    let shownEvents = totalEvents;
+
+    while (
+      lines.join('\n').trimEnd().length > TRUNCATION_SAFE_LENGTH &&
+      shownEvents > 0
+    ) {
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].startsWith('  ') && lines[i].includes(' — ')) {
+          lines.splice(i, 1);
+          shownEvents--;
+          break;
+        }
+      }
+    }
+
+    lines.push(msgs.HISTORY_TRUNCATED(shownEvents, totalEvents));
 
     return lines.join('\n').trimEnd();
   }

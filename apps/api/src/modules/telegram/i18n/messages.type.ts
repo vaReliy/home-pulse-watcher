@@ -56,8 +56,10 @@ export interface Messages {
 
   // History
   NO_HISTORY: string;
-  NO_EVENTS_THIS_MONTH: string;
-  OUTAGE_HISTORY_HEADER: (monthName: string) => string;
+  NO_EVENTS_IN_PERIOD: string;
+  OUTAGE_HISTORY_HEADER: (period: string) => string;
+  HISTORY_LAST_7_DAYS: string;
+  HISTORY_TRUNCATED: (shown: number, total: number) => string;
 
   // Duration units
   DURATION_HOURS: string;

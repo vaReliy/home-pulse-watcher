@@ -82,9 +82,12 @@ export const messagesUk: Messages = {
   DEVICE_OFFLINE: (label) => `📡 Пристрій *${label}* офлайн`,
 
   // History
-  NO_HISTORY: 'Немає подій за поточний місяць\\.',
-  NO_EVENTS_THIS_MONTH: 'Немає подій за цей місяць',
-  OUTAGE_HISTORY_HEADER: (monthName) => `Історія відключень — ${monthName}`,
+  NO_HISTORY: 'Немає подій за останні 7 днів\\.',
+  NO_EVENTS_IN_PERIOD: 'Немає подій',
+  OUTAGE_HISTORY_HEADER: (period) => `Історія відключень — ${period}`,
+  HISTORY_LAST_7_DAYS: 'останні 7 днів',
+  HISTORY_TRUNCATED: (shown, total) =>
+    `\\.\\.\\.показано ${shown} з ${total} подій`,
 
   // Duration units
   DURATION_HOURS: 'год',

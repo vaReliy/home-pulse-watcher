@@ -41,7 +41,10 @@ export class SettingsHandler {
         ...buildSettingsKeyboard(msgs),
       });
     } catch (error) {
-      this.logger.error('Failed to show settings', error);
+      this.logger.error(
+        'Failed to show settings',
+        error instanceof Error ? error.stack : String(error),
+      );
       await ctx.reply(msgs.ERROR_GENERIC, {
         parse_mode: 'MarkdownV2',
         ...buildMainMenuKeyboard(msgs),

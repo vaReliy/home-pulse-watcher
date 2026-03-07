@@ -73,7 +73,10 @@ export class DevicesHandler {
         ...buildMainMenuKeyboard(msgs),
       });
     } catch (error) {
-      this.logger.error('Failed to list devices', error);
+      this.logger.error(
+        'Failed to list devices',
+        error instanceof Error ? error.stack : String(error),
+      );
       await ctx.reply(msgs.ERROR_GENERIC, {
         parse_mode: 'MarkdownV2',
         ...buildMainMenuKeyboard(msgs),
