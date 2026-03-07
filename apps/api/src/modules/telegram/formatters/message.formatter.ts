@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Device, PowerEvent } from '@home-pulse-watcher/core';
+import type { Device } from '@home-pulse-watcher/core';
 import { PowerStatus } from '@home-pulse-watcher/core';
 import { TranslationService } from '../i18n/index.js';
 import type { Messages } from '../i18n/index.js';
@@ -9,6 +9,7 @@ import {
   LOCALE_INTL_MAP,
 } from '../i18n/locale.config.js';
 import type { SupportedLocale } from '../i18n/locale.config.js';
+import type { CollapsedEvent } from './collapse-events.js';
 import { escapeMarkdownV2, boldMd } from './escape-markdown.js';
 
 /** Telegram MarkdownV2 message character limit. */
@@ -129,10 +130,10 @@ export class MessageFormatter {
   }
 
   /**
-   * Format outage history for all devices.
+   * Format outage history for all devices using collapsed events.
    */
   formatHistory(
-    deviceHistories: Array<{ label: string; events: PowerEvent[] }>,
+    deviceHistories: Array<{ label: string; events: CollapsedEvent[] }>,
     locale?: string,
     timezone?: string,
   ): string {
@@ -172,9 +173,9 @@ export class MessageFormatter {
 
         if (event.status === PowerStatus.OFF) {
           totalOutages++;
-        }
-        if (event.duration !== null) {
-          totalDowntimeSeconds += event.duration;
+          if (event.duration !== null) {
+            totalDowntimeSeconds += event.duration;
+          }
         }
 
         const duration =

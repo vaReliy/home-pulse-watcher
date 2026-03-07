@@ -1,5 +1,16 @@
+import { PowerStatus } from '@home-pulse-watcher/core';
+import type { CollapsedEvent } from './collapse-events.js';
 import { TranslationService } from '../i18n/index.js';
 import { MessageFormatter } from './message.formatter.js';
+
+function makeCollapsed(
+  status: PowerStatus,
+  timestamp: string,
+  duration: number | null = null,
+  eventCount = 1,
+): CollapsedEvent {
+  return { status, timestamp: new Date(timestamp), duration, eventCount };
+}
 
 describe('MessageFormatter', () => {
   beforeAll(() => {
@@ -70,27 +81,15 @@ describe('MessageFormatter', () => {
   });
 
   describe('formatHistory', () => {
-    it('should use locale-aware month name for Ukrainian', () => {
+    it('should use locale-aware header for Ukrainian', () => {
       const events = [
         {
           label: 'Kitchen',
-          events: [
-            {
-              id: '1',
-              deviceId: 'd1',
-              status: 0,
-              timestamp: new Date('2026-02-10T08:00:00Z'),
-              duration: 3600,
-            },
-          ],
+          events: [makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 3600)],
         },
       ];
 
-      const result = formatter.formatHistory(
-        events as Parameters<typeof formatter.formatHistory>[0],
-        'uk',
-        'Europe/Kyiv',
-      );
+      const result = formatter.formatHistory(events, 'uk', 'Europe/Kyiv');
       expect(result).toContain('Історія відключень');
       expect(result).toContain('Kitchen');
     });
@@ -99,39 +98,61 @@ describe('MessageFormatter', () => {
       const events = [
         {
           label: 'Kitchen',
-          events: [
-            {
-              id: '1',
-              deviceId: 'd1',
-              status: 0,
-              timestamp: new Date('2026-02-10T08:00:00Z'),
-              duration: 3600,
-            },
-          ],
+          events: [makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 3600)],
         },
       ];
 
-      const result = formatter.formatHistory(
-        events as Parameters<typeof formatter.formatHistory>[0],
-        'en',
-        'America/New_York',
-      );
+      const result = formatter.formatHistory(events, 'en', 'America/New_York');
       expect(result).toContain('Outage History');
       expect(result).toContain('last 7 days');
     });
 
+    it('should only count OFF event durations in statistics', () => {
+      const events = [
+        {
+          label: 'Kitchen',
+          events: [
+            makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 3600),
+            makeCollapsed(PowerStatus.ON, '2026-02-10T09:00:00Z', 7200),
+            makeCollapsed(PowerStatus.OFF, '2026-02-10T11:00:00Z', 1800),
+          ],
+        },
+      ];
+
+      const result = formatter.formatHistory(events, 'en', 'Europe/Kyiv');
+      // Summary should show 2 outages / 1h 30m (3600 + 1800 = 5400s)
+      // NOT 3h 30m (which would include the ON duration)
+      expect(result).toContain('1h 30m');
+      expect(result).not.toContain('3h 30m');
+    });
+
+    it('should display collapsed events correctly', () => {
+      const events = [
+        {
+          label: 'Kitchen',
+          events: [
+            makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 7200, 24),
+            makeCollapsed(PowerStatus.ON, '2026-02-10T10:00:00Z', 14400, 48),
+          ],
+        },
+      ];
+
+      const result = formatter.formatHistory(events, 'en', 'Europe/Kyiv');
+      // Should show 2h duration for the OFF event
+      expect(result).toContain('2h');
+      // Should show only 1 outage in summary (collapsed)
+      expect(result).toMatch(/1 \/ 2h/);
+    });
+
     it('should truncate message exceeding 4096 characters', () => {
-      // Generate enough events to exceed the 4096-char Telegram limit
       const makeEvents = (count: number) =>
-        Array.from({ length: count }, (_, i) => ({
-          id: String(i),
-          deviceId: 'd1',
-          status: i % 2 === 0 ? 0 : 1,
-          timestamp: new Date(
+        Array.from({ length: count }, (_, i) =>
+          makeCollapsed(
+            i % 2 === 0 ? PowerStatus.OFF : PowerStatus.ON,
             `2026-02-${String((i % 28) + 1).padStart(2, '0')}T${String(i % 24).padStart(2, '0')}:00:00Z`,
+            3600 + i * 60,
           ),
-          duration: 3600 + i * 60,
-        }));
+        );
 
       const deviceHistories = Array.from({ length: 5 }, (_, i) => ({
         label: `Device ${String.fromCharCode(65 + i)}`,
@@ -139,7 +160,7 @@ describe('MessageFormatter', () => {
       }));
 
       const result = formatter.formatHistory(
-        deviceHistories as Parameters<typeof formatter.formatHistory>[0],
+        deviceHistories,
         'en',
         'Europe/Kyiv',
       );

@@ -5,6 +5,7 @@ import type {
   IPowerEventRepository,
 } from '@home-pulse-watcher/core';
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
+import { collapseEvents } from '../formatters/collapse-events.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
 import { TranslationService } from '../i18n/index.js';
 import { buildMainMenuKeyboard } from '../keyboards/index.js';
@@ -13,8 +14,8 @@ import type { TelegramContext } from '../types/telegram-context.type.js';
 /** History window: 7 days in milliseconds. */
 const HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Maximum events per device in history view. */
-const HISTORY_EVENT_LIMIT = 50;
+/** Upper bound for events fetched per device (covers 7 days of 5-min heartbeats). */
+const HISTORY_EVENT_MAX = 2000;
 
 /**
  * Handles history display — shows current month's power events for all user devices.
@@ -73,10 +74,10 @@ export class HistoryHandler {
             deviceId: ud.deviceId,
             startDate,
             orderBy: 'asc',
-            limit: HISTORY_EVENT_LIMIT,
+            limit: HISTORY_EVENT_MAX,
           });
 
-          return { label, events };
+          return { label, events: collapseEvents(events) };
         }),
       );
 
