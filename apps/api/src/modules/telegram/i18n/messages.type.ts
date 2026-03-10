@@ -41,6 +41,7 @@ export interface Messages {
     label: string,
     status: 'ON' | 'OFF',
     lastSeen: string,
+    statusSince: string | null,
   ) => string;
 
   // Devices list

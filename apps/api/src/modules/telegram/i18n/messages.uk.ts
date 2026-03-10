@@ -55,8 +55,8 @@ export const messagesUk: Messages = {
 Зверніться до адміністратора для підключення пристрою\\.`,
 
   DEVICE_STATUS_HEADER: 'Статус пристроїв:',
-  DEVICE_STATUS: (label, status, lastSeen) =>
-    `*${label}*: ${status === 'ON' ? '🟢' : '🔴'} ${status === 'ON' ? 'Увімк' : 'Вимк'}\nОстаннє з\\'єднання: ${lastSeen}`,
+  DEVICE_STATUS: (label, status, lastSeen, statusSince) =>
+    `*${label}*: ${status === 'ON' ? '🟢' : '🔴'} ${status === 'ON' ? 'Увімк' : 'Вимк'}${statusSince ? `\nСтатус з: ${statusSince}` : ''}\nОстаннє з\\'єднання: ${lastSeen}`,
 
   // Devices list
   YOUR_DEVICES_HEADER: 'Ваші пристрої:',

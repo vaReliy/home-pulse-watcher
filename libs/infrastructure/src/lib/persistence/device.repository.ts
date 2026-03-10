@@ -60,6 +60,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
     data: {
       lastStatus: PowerStatus;
       lastSeenAt: Date;
+      statusChangedAt?: Date;
       firmwareVersion?: string;
     },
   ): Promise<Device> {
@@ -69,6 +70,9 @@ export class PrismaDeviceRepository implements IDeviceRepository {
         data: {
           lastStatus: data.lastStatus,
           lastSeenAt: data.lastSeenAt,
+          ...(data.statusChangedAt !== undefined && {
+            statusChangedAt: data.statusChangedAt,
+          }),
           ...(data.firmwareVersion !== undefined && {
             firmwareVersion: data.firmwareVersion,
           }),

@@ -121,6 +121,7 @@ export class ProcessPowerStatusService extends BaseService<
     const updatedDevice = await this.deviceRepository.updateStatus(deviceId, {
       lastStatus: newStatus,
       lastSeenAt: timestamp,
+      ...(isStatusChange && { statusChangedAt: timestamp }),
       firmwareVersion: params.firmwareVersion ?? undefined,
     });
 

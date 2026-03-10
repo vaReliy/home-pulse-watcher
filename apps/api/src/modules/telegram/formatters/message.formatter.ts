@@ -43,8 +43,13 @@ export class MessageFormatter {
           this.formatDateTime(device.lastSeenAt, locale, timezone),
         )
       : msgs.LAST_SEEN_NEVER;
+    const statusSince = device.statusChangedAt
+      ? escapeMarkdownV2(
+          this.formatDateTime(device.statusChangedAt, locale, timezone),
+        )
+      : null;
 
-    return msgs.DEVICE_STATUS(label, status, lastSeen);
+    return msgs.DEVICE_STATUS(label, status, lastSeen, statusSince);
   }
 
   /**

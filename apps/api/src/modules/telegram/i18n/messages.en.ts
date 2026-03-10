@@ -54,8 +54,8 @@ Use the menu buttons at the bottom of the screen:
 Contact your administrator to link a device to your account\\.`,
 
   DEVICE_STATUS_HEADER: 'Device Status:',
-  DEVICE_STATUS: (label, status, lastSeen) =>
-    `*${label}*: ${status === 'ON' ? '🟢' : '🔴'} ${status}\nLast seen: ${lastSeen}`,
+  DEVICE_STATUS: (label, status, lastSeen, statusSince) =>
+    `*${label}*: ${status === 'ON' ? '🟢' : '🔴'} ${status}${statusSince ? `\nStatus since: ${statusSince}` : ''}\nLast seen: ${lastSeen}`,
 
   // Devices list
   YOUR_DEVICES_HEADER: 'Your Devices:',

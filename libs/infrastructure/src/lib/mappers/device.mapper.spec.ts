@@ -3,6 +3,7 @@ import { Device, PowerStatus } from '@home-pulse-watcher/core';
 
 describe('mapPrismaDeviceToEntity', () => {
   it('should map Prisma Device to Domain Device', () => {
+    const statusChangedAt = new Date('2024-01-02');
     const prismaDevice = {
       id: 'device-1',
       macAddress: 'AA:BB:CC:DD:EE:FF',
@@ -10,6 +11,7 @@ describe('mapPrismaDeviceToEntity', () => {
       label: 'Kitchen',
       lastStatus: 1,
       lastSeenAt: new Date('2024-01-01'),
+      statusChangedAt,
       firmwareVersion: '3.1.0',
     };
 
@@ -22,6 +24,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.label).toBe('Kitchen');
     expect(result.lastStatus).toBe(PowerStatus.ON);
     expect(result.lastSeenAt).toEqual(new Date('2024-01-01'));
+    expect(result.statusChangedAt).toEqual(statusChangedAt);
     expect(result.firmwareVersion).toBe('3.1.0');
   });
 
@@ -33,6 +36,7 @@ describe('mapPrismaDeviceToEntity', () => {
       label: null,
       lastStatus: null,
       lastSeenAt: null,
+      statusChangedAt: null,
       firmwareVersion: null,
     };
 
@@ -41,6 +45,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.label).toBeNull();
     expect(result.lastStatus).toBeNull();
     expect(result.lastSeenAt).toBeNull();
+    expect(result.statusChangedAt).toBeNull();
     expect(result.firmwareVersion).toBeNull();
   });
 
@@ -52,6 +57,7 @@ describe('mapPrismaDeviceToEntity', () => {
       label: null,
       lastStatus: 0,
       lastSeenAt: null,
+      statusChangedAt: null,
       firmwareVersion: null,
     };
 

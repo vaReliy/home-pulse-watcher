@@ -12,6 +12,7 @@ export class Device {
   readonly label: string | null;
   readonly lastStatus: PowerStatus | null;
   readonly lastSeenAt: Date | null;
+  readonly statusChangedAt: Date | null;
   readonly firmwareVersion: string | null;
 
   constructor(props: {
@@ -21,6 +22,7 @@ export class Device {
     label: string | null;
     lastStatus: PowerStatus | null;
     lastSeenAt: Date | null;
+    statusChangedAt: Date | null;
     firmwareVersion: string | null;
   }) {
     this.id = props.id;
@@ -29,6 +31,7 @@ export class Device {
     this.label = props.label;
     this.lastStatus = props.lastStatus;
     this.lastSeenAt = props.lastSeenAt;
+    this.statusChangedAt = props.statusChangedAt;
     this.firmwareVersion = props.firmwareVersion;
   }
 

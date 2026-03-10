@@ -1,4 +1,4 @@
-import { PowerStatus } from '@home-pulse-watcher/core';
+import { Device, PowerStatus } from '@home-pulse-watcher/core';
 import type { CollapsedEvent } from './collapse-events.js';
 import { TranslationService } from '../i18n/index.js';
 import { MessageFormatter } from './message.formatter.js';
@@ -24,6 +24,65 @@ describe('MessageFormatter', () => {
 
   const translationService = new TranslationService();
   const formatter = new MessageFormatter(translationService);
+
+  const makeDevice = (
+    overrides: Partial<Omit<Device, 'isOnline'>> = {},
+  ): Device =>
+    ({
+      id: 'device-1',
+      macAddress: 'AA:BB:CC:DD:EE:FF',
+      encryptedSecret: 'secret',
+      label: 'Kitchen',
+      lastStatus: PowerStatus.ON,
+      lastSeenAt: new Date('2026-02-10T10:00:00Z'),
+      statusChangedAt: null,
+      firmwareVersion: null,
+      ...overrides,
+      isOnline: () => true,
+    }) as Device;
+
+  describe('formatDeviceStatus', () => {
+    it('should show lastSeenAt and no status-since line when statusChangedAt is null', () => {
+      const device = makeDevice({ statusChangedAt: null });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('Last seen:');
+      expect(result).not.toContain('Status since:');
+    });
+
+    it('should show both lastSeenAt and statusSince when statusChangedAt is set', () => {
+      const device = makeDevice({
+        statusChangedAt: new Date('2026-02-10T08:00:00Z'),
+      });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('Last seen:');
+      expect(result).toContain('Status since:');
+    });
+
+    it('should show Ukrainian label for statusSince', () => {
+      const device = makeDevice({
+        statusChangedAt: new Date('2026-02-10T08:00:00Z'),
+      });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'uk',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('Статус з:');
+      // MarkdownV2 escapes the apostrophe in "з'єднання"
+      expect(result).toContain("Останнє з\\'єднання:");
+    });
+  });
 
   describe('formatDateTime', () => {
     const date = new Date('2026-02-10T08:00:00Z');
@@ -85,7 +144,9 @@ describe('MessageFormatter', () => {
       const events = [
         {
           label: 'Kitchen',
-          events: [makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 3600)],
+          events: [
+            makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 3600),
+          ],
         },
       ];
 
@@ -98,7 +159,9 @@ describe('MessageFormatter', () => {
       const events = [
         {
           label: 'Kitchen',
-          events: [makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 3600)],
+          events: [
+            makeCollapsed(PowerStatus.OFF, '2026-02-10T08:00:00Z', 3600),
+          ],
         },
       ];
 

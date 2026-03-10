@@ -43,6 +43,7 @@ export interface IDeviceRepository {
     data: {
       lastStatus: PowerStatus;
       lastSeenAt: Date;
+      statusChangedAt?: Date;
       firmwareVersion?: string;
     },
   ): Promise<Device>;

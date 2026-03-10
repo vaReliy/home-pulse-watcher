@@ -12,6 +12,7 @@ describe('Device', () => {
       label: 'Kitchen',
       lastStatus: PowerStatus.ON,
       lastSeenAt: new Date(),
+      statusChangedAt: null,
       firmwareVersion: null,
       ...overrides,
     });

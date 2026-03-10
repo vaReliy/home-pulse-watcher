@@ -29,6 +29,7 @@ describe('PrismaDeviceRepository', () => {
         label: 'Kitchen',
         lastStatus: 1,
         lastSeenAt: new Date(),
+        statusChangedAt: null,
       };
       mockPrismaClient.device.findUnique.mockResolvedValue(prismaDevice);
 
@@ -56,6 +57,7 @@ describe('PrismaDeviceRepository', () => {
         label: null,
         lastStatus: null,
         lastSeenAt: null,
+        statusChangedAt: null,
       };
       mockPrismaClient.device.findUnique.mockResolvedValue(prismaDevice);
 
@@ -78,6 +80,7 @@ describe('PrismaDeviceRepository', () => {
         label: null,
         lastStatus: 1,
         lastSeenAt: now,
+        statusChangedAt: null,
       };
       mockPrismaClient.device.update.mockResolvedValue(prismaDevice);
 
@@ -92,6 +95,35 @@ describe('PrismaDeviceRepository', () => {
         data: { lastStatus: PowerStatus.ON, lastSeenAt: now },
       });
     });
+
+    it('should include statusChangedAt when provided', async () => {
+      const now = new Date();
+      const prismaDevice = {
+        id: 'device-1',
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        secretHash: 'hashed',
+        label: null,
+        lastStatus: 1,
+        lastSeenAt: now,
+        statusChangedAt: now,
+      };
+      mockPrismaClient.device.update.mockResolvedValue(prismaDevice);
+
+      await repository.updateStatus('device-1', {
+        lastStatus: PowerStatus.ON,
+        lastSeenAt: now,
+        statusChangedAt: now,
+      });
+
+      expect(mockPrismaClient.device.update).toHaveBeenCalledWith({
+        where: { id: 'device-1' },
+        data: {
+          lastStatus: PowerStatus.ON,
+          lastSeenAt: now,
+          statusChangedAt: now,
+        },
+      });
+    });
   });
 
   describe('findByUserId', () => {
@@ -104,6 +136,7 @@ describe('PrismaDeviceRepository', () => {
           label: 'Kitchen',
           lastStatus: 1,
           lastSeenAt: new Date(),
+          statusChangedAt: null,
         },
         {
           id: 'device-2',
@@ -112,6 +145,7 @@ describe('PrismaDeviceRepository', () => {
           label: 'Garage',
           lastStatus: 0,
           lastSeenAt: new Date(),
+          statusChangedAt: null,
         },
       ];
       mockPrismaClient.device.findMany.mockResolvedValue(devices);

@@ -27,9 +27,10 @@ model Device {
   macAddress      String       @unique
   encryptedSecret String
   label           String?
-  lastStatus      Int?
-  lastSeenAt      DateTime?    @updatedAt
-  firmwareVersion String?
+  lastStatus       Int?
+  lastSeenAt       DateTime?
+  statusChangedAt  DateTime?
+  firmwareVersion  String?
   users           UserDevice[]
   events          PowerEvent[]
 }

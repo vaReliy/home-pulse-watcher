@@ -23,6 +23,7 @@ describe('ProcessPowerStatusService', () => {
       label: 'Kitchen',
       lastStatus: null,
       lastSeenAt: null,
+      statusChangedAt: null,
       firmwareVersion: null,
       ...overrides,
       isOnline: () => false,
@@ -282,6 +283,58 @@ describe('ProcessPowerStatusService', () => {
           firmwareVersion: '3.1.0',
         }),
       );
+    });
+
+    it('should pass statusChangedAt when status changes', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      const previousEvent = createMockPowerEvent({
+        timestamp: new Date('2026-02-04T09:00:00Z'),
+      });
+
+      deviceRepo.findById.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.OFF }),
+      );
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.ON }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(previousEvent);
+      eventRepo.update.mockResolvedValue(previousEvent);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      await service.run(
+        { status: PowerStatus.ON, voltage: null, firmwareVersion: null },
+        validContext,
+      );
+
+      const updateCall = deviceRepo.updateStatus.mock.calls[0][1];
+      expect(updateCall.statusChangedAt).toBeInstanceOf(Date);
+    });
+
+    it('should NOT pass statusChangedAt on heartbeat (same status)', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.ON }),
+      );
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.ON }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(mockPowerEvent);
+      eventRepo.update.mockResolvedValue(mockPowerEvent);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      await service.run(
+        { status: PowerStatus.ON, voltage: null, firmwareVersion: null },
+        validContext,
+      );
+
+      const updateCall = deviceRepo.updateStatus.mock.calls[0][1];
+      expect(updateCall.statusChangedAt).toBeUndefined();
     });
 
     it('should return isStatusChange=false for heartbeat (same status)', async () => {
