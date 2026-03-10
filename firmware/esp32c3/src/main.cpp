@@ -40,7 +40,7 @@
 #include "secrets.h"
 
 // Global state
-static int lastPowerStatus = -1;  // -1 = unknown, 0 = off, 1 = on
+static int lastPowerStatus = POWER_STATUS_UNKNOWN;  // Unknown at boot
 static unsigned long lastCheckTime = 0;
 static bool timeInitialized = false;
 static int wifiFailureCount = 0;
@@ -48,14 +48,14 @@ static int lastAdcValue = 0;               // Most recent averaged ADC reading
 
 // Confirmation state (2 consecutive reads to confirm)
 static int consecutiveNewState = 0;        // Consecutive reads of a new state
-static int pendingStatus = -1;             // What that new state is (-1 = none)
+static int pendingStatus = POWER_STATUS_UNKNOWN;  // What that new state is (UNKNOWN = none)
 
 // Messaging state (decoupled from internal state)
 static unsigned long lastSendTime = 0;     // Last successful HTTP send
 static unsigned long lastHeartbeatTime = 0; // Last heartbeat send
 
 // WS2812B RGB LED
-static Adafruit_NeoPixel led(1, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
+static Adafruit_NeoPixel led(LED_COUNT, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // DEV: HTTP client (local development) — active by default
 static WiFiClient client;
@@ -87,8 +87,8 @@ void updateStatusLed(int powerStatus) {
  * Initialize serial and LED
  */
 void setupHardware() {
-    Serial.begin(115200);
-    delay(1000);  // Wait for serial
+    Serial.begin(SERIAL_BAUD_RATE);
+    delay(SERIAL_INIT_DELAY_MS);  // Wait for serial
 
     Serial.println();
     Serial.println("=================================");
@@ -128,7 +128,7 @@ bool connectWiFi() {
         wifiLedOn = !wifiLedOn;
         if (wifiLedOn) setLedColor(255, 200, 0);  // Yellow
         else setLedOff();
-        delay(500);
+        delay(WIFI_BLINK_INTERVAL_MS);
         Serial.print(".");
     }
 
@@ -150,8 +150,8 @@ bool initializeTime() {
     // Wait for time to be set
     unsigned long startTime = millis();
     time_t now = 0;
-    while (now < 1700000000) {  // Sanity check: after year 2023
-        if (millis() - startTime > 30000) {
+    while (now < MIN_VALID_EPOCH) {  // Sanity check: after year 2023
+        if (millis() - startTime > NTP_SYNC_TIMEOUT_MS) {
             Serial.println("NTP sync timeout!");
             return false;
         }
@@ -172,7 +172,7 @@ bool initializeTime() {
  * @param output Buffer for hex signature (must be at least 65 bytes)
  */
 void computeHmacSignature(const char* payload, char* output) {
-    uint8_t hash[32];
+    uint8_t hash[HMAC_HASH_LENGTH];
 
     mbedtls_md_context_t ctx;
     mbedtls_md_init(&ctx);
@@ -183,10 +183,10 @@ void computeHmacSignature(const char* payload, char* output) {
     mbedtls_md_free(&ctx);
 
     // Convert to hex string
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < HMAC_HASH_LENGTH; i++) {
         sprintf(output + (i * 2), "%02x", hash[i]);
     }
-    output[64] = '\0';
+    output[HMAC_HEX_LENGTH] = '\0';
 }
 
 /**
@@ -242,18 +242,18 @@ bool sendPowerStatus(int status, int adcValue) {
     time_t timestamp;
     time(&timestamp);
 
-    if (timestamp < 1700000000) {
+    if (timestamp < MIN_VALID_EPOCH) {
         Serial.println("Invalid timestamp - NTP not synced");
         return false;
     }
 
     // Build payload for HMAC: "MAC:TIMESTAMP:STATUS"
-    char payload[128];
+    char payload[HMAC_PAYLOAD_BUFFER];
     snprintf(payload, sizeof(payload), "%s:%lu:%d",
              DEVICE_MAC, (unsigned long)timestamp, status);
 
     // Compute signature
-    char signature[65];
+    char signature[HMAC_SIGNATURE_BUFFER];
     computeHmacSignature(payload, signature);
 
     Serial.printf("Sending status: %d\n", status);
@@ -275,7 +275,7 @@ bool sendPowerStatus(int status, int adcValue) {
     http.addHeader("X-Signature", signature);
 
     // Build JSON body (voltage and firmwareVersion are informational, not part of HMAC payload)
-    char body[128];
+    char body[JSON_BODY_BUFFER];
     snprintf(body, sizeof(body), "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\"}", status, adcValue, FIRMWARE_VERSION);
 
     // Send request
@@ -303,7 +303,7 @@ void setup() {
 
     if (!connectWiFi()) {
         Serial.println("Failed to connect to WiFi. Restarting...");
-        delay(5000);
+        delay(RESTART_DELAY_MS);
         ESP.restart();
     }
 
@@ -313,19 +313,19 @@ void setup() {
 
     if (!initializeTime()) {
         Serial.println("Failed to sync time. Restarting...");
-        delay(5000);
+        delay(RESTART_DELAY_MS);
         ESP.restart();
     }
 
     timeInitialized = true;
 
     // Configure ADC (12-bit resolution, 11dB attenuation for 0-3.3V range)
-    analogReadResolution(12);
+    analogReadResolution(ADC_RESOLUTION_BITS);
     analogSetAttenuation(ADC_11db);
 
     // Read initial status and send
     lastAdcValue = readAdcAverage();
-    lastPowerStatus = adcToStatus(lastAdcValue, -1);
+    lastPowerStatus = adcToStatus(lastAdcValue, POWER_STATUS_UNKNOWN);
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(lastPowerStatus);
 
@@ -338,7 +338,7 @@ void setup() {
 
     // Initialize hardware watchdog timer
     esp_task_wdt_config_t wdtConfig = {
-        .timeout_ms = WATCHDOG_TIMEOUT_S * 1000,
+        .timeout_ms = WATCHDOG_TIMEOUT_S * MS_PER_SECOND,
         .idle_core_mask = 0,
         .trigger_panic = true,
     };
@@ -412,7 +412,7 @@ void loop() {
                 updateStatusLed(lastPowerStatus);
 
                 // Reset confirmation
-                pendingStatus = -1;
+                pendingStatus = POWER_STATUS_UNKNOWN;
                 consecutiveNewState = 0;
 
                 // Send HTTP only if cooldown elapsed
@@ -430,10 +430,10 @@ void loop() {
             }
         } else {
             // Status matches confirmed state — reset any pending confirmation
-            if (pendingStatus != -1) {
+            if (pendingStatus != POWER_STATUS_UNKNOWN) {
                 Serial.printf("Pending state %d cleared (ADC: %d [%s])\n",
                     pendingStatus, lastAdcValue, adcBand);
-                pendingStatus = -1;
+                pendingStatus = POWER_STATUS_UNKNOWN;
                 consecutiveNewState = 0;
             }
         }

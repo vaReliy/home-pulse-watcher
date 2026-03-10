@@ -48,6 +48,39 @@
 // Power Status Values (must match backend enum)
 #define POWER_STATUS_OFF 0
 #define POWER_STATUS_ON 1
+#define POWER_STATUS_UNKNOWN -1     // Initial/unresolved power state
+
+// LED Configuration
+#define LED_COUNT 1                 // Single WS2812B pixel
+
+// Serial Configuration
+#define SERIAL_BAUD_RATE 115200
+#define SERIAL_INIT_DELAY_MS 1000   // Wait for serial monitor after boot
+
+// WiFi LED
+#define WIFI_BLINK_INTERVAL_MS 500  // Yellow blink during WiFi connection
+
+// NTP Validation
+#define MIN_VALID_EPOCH 1700000000UL // Unix timestamp sanity floor (~Nov 2023)
+#define NTP_SYNC_TIMEOUT_MS 30000   // Max wait for NTP time sync
+
+// HMAC-SHA256 Constants
+#define HMAC_HASH_LENGTH 32         // SHA-256 output size (bytes)
+#define HMAC_HEX_LENGTH 64          // Hex-encoded signature length (2 chars/byte)
+#define HMAC_SIGNATURE_BUFFER 65    // HMAC_HEX_LENGTH + null terminator
+
+// Buffer Sizes
+#define HMAC_PAYLOAD_BUFFER 128     // "MAC:TIMESTAMP:STATUS" buffer
+#define JSON_BODY_BUFFER 128        // HTTP POST body buffer
+
+// ADC Configuration
+#define ADC_RESOLUTION_BITS 12      // 12-bit ADC (0-4095 range)
+
+// Restart Delay
+#define RESTART_DELAY_MS 5000       // Delay before ESP.restart() for log flush
+
+// Watchdog
+#define MS_PER_SECOND 1000          // Conversion factor for watchdog config
 
 // Stability Configuration
 #define WATCHDOG_TIMEOUT_S 60           // Hardware watchdog timeout (seconds)
