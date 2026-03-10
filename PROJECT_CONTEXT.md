@@ -125,6 +125,23 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 - Response includes `debounced: boolean` for firmware logging
 - **Not debounced**: first event ever, heartbeats (same status), events ≥ 5 s apart
 
+### Hardware Variants
+
+Two hardware configurations are supported. Both use the same firmware (V3.1.0) and identical ADC sensing.
+
+| Variant | Power Source | Battery Backup | Guide |
+|---------|-------------|----------------|-------|
+| **Standard V2.1** | USB adapter only | No | [`docs/hardware/standard.md`](docs/hardware/standard.md) |
+| **UPS Edition V2.3** | USB adapter + TP4056 shield | Yes (18650 Li-Ion) | [`docs/hardware/ups.md`](docs/hardware/ups.md) |
+
+**V2.3 Key Design**: Dual-diode OR-gate (1N4007 x 2). R1 of the voltage divider connects BEFORE Diode 1 (directly to adapter 5V). When mains drops, GPIO2 reads 0V instantly while ESP32 stays powered via battery through Diode 2. This "Isolated Sensor" design is what enables outage detection with battery backup.
+
+#### Future Optimizations (TODO)
+
+- **V2.4 (Priority UPS)**: Replace Diode 1 with Schottky (SS34) or P-MOSFET load-sharing for production
+- **Battery Monitoring**: GPIO3 with 100k/100k divider for battery voltage sensing -> "SOS / Low Battery" alerts
+- **Phase 5.2 — Bot UI**: Add UPS metrics (battery voltage) to `/status` Telegram command
+
 ### Telegram Bot
 
 - **Interaction model**: Button-driven via Reply Keyboard (Status, Devices, Settings, Help); `/start` is the only slash command (user registration)
@@ -176,6 +193,8 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 | Admin Guide      | [`docs/admin-guide.md`](docs/admin-guide.md)                               | Device provisioning, hardware wiring, troubleshooting |
 | CLI Reference    | [`docs/cli-reference.md`](docs/cli-reference.md)                           | All nest-commander commands with flags and exit codes |
 | Flashing Guide   | [`firmware/docs/FLASHING_GUIDE.md`](firmware/docs/FLASHING_GUIDE.md)       | PlatformIO build, upload, serial monitor              |
+| HW: Standard     | [`docs/hardware/standard.md`](docs/hardware/standard.md)        | V2.1 wiring, voltage divider, ADC calibration         |
+| HW: UPS Edition  | [`docs/hardware/ups.md`](docs/hardware/ups.md)                  | V2.3 battery backup, OR-gate, isolated sensor         |
 
 ---
 
@@ -199,6 +218,8 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 - Never gate `lastPowerStatus` updates on HTTP send success — state must track hardware
 - Server debounce is independent of firmware — both layers must remain active
 - Keep debounce windows short (single-digit seconds) — Hardware V2.1 (0.1 µF cap) is the primary noise filter; firmware/server should stay lean and responsive
+- Never move R1 connection point to after Diode 1 in V2.3 — sensor must read adapter voltage directly, isolated from battery power path
+- OR-gate diodes must prevent battery backfeed into the sensing circuit
 
 ---
 
