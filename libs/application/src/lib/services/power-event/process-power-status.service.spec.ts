@@ -97,7 +97,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON, voltage: 3500, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: 3500,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -125,7 +130,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -150,7 +160,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -199,7 +214,12 @@ describe('ProcessPowerStatusService', () => {
 
       try {
         await service.run(
-          { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         );
 
@@ -227,7 +247,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -258,7 +283,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -282,7 +312,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: '3.1.0', batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: '3.1.0',
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -314,7 +349,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -338,7 +378,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -362,7 +407,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -378,12 +428,13 @@ describe('ProcessPowerStatusService', () => {
       const eventRepo = createMockPowerEventRepository();
       const emitter = createMockEventEmitter();
 
+      const statusChangedAt = new Date('2026-02-04T09:00:00Z');
       const previousEvent = createMockPowerEvent({
         timestamp: new Date('2026-02-04T09:00:00Z'),
       });
 
       deviceRepo.findById.mockResolvedValue(
-        createMockDevice({ lastStatus: PowerStatus.OFF }),
+        createMockDevice({ lastStatus: PowerStatus.OFF, statusChangedAt }),
       );
       deviceRepo.updateStatus.mockResolvedValue(
         createMockDevice({ lastStatus: PowerStatus.ON }),
@@ -398,7 +449,12 @@ describe('ProcessPowerStatusService', () => {
         emitter,
       );
       await service.run(
-        { status: PowerStatus.ON, voltage: 3200, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: 3200,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -412,6 +468,112 @@ describe('ProcessPowerStatusService', () => {
           voltage: 3200,
         }),
       );
+    });
+
+    it('should use device.statusChangedAt for notification duration, not last heartbeat', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+      const emitter = createMockEventEmitter();
+
+      const now = new Date('2026-02-04T20:12:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      try {
+        // Power went OFF 2h53m ago (statusChangedAt)
+        const statusChangedAt = new Date('2026-02-04T17:19:00Z'); // 10380s ago
+        // Last heartbeat was 3min ago
+        const lastHeartbeat = createMockPowerEvent({
+          timestamp: new Date('2026-02-04T20:09:00Z'), // 180s ago
+        });
+
+        deviceRepo.findById.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.OFF, statusChangedAt }),
+        );
+        deviceRepo.updateStatus.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.ON }),
+        );
+        eventRepo.findLatestByDeviceId.mockResolvedValue(lastHeartbeat);
+        eventRepo.update.mockResolvedValue(lastHeartbeat);
+        eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+        const service = new ProcessPowerStatusService(
+          deviceRepo,
+          eventRepo,
+          emitter,
+        );
+        await service.run(
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
+          validContext,
+        );
+
+        expect(emitter.emit).toHaveBeenCalledWith(
+          POWER_STATUS_CHANGED_EVENT,
+          expect.objectContaining({
+            durationSeconds: 10380, // 2h53m, not 3min
+          }),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('should fall back to event-based duration when statusChangedAt is null', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+      const emitter = createMockEventEmitter();
+
+      const now = new Date('2026-02-04T10:00:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      try {
+        const previousEvent = createMockPowerEvent({
+          timestamp: new Date('2026-02-04T09:00:00Z'), // 3600s ago
+        });
+
+        deviceRepo.findById.mockResolvedValue(
+          createMockDevice({
+            lastStatus: PowerStatus.OFF,
+            statusChangedAt: null,
+          }),
+        );
+        deviceRepo.updateStatus.mockResolvedValue(
+          createMockDevice({ lastStatus: PowerStatus.ON }),
+        );
+        eventRepo.findLatestByDeviceId.mockResolvedValue(previousEvent);
+        eventRepo.update.mockResolvedValue(previousEvent);
+        eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+        const service = new ProcessPowerStatusService(
+          deviceRepo,
+          eventRepo,
+          emitter,
+        );
+        await service.run(
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
+          validContext,
+        );
+
+        expect(emitter.emit).toHaveBeenCalledWith(
+          POWER_STATUS_CHANGED_EVENT,
+          expect.objectContaining({
+            durationSeconds: 3600,
+          }),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('should NOT emit event on heartbeat (same status)', async () => {
@@ -435,7 +597,12 @@ describe('ProcessPowerStatusService', () => {
         emitter,
       );
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -463,7 +630,12 @@ describe('ProcessPowerStatusService', () => {
       // No event emitter passed
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       const result = await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -506,7 +678,12 @@ describe('ProcessPowerStatusService', () => {
           emitter,
         );
         const result = await service.run(
-          { status: PowerStatus.ON, voltage: 3000, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: 3000,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         );
 
@@ -557,7 +734,12 @@ describe('ProcessPowerStatusService', () => {
           emitter,
         );
         const result = await service.run(
-          { status: PowerStatus.ON, voltage: 3500, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: 3500,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         );
 
@@ -596,7 +778,12 @@ describe('ProcessPowerStatusService', () => {
         emitter,
       );
       const result = await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -637,7 +824,12 @@ describe('ProcessPowerStatusService', () => {
           emitter,
         );
         const result = await service.run(
-          { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         );
 
@@ -659,7 +851,12 @@ describe('ProcessPowerStatusService', () => {
         eventRepo.update.mockResolvedValue(event5sAgo);
 
         const result2 = await service.run(
-          { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         );
 
@@ -680,7 +877,12 @@ describe('ProcessPowerStatusService', () => {
 
       await expect(
         service.run(
-          { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           {},
         ),
       ).rejects.toThrow('deviceId not provided in service context');
@@ -696,14 +898,24 @@ describe('ProcessPowerStatusService', () => {
 
       await expect(
         service.run(
-          { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         ),
       ).rejects.toThrow(NotFoundError);
 
       await expect(
         service.run(
-          { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: PowerStatus.ON,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         ),
       ).rejects.toMatchObject({
@@ -727,7 +939,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: 3850 },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: 3850,
+        },
         validContext,
       );
 
@@ -749,7 +966,12 @@ describe('ProcessPowerStatusService', () => {
 
       const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: 3850 },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: 3850,
+        },
         validContext,
       );
 
@@ -778,9 +1000,18 @@ describe('ProcessPowerStatusService', () => {
       eventRepo.update.mockResolvedValue(previousEvent);
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
-      const service = new ProcessPowerStatusService(deviceRepo, eventRepo, emitter);
+      const service = new ProcessPowerStatusService(
+        deviceRepo,
+        eventRepo,
+        emitter,
+      );
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: 3850 },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: 3850,
+        },
         validContext,
       );
 
@@ -802,9 +1033,18 @@ describe('ProcessPowerStatusService', () => {
       eventRepo.findLatestByDeviceId.mockResolvedValue(null);
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
-      const service = new ProcessPowerStatusService(deviceRepo, eventRepo, emitter);
+      const service = new ProcessPowerStatusService(
+        deviceRepo,
+        eventRepo,
+        emitter,
+      );
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: BATTERY_LOW_THRESHOLD_MV - 1 },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: BATTERY_LOW_THRESHOLD_MV - 1,
+        },
         validContext,
       );
 
@@ -829,9 +1069,18 @@ describe('ProcessPowerStatusService', () => {
       eventRepo.findLatestByDeviceId.mockResolvedValue(null);
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
-      const service = new ProcessPowerStatusService(deviceRepo, eventRepo, emitter);
+      const service = new ProcessPowerStatusService(
+        deviceRepo,
+        eventRepo,
+        emitter,
+      );
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: BATTERY_LOW_THRESHOLD_MV },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: BATTERY_LOW_THRESHOLD_MV,
+        },
         validContext,
       );
 
@@ -853,9 +1102,18 @@ describe('ProcessPowerStatusService', () => {
       eventRepo.findLatestByDeviceId.mockResolvedValue(null);
       eventRepo.create.mockResolvedValue(mockPowerEvent);
 
-      const service = new ProcessPowerStatusService(deviceRepo, eventRepo, emitter);
+      const service = new ProcessPowerStatusService(
+        deviceRepo,
+        eventRepo,
+        emitter,
+      );
       await service.run(
-        { status: PowerStatus.ON, voltage: null, firmwareVersion: null, batteryVoltage: null },
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
         validContext,
       );
 
@@ -894,14 +1152,24 @@ describe('ProcessPowerStatusService', () => {
 
       await expect(
         service.run(
-          { status: 2, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: 2,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         ),
       ).rejects.toThrow(ValidationError);
 
       await expect(
         service.run(
-          { status: -1, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: -1,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         ),
       ).rejects.toThrow(ValidationError);
@@ -920,7 +1188,12 @@ describe('ProcessPowerStatusService', () => {
       // Status 0 (OFF)
       await expect(
         service.run(
-          { status: 0, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: 0,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         ),
       ).resolves.toBeDefined();
@@ -928,7 +1201,12 @@ describe('ProcessPowerStatusService', () => {
       // Status 1 (ON)
       await expect(
         service.run(
-          { status: 1, voltage: null, firmwareVersion: null, batteryVoltage: null },
+          {
+            status: 1,
+            voltage: null,
+            firmwareVersion: null,
+            batteryVoltage: null,
+          },
           validContext,
         ),
       ).resolves.toBeDefined();

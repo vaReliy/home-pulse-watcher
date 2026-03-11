@@ -296,7 +296,6 @@ export class MessageFormatter {
     const tz = timezone ?? DEFAULT_TIMEZONE;
 
     return date.toLocaleString(intlLocale, {
-      year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -317,8 +316,7 @@ export class MessageFormatter {
     const parts: string[] = [];
     if (hours > 0) parts.push(`${hours}${msgs.DURATION_HOURS}`);
     if (minutes > 0) parts.push(`${minutes}${msgs.DURATION_MINUTES}`);
-    if (secs > 0 || parts.length === 0)
-      parts.push(`${secs}${msgs.DURATION_SECONDS}`);
+    if (parts.length === 0) parts.push(`${secs}${msgs.DURATION_SECONDS}`);
 
     return parts.join(' ');
   }

@@ -120,12 +120,22 @@ describe('MessageFormatter', () => {
   describe('formatDuration', () => {
     it('should use Ukrainian suffixes by default', () => {
       const result = formatter.formatDuration(3661);
-      expect(result).toBe('1год 1хв 1с');
+      expect(result).toBe('1год 1хв');
     });
 
     it('should use English suffixes for en locale', () => {
       const result = formatter.formatDuration(3661, 'en');
-      expect(result).toBe('1h 1m 1s');
+      expect(result).toBe('1h 1m');
+    });
+
+    it('should show seconds only when sub-minute', () => {
+      const result = formatter.formatDuration(45, 'uk');
+      expect(result).toBe('45с');
+    });
+
+    it('should omit seconds when hours present but no minutes', () => {
+      const result = formatter.formatDuration(3659, 'uk');
+      expect(result).toBe('1год');
     });
 
     it('should format hours only', () => {

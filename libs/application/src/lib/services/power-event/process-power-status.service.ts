@@ -115,6 +115,18 @@ export class ProcessPowerStatusService extends BaseService<
       }
     }
 
+    // Notification duration: use statusChangedAt (start of current status) for accuracy.
+    // During an outage, heartbeats update lastEvent but not statusChangedAt, so this
+    // correctly reflects the full outage duration rather than time since last heartbeat.
+    let notificationDurationSeconds: number | null = null;
+    if (isStatusChange && device.statusChangedAt) {
+      notificationDurationSeconds = Math.floor(
+        (timestamp.getTime() - device.statusChangedAt.getTime()) / 1000,
+      );
+    } else if (isStatusChange && previousDurationSeconds !== null) {
+      notificationDurationSeconds = previousDurationSeconds; // fallback
+    }
+
     // 3. Create new power event (always recorded, even if debounced)
     const event = await this.powerEventRepository.create({
       deviceId,
@@ -157,7 +169,7 @@ export class ProcessPowerStatusService extends BaseService<
           newStatus,
           timestamp,
           eventId: event.id,
-          durationSeconds: previousDurationSeconds,
+          durationSeconds: notificationDurationSeconds,
           voltage: params.voltage,
           batteryVoltage: params.batteryVoltage,
         }),
