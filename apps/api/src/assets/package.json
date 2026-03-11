@@ -5,6 +5,8 @@
   "dependencies": {
     "@prisma/client": "^7.3.0",
     "@prisma/adapter-pg": "^7.3.0",
+    "nestjs-pino": "^4.6.0",
+    "pino-http": "^11.0.0",
     "pg": "^8.17.2"
   }
 }

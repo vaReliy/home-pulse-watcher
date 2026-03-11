@@ -4,15 +4,21 @@ const { join } = require('path');
 
 /**
  * Packages that must remain external (not bundled by webpack).
- * Prisma uses WASM binaries, generated code under .prisma/client,
- * and internal subpath requires that must resolve from node_modules at runtime.
- * pg is kept external to avoid duplicate instances with @prisma/adapter-pg.
+ * - Prisma: WASM binaries, generated code under .prisma/client, subpath requires
+ * - pg: kept external to avoid duplicate instances with @prisma/adapter-pg
+ * - pino/thread-stream: spawns worker threads via require.resolve('./lib/worker.js')
+ *   which breaks when bundled (the worker file no longer exists on disk)
  */
 const EXTERNAL_PACKAGES = [
   '@prisma/client',
   '@prisma/adapter-pg',
   '.prisma/client',
   'pg',
+  'pino',
+  'pino-http',
+  'pino-pretty',
+  'thread-stream',
+  'nestjs-pino',
 ];
 
 /**
@@ -31,7 +37,7 @@ const NESTJS_LAZY_IMPORTS = [
  * NxAppWebpackPlugin's externalDependencies array uses exact matching,
  * which fails for subpath imports (e.g., @prisma/client/runtime/client.js).
  */
-function prismaExternals({ request }, callback) {
+function resolveExternals({ request }, callback) {
   if (
     request &&
     EXTERNAL_PACKAGES.some(
@@ -55,7 +61,7 @@ module.exports = {
     main: './src/main.ts',
     cli: './src/cli.ts',
   },
-  externals: [prismaExternals],
+  externals: [resolveExternals],
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',
