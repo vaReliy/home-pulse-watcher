@@ -11,17 +11,44 @@ Use this variant when you need immediate outage detection rather than inferring 
 ## Wiring Diagram
 
 ```
-                                                    +------------------+
-                                                    |  TP4056 Shield   |
-                                                    |                  |
-[ADAPTER 5V] --+-- [Diode 1 (1N4007)] ----------+--| 5V IN    5V OUT |--[Diode 2 (1N4007)]--+
-               |                                 |  |          (bat)  |                      |
-               |                                 |  +------------------+                     |
-               +-- [R1 10k] -- [GPIO 2]          |                                           |
-               |                                 +-------------------------------------------+-- [ESP32 5V]
-               +-- [R2 10k] --+-- [GND]                                                     |
-               |              |                                                              |
-               +-- [C1 0.1uF]-+                                                         [GND Common]
+================================================================================
+                 HOME_PULSE WATCHER V2.3.1 — WIRING SCHEMATIC
+================================================================================
+
+[ ADAPTER 5V ] (Input Source)
+      |
+      +--- (A) MAINS SENSING (Detecting AC Power) ------------------------------+
+      |    [ R1 10k ]                                                           |
+      |       |------> GPIO 2 (Sense Pin)                                       |
+      |    [ R2 10k ]                                                           |
+      |       |                                                                 |
+      |    [ C1 0.1uF ] (Noise Filter)                                          |
+      |       |                                                                 |
+      |    [ GND ]                                                              |
+      |                                                                         |
+      +--- (B) UPS & POWER PATH (Charging & Or-Gate) ---------------------------+
+      |                                                                         |
+      +--[ DIODE 1 ]--+--> [ TP4056 SHIELD ]                                    |
+         (1N4007)     |    |    (5V IN)    |                                    |
+                      |    |               |                                    |
+                      |    |    (5V OUT)   |--[ DIODE 2 ]--+                    |
+                      |    |               |  (1N4007)     |                    |
+                      |    +-------+-------+               |      [ ESP32 ]     |
+                      |            |                       |      (C3 / C6)     |
+                      |       (C) BATTERY SENSE            |    +-----------+   |
+                      |            |                       +--> |   5V IN   |   |
+                      |         [ BAT+ ]                        |           |   |
+                      |            |                            |   GPIO 2  | <---+
+                      |         [ R3 100k ]--+                  |   GPIO 3  | <---+
+                      |                      |------> GPIO 3    |           |   |
+                      |         [ R4 100k ]--+                  |   GND     | --+
+                      |                      |                  +-----------+   |
+                      |                    [GND]                      |         |
+                      |                                               |         |
+                      +-----------------------------------------------+---------+
+                                               |
+                                        [ COMMON GND ]
+================================================================================
 ```
 
 **Power paths:**
@@ -62,14 +89,16 @@ R1 of the voltage divider connects **BEFORE** Diode 1 — directly to the adapte
 
 ## Bill of Materials
 
-| Component | Value/Part                     | Qty | Notes                        |
-| --------- | ------------------------------ | --- | ---------------------------- |
-| R1        | 10k resistor                   | 1   | Voltage divider input side   |
-| R2        | 10k resistor                   | 1   | Voltage divider ground side  |
-| C1        | 0.1uF ceramic (104)            | 1   | EMI filter, parallel with R2 |
-| D1, D2    | 1N4007 diode                   | 2   | OR-gate (any 1N400x works)   |
-| Shield    | TP4056 charge/discharge module | 1   | Must have 5V OUT pins        |
-| Battery   | 18650 Li-Ion cell              | 1   | Protected cell recommended   |
+| Component | Value/Part                     | Qty | Notes                           |
+| --------- | ------------------------------ | --- | ------------------------------- |
+| R1        | 10k resistor                   | 1   | Power sense divider input side  |
+| R2        | 10k resistor                   | 1   | Power sense divider ground side |
+| C1        | 0.1uF ceramic (104)            | 1   | EMI filter, parallel with R2    |
+| D1, D2    | 1N4007 diode                   | 2   | OR-gate (any 1N400x works)      |
+| R3        | 100k resistor                  | 1   | Battery sense divider input     |
+| R4        | 100k resistor                  | 1   | Battery sense divider ground    |
+| Shield    | TP4056 charge/discharge module | 1   | Must have 5V OUT pins           |
+| Battery   | 18650 Li-Ion cell              | 1   | Protected cell recommended      |
 
 ## Battery Monitoring (GPIO3)
 

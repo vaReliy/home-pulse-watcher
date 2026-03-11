@@ -8,20 +8,39 @@ Use this variant when battery backup is not needed (e.g., monitoring locations w
 
 ## Wiring Diagram
 
-The ESP32 monitors grid power via a 5V USB adapter and a resistive voltage divider:
-
 ```
-5V USB Adapter (powered by grid)
-        |
-       [R1]  10k  <- Input-side (connects to V_in)
-        |
-        +---- GPIO 2 (ADC input)
-        |                 |
-       [R2]  10k        [C1] 0.1uF ceramic (always in parallel with R2)
-        |                 |
-        +----+------------+
-             |
-            GND
+================================================================================
+                 HOME_PULSE WATCHER V2.1 — STANDARD SCHEMATIC
+================================================================================
+
+[ ADAPTER 5V ] (Input Source)
+      |
+      +--- (A) MAINS SENSING (Detecting AC Power) ------------------------------+
+      |    [ R1 10k ]                                                           |
+      |       |------> GPIO 2 (Sense Pin)                                       |
+      |    [ R2 10k ]                                                           |
+      |       |                                                                 |
+      |    [ C1 0.1uF ] (Noise Filter)                                          |
+      |       |                                                                 |
+      |    [ GND ]                                                              |
+      |                                                                         |
+      +--- (B) DIRECT POWER PATH (Direct 5V supply) ----------------------------+
+      |                                                                         |
+      |                                                       [ ESP32 ]         |
+      |                                                       (C3 / C6)         |
+      |                                                     +-----------+       |
+      +---------------------------------------------------> |   5V IN   |       |
+                                                            |           |       |
+                                                            |   GPIO 2  | <-----+
+                                                            |           |       |
+                                                            |   GND     | --+   |
+                                                            +-----------+   |   |
+                                                                  |         |   |
+                                                                  |         |   |
+                                             +--------------------+---------+---+
+                                             |
+                                      [ COMMON GND ]
+================================================================================
 ```
 
 - **Full grid power (5V adapter):** 5V x R2/(R1+R2) = 5V x 10k/(10k+10k) = 2.5V at GPIO -> ADC ~3100
