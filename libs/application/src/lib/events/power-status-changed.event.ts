@@ -13,6 +13,8 @@ export class PowerStatusChangedEvent {
   readonly eventId: string;
   readonly durationSeconds: number | null;
   readonly voltage: number | null;
+  /** Battery voltage in millivolts at time of event. Present only for UPS Edition devices. */
+  readonly batteryVoltage: number | null;
 
   constructor(props: {
     deviceId: string;
@@ -23,6 +25,7 @@ export class PowerStatusChangedEvent {
     eventId: string;
     durationSeconds: number | null;
     voltage: number | null;
+    batteryVoltage: number | null;
   }) {
     this.deviceId = props.deviceId;
     this.deviceLabel = props.deviceLabel;
@@ -32,6 +35,7 @@ export class PowerStatusChangedEvent {
     this.eventId = props.eventId;
     this.durationSeconds = props.durationSeconds;
     this.voltage = props.voltage;
+    this.batteryVoltage = props.batteryVoltage;
   }
 
   /**

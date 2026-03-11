@@ -13,6 +13,7 @@ describe('mapPrismaDeviceToEntity', () => {
       lastSeenAt: new Date('2024-01-01'),
       statusChangedAt,
       firmwareVersion: '3.1.0',
+      batteryVoltage: null,
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -38,6 +39,7 @@ describe('mapPrismaDeviceToEntity', () => {
       lastSeenAt: null,
       statusChangedAt: null,
       firmwareVersion: null,
+      batteryVoltage: null,
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -59,6 +61,7 @@ describe('mapPrismaDeviceToEntity', () => {
       lastSeenAt: null,
       statusChangedAt: null,
       firmwareVersion: null,
+      batteryVoltage: null,
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);

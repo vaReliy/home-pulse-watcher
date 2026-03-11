@@ -62,6 +62,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
       lastSeenAt: Date;
       statusChangedAt?: Date;
       firmwareVersion?: string;
+      batteryVoltage?: number | null;
     },
   ): Promise<Device> {
     const device = await withPrismaError('Device', () =>
@@ -75,6 +76,9 @@ export class PrismaDeviceRepository implements IDeviceRepository {
           }),
           ...(data.firmwareVersion !== undefined && {
             firmwareVersion: data.firmwareVersion,
+          }),
+          ...(data.batteryVoltage !== undefined && {
+            batteryVoltage: data.batteryVoltage,
           }),
         },
       }),

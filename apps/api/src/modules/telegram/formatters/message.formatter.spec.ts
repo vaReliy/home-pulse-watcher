@@ -1,4 +1,5 @@
 import { Device, PowerStatus } from '@home-pulse-watcher/core';
+import { BatteryLowEvent } from '@home-pulse-watcher/application';
 import type { CollapsedEvent } from './collapse-events.js';
 import { TranslationService } from '../i18n/index.js';
 import { MessageFormatter } from './message.formatter.js';
@@ -26,7 +27,7 @@ describe('MessageFormatter', () => {
   const formatter = new MessageFormatter(translationService);
 
   const makeDevice = (
-    overrides: Partial<Omit<Device, 'isOnline'>> = {},
+    overrides: Partial<Omit<Device, 'isOnline' | 'hasUps'>> = {},
   ): Device =>
     ({
       id: 'device-1',
@@ -37,8 +38,12 @@ describe('MessageFormatter', () => {
       lastSeenAt: new Date('2026-02-10T10:00:00Z'),
       statusChangedAt: null,
       firmwareVersion: null,
+      batteryVoltage: null,
       ...overrides,
       isOnline: () => true,
+      get hasUps() {
+        return this.batteryVoltage !== null;
+      },
     }) as Device;
 
   describe('formatDeviceStatus', () => {
@@ -231,6 +236,121 @@ describe('MessageFormatter', () => {
       expect(result.length).toBeLessThanOrEqual(4096);
       expect(result).toContain('showing');
       expect(result).toMatch(/showing \d+ of \d+ events/);
+    });
+  });
+
+  describe('formatDeviceStatus with battery', () => {
+    it('should not include battery line when batteryVoltage is null', () => {
+      const device = makeDevice({ batteryVoltage: null });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).not.toContain('Battery');
+      expect(result).not.toContain('🔋');
+    });
+
+    it('should append battery line when batteryVoltage is set', () => {
+      const device = makeDevice({ batteryVoltage: 3850 });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('🔋');
+      expect(result).toContain('3\\.85');
+      expect(result).toContain('71');
+    });
+
+    it('should show 100% for fully charged battery', () => {
+      const device = makeDevice({ batteryVoltage: 4200 });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('4\\.20');
+      expect(result).toContain('100');
+    });
+  });
+
+  describe('formatPowerLost with battery', () => {
+    it('should not include battery info when batteryVoltage is null', () => {
+      const result = formatter.formatPowerLost(
+        'Kitchen',
+        new Date('2026-02-10T08:00:00Z'),
+        'en',
+        'Europe/Kyiv',
+        null,
+      );
+      expect(result).not.toContain('🔋');
+    });
+
+    it('should append battery info when batteryVoltage is provided', () => {
+      const result = formatter.formatPowerLost(
+        'Kitchen',
+        new Date('2026-02-10T08:00:00Z'),
+        'en',
+        'Europe/Kyiv',
+        3850,
+      );
+      expect(result).toContain('🔋');
+      expect(result).toContain('3\\.85');
+    });
+  });
+
+  describe('formatBatteryLowAlert', () => {
+    it('should format SOS alert with device label and battery info', () => {
+      const event = new BatteryLowEvent({
+        deviceId: 'device-1',
+        deviceLabel: 'Kitchen',
+        batteryVoltage: 3350,
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+      });
+      const result = formatter.formatBatteryLowAlert(
+        event,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('Low Battery Alert');
+      expect(result).toContain('Kitchen');
+      expect(result).toContain('3\\.35');
+      expect(result).toContain('29');
+    });
+
+    it('should use "Unknown Device" when deviceLabel is null', () => {
+      const event = new BatteryLowEvent({
+        deviceId: 'device-1',
+        deviceLabel: null,
+        batteryVoltage: 3200,
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+      });
+      const result = formatter.formatBatteryLowAlert(
+        event,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('Unknown Device');
+    });
+
+    it('should format SOS alert in Ukrainian', () => {
+      const event = new BatteryLowEvent({
+        deviceId: 'device-1',
+        deviceLabel: 'Kitchen',
+        batteryVoltage: 3400,
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+      });
+      const result = formatter.formatBatteryLowAlert(
+        event,
+        'uk',
+        'Europe/Kyiv',
+      );
+      expect(result).toContain('Kitchen');
+      expect(result).toContain('3\\.40');
     });
   });
 });

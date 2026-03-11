@@ -213,6 +213,7 @@ export class PowerStatusListener {
         event.timestamp,
         locale,
         timezone,
+        event.batteryVoltage,
       );
     }
 

@@ -14,6 +14,7 @@ function makeEvent(
     timestamp: new Date(timestamp),
     duration,
     voltage: null,
+    batteryVoltage: null,
   });
 }
 

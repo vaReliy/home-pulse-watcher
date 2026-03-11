@@ -14,6 +14,8 @@ export class Device {
   readonly lastSeenAt: Date | null;
   readonly statusChangedAt: Date | null;
   readonly firmwareVersion: string | null;
+  /** Latest battery voltage in millivolts. Present only for UPS Edition devices. */
+  readonly batteryVoltage: number | null;
 
   constructor(props: {
     id: string;
@@ -24,6 +26,7 @@ export class Device {
     lastSeenAt: Date | null;
     statusChangedAt: Date | null;
     firmwareVersion: string | null;
+    batteryVoltage: number | null;
   }) {
     this.id = props.id;
     this.macAddress = props.macAddress;
@@ -33,6 +36,12 @@ export class Device {
     this.lastSeenAt = props.lastSeenAt;
     this.statusChangedAt = props.statusChangedAt;
     this.firmwareVersion = props.firmwareVersion;
+    this.batteryVoltage = props.batteryVoltage;
+  }
+
+  /** Returns true if this device has a UPS battery module (batteryVoltage is not null). */
+  get hasUps(): boolean {
+    return this.batteryVoltage !== null;
   }
 
   /**

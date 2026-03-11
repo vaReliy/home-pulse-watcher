@@ -12,6 +12,7 @@ describe('PowerEvent', () => {
       timestamp: new Date('2024-01-01T12:00:00Z'),
       duration: 3600,
       voltage: null,
+      batteryVoltage: null,
       ...overrides,
     });
 

@@ -15,6 +15,11 @@ import {
   PowerStatusChangedEvent,
   POWER_STATUS_CHANGED_EVENT,
 } from '../../events/power-status-changed.event.js';
+import {
+  BatteryLowEvent,
+  BATTERY_LOW_EVENT,
+  BATTERY_LOW_THRESHOLD_MV,
+} from '../../events/battery-low.event.js';
 
 /** Minimum seconds between status-change notifications for the same device. */
 const MIN_DEBOUNCE_SECONDS = 5;
@@ -23,6 +28,7 @@ export interface ProcessPowerStatusInput {
   status: number;
   voltage: number | null;
   firmwareVersion: string | null;
+  batteryVoltage: number | null;
 }
 
 export interface ProcessPowerStatusOutput {
@@ -67,6 +73,7 @@ export class ProcessPowerStatusService extends BaseService<
       status: ['required', 'powerStatus'],
       voltage: ['integer', { minNumber: 0 }, { maxNumber: 4095 }],
       firmwareVersion: [{ maxLength: 20 }],
+      batteryVoltage: ['integer', { minNumber: 0 }, { maxNumber: 5000 }],
     };
   }
 
@@ -115,14 +122,16 @@ export class ProcessPowerStatusService extends BaseService<
       timestamp,
       duration: null, // Duration will be set by the NEXT event
       voltage: params.voltage,
+      batteryVoltage: params.batteryVoltage,
     });
 
-    // 4. Update device status (and firmware version if reported)
+    // 4. Update device status (and firmware version / battery voltage if reported)
     const updatedDevice = await this.deviceRepository.updateStatus(deviceId, {
       lastStatus: newStatus,
       lastSeenAt: timestamp,
       ...(isStatusChange && { statusChangedAt: timestamp }),
       firmwareVersion: params.firmwareVersion ?? undefined,
+      batteryVoltage: params.batteryVoltage,
     });
 
     // 5. Server-side debounce: suppress notification if status changed too quickly
@@ -150,6 +159,25 @@ export class ProcessPowerStatusService extends BaseService<
           eventId: event.id,
           durationSeconds: previousDurationSeconds,
           voltage: params.voltage,
+          batteryVoltage: params.batteryVoltage,
+        }),
+      );
+    }
+
+    // 7. Emit battery low SOS event if battery voltage is below threshold
+    if (
+      this.eventEmitter &&
+      params.batteryVoltage !== null &&
+      params.batteryVoltage > 0 &&
+      params.batteryVoltage < BATTERY_LOW_THRESHOLD_MV
+    ) {
+      await this.eventEmitter.emit(
+        BATTERY_LOW_EVENT,
+        new BatteryLowEvent({
+          deviceId,
+          deviceLabel: device.label,
+          batteryVoltage: params.batteryVoltage,
+          timestamp,
         }),
       );
     }

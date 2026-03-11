@@ -17,5 +17,6 @@ export function mapPrismaDeviceToEntity(prismaDevice: PrismaDevice): Device {
     lastSeenAt: prismaDevice.lastSeenAt,
     statusChangedAt: prismaDevice.statusChangedAt,
     firmwareVersion: prismaDevice.firmwareVersion,
+    batteryVoltage: prismaDevice.batteryVoltage,
   });
 }

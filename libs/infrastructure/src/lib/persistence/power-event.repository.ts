@@ -53,6 +53,7 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
     timestamp?: Date;
     duration?: number | null;
     voltage?: number | null;
+    batteryVoltage?: number | null;
   }): Promise<PowerEvent> {
     const event = await withPrismaError('PowerEvent', () =>
       this.prisma.powerEvent.create({
@@ -62,6 +63,7 @@ export class PrismaPowerEventRepository implements IPowerEventRepository {
           timestamp: data.timestamp ?? new Date(),
           duration: data.duration ?? null,
           voltage: data.voltage ?? null,
+          batteryVoltage: data.batteryVoltage ?? null,
         },
       }),
     );

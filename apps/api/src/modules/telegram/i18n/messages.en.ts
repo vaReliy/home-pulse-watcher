@@ -80,6 +80,17 @@ Outage duration: ${duration}`,
 
   DEVICE_OFFLINE: (label) => `📡 Device *${label}* is now offline`,
 
+  // Battery (UPS Edition)
+  BATTERY_LEVEL: (voltage, percentage) =>
+    `🔋 Battery: ${voltage}V \\(${percentage}%\\)`,
+
+  BATTERY_LOW_ALERT: (label, voltage, percentage, time) =>
+    `🆘 *Low Battery Alert\\!*
+
+Device: *${label}*
+Charge: ${voltage}V \\(${percentage}%\\)
+Time: ${time}`,
+
   // History
   NO_HISTORY: 'No power events in the last 7 days\\.',
   NO_EVENTS_IN_PERIOD: 'No events',

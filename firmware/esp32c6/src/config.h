@@ -12,7 +12,7 @@
  */
 
 // Firmware Version (reported to backend on every status ping)
-#define FIRMWARE_VERSION "3.1.0"
+#define FIRMWARE_VERSION "3.2.0"
 
 // GPIO Configuration (ESP32-C6 SuperMini pinout)
 #define POWER_SENSE_PIN 2       // GPIO for power detection (connect to optocoupler output)
@@ -69,9 +69,26 @@
 #define HMAC_HEX_LENGTH 64          // Hex-encoded signature length (2 chars/byte)
 #define HMAC_SIGNATURE_BUFFER 65    // HMAC_HEX_LENGTH + null terminator
 
+// UPS Battery Monitoring (disabled by default — enable for V2.3 UPS Edition)
+#define HAS_UPS_MODULE false
+
+// Battery ADC (100k/100k divider on GPIO3)
+#define BATTERY_SENSE_PIN 3
+#define BATTERY_ADC_SAMPLES 8
+#define BATTERY_ADC_SAMPLE_DELAY_MS 5
+
+// Battery voltage thresholds (millivolts, after divider correction)
+#define BATTERY_VOLTAGE_FULL_MV 4200
+// IMPORTANT: Keep in sync with BATTERY_LOW_THRESHOLD_MV in libs/application/src/lib/events/battery-low.event.ts
+#define BATTERY_VOLTAGE_LOW_MV 3400       // SOS threshold
+#define BATTERY_VOLTAGE_EMPTY_MV 3000
+
+// SOS cooldown (avoid spam during prolonged outage)
+#define SOS_COOLDOWN_MS 300000            // 5 min
+
 // Buffer Sizes
 #define HMAC_PAYLOAD_BUFFER 128     // "MAC:TIMESTAMP:STATUS" buffer
-#define JSON_BODY_BUFFER 128        // HTTP POST body buffer
+#define JSON_BODY_BUFFER 192        // HTTP POST body buffer (enlarged for batteryVoltage field)
 
 // ADC Configuration
 #define ADC_RESOLUTION_BITS 12      // 12-bit ADC (0-4095 range)

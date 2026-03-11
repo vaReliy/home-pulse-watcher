@@ -71,6 +71,30 @@ R1 of the voltage divider connects **BEFORE** Diode 1 — directly to the adapte
 | Shield    | TP4056 charge/discharge module | 1   | Must have 5V OUT pins        |
 | Battery   | 18650 Li-Ion cell              | 1   | Protected cell recommended   |
 
+## Battery Monitoring (GPIO3)
+
+The UPS Edition supports real-time battery voltage monitoring via a dedicated ADC channel.
+
+### Wiring
+
+- **100k/100k voltage divider** on GPIO3 reads battery voltage
+- Divider halves the battery voltage to stay within the ESP32 ADC range (0–3.3V)
+- Li-Ion 18650 range: 3.0V (empty) – 4.2V (full) → ADC sees 1.5V – 2.1V
+
+### Firmware
+
+- Enable with `#define HAS_UPS_MODULE true` in `config.h`
+- GPIO3 ADC reading is included in status reports as `batteryVoltage` (millivolts)
+- Battery voltage is sent alongside power status in each API request
+
+### Backend & Notifications
+
+- `batteryVoltage` stored on both `Device` (latest reading) and `PowerEvent` (per-event snapshot)
+- **SOS Alert**: When voltage drops below **3400 mV** (~33%), a `battery.low` event triggers a `🆘 Low Battery Alert` Telegram notification with a **5-minute cooldown** between alerts
+- **Power Lost** notifications include battery level when available
+- `/status` command shows `🔋 Battery: X.XXV (YY%)` for UPS devices
+- Battery percentage uses linear mapping: 3000 mV = 0%, 4200 mV = 100%
+
 ## Future Optimizations (TODO)
 
 ### Hardware V2.4 — Priority UPS
@@ -78,9 +102,3 @@ R1 of the voltage divider connects **BEFORE** Diode 1 — directly to the adapte
 - Replace Diode 1 with Schottky (SS34) for lower voltage drop (~0.3V vs 0.7V)
 - Or implement P-MOSFET load-sharing circuit for near-zero drop
 - Goal: ensure 100% mains bypass of battery when mains is present (production-grade)
-
-### Battery Monitoring (GPIO3)
-
-- Add 100k/100k voltage divider on GPIO3 to read battery voltage
-- Enable "SOS / Low Battery" alerts when voltage drops below threshold
-- Phase 5.2: Add battery voltage to `/status` Telegram command

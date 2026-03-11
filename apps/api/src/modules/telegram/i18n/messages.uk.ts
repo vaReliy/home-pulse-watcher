@@ -81,6 +81,17 @@ export const messagesUk: Messages = {
 
   DEVICE_OFFLINE: (label) => `📡 Пристрій *${label}* офлайн`,
 
+  // Battery (UPS Edition)
+  BATTERY_LEVEL: (voltage, percentage) =>
+    `🔋 Батарея: ${voltage}В \\(${percentage}%\\)`,
+
+  BATTERY_LOW_ALERT: (label, voltage, percentage, time) =>
+    `🆘 *Низький заряд батареї\\!*
+
+Пристрій: *${label}*
+Заряд: ${voltage}В \\(${percentage}%\\)
+Час: ${time}`,
+
   // History
   NO_HISTORY: 'Немає подій за останні 7 днів\\.',
   NO_EVENTS_IN_PERIOD: 'Немає подій',

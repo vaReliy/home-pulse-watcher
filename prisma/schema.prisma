@@ -31,6 +31,7 @@ model Device {
   lastSeenAt       DateTime?
   statusChangedAt  DateTime?
   firmwareVersion  String?
+  batteryVoltage   Int?
   users           UserDevice[]
   events          PowerEvent[]
 }
@@ -47,13 +48,14 @@ model UserDevice {
 }
 
 model PowerEvent {
-  id        String   @id @default(uuid())
-  deviceId  String
-  status    Int
-  timestamp DateTime @default(now())
-  duration  Int?
-  voltage   Int?
-  device    Device   @relation(fields: [deviceId], references: [id])
+  id             String   @id @default(uuid())
+  deviceId       String
+  status         Int
+  timestamp      DateTime @default(now())
+  duration       Int?
+  voltage        Int?
+  batteryVoltage Int?
+  device         Device   @relation(fields: [deviceId], references: [id])
 
   @@index([deviceId, timestamp])
 }

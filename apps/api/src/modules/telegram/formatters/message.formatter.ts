@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Device } from '@home-pulse-watcher/core';
 import { PowerStatus } from '@home-pulse-watcher/core';
+import type { BatteryLowEvent } from '@home-pulse-watcher/application';
 import { TranslationService } from '../i18n/index.js';
 import type { Messages } from '../i18n/index.js';
 import {
@@ -11,6 +12,7 @@ import {
 import type { SupportedLocale } from '../i18n/locale.config.js';
 import type { CollapsedEvent } from './collapse-events.js';
 import { escapeMarkdownV2, boldMd } from './escape-markdown.js';
+import { batteryPercentage, formatVoltage } from './battery.utils.js';
 
 /** Telegram MarkdownV2 message character limit. */
 const TELEGRAM_MESSAGE_MAX_LENGTH = 4096;
@@ -49,7 +51,17 @@ export class MessageFormatter {
         )
       : null;
 
-    return msgs.DEVICE_STATUS(label, status, lastSeen, statusSince);
+    let statusLine = msgs.DEVICE_STATUS(label, status, lastSeen, statusSince);
+
+    if (device.batteryVoltage !== null) {
+      const voltage = escapeMarkdownV2(formatVoltage(device.batteryVoltage));
+      const pct = escapeMarkdownV2(
+        String(batteryPercentage(device.batteryVoltage)),
+      );
+      statusLine += `\n${msgs.BATTERY_LEVEL(voltage, pct)}`;
+    }
+
+    return statusLine;
   }
 
   /**
@@ -78,19 +90,49 @@ export class MessageFormatter {
 
   /**
    * Format power lost notification.
+   * Optionally appends battery level if the device has a UPS module.
    */
   formatPowerLost(
     deviceLabel: string,
     timestamp: Date,
     locale?: string,
     timezone?: string,
+    batteryVoltage?: number | null,
   ): string {
     const msgs = this.translationService.getMessages(locale);
     const label = escapeMarkdownV2(deviceLabel);
-    return msgs.POWER_LOST(
+    let message = msgs.POWER_LOST(
       label,
       escapeMarkdownV2(this.formatDateTime(timestamp, locale, timezone)),
     );
+
+    if (batteryVoltage != null) {
+      const voltage = escapeMarkdownV2(formatVoltage(batteryVoltage));
+      const pct = escapeMarkdownV2(String(batteryPercentage(batteryVoltage)));
+      message += `\n${msgs.BATTERY_LEVEL(voltage, pct)}`;
+    }
+
+    return message;
+  }
+
+  /**
+   * Format battery low SOS alert notification.
+   */
+  formatBatteryLowAlert(
+    event: BatteryLowEvent,
+    locale?: string,
+    timezone?: string,
+  ): string {
+    const msgs = this.translationService.getMessages(locale);
+    const label = escapeMarkdownV2(event.deviceLabel ?? 'Unknown Device');
+    const voltage = escapeMarkdownV2(formatVoltage(event.batteryVoltage));
+    const pct = escapeMarkdownV2(
+      String(batteryPercentage(event.batteryVoltage)),
+    );
+    const time = escapeMarkdownV2(
+      this.formatDateTime(event.timestamp, locale, timezone),
+    );
+    return msgs.BATTERY_LOW_ALERT(label, voltage, pct, time);
   }
 
   /**

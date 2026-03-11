@@ -14,5 +14,6 @@ export function mapPrismaPowerEventToEntity(
     timestamp: prismaPowerEvent.timestamp,
     duration: prismaPowerEvent.duration,
     voltage: prismaPowerEvent.voltage,
+    batteryVoltage: prismaPowerEvent.batteryVoltage,
   });
 }

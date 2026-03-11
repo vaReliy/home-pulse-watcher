@@ -55,6 +55,15 @@ export interface Messages {
   DEVICE_ONLINE: (label: string) => string;
   DEVICE_OFFLINE: (label: string) => string;
 
+  // Battery (UPS Edition)
+  BATTERY_LEVEL: (voltage: string, percentage: string) => string;
+  BATTERY_LOW_ALERT: (
+    label: string,
+    voltage: string,
+    percentage: string,
+    time: string,
+  ) => string;
+
   // History
   NO_HISTORY: string;
   NO_EVENTS_IN_PERIOD: string;

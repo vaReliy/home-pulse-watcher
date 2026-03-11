@@ -45,6 +45,7 @@ export interface IDeviceRepository {
       lastSeenAt: Date;
       statusChangedAt?: Date;
       firmwareVersion?: string;
+      batteryVoltage?: number | null;
     },
   ): Promise<Device>;
 

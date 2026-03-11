@@ -14,6 +14,7 @@ describe('Device', () => {
       lastSeenAt: new Date(),
       statusChangedAt: null,
       firmwareVersion: null,
+      batteryVoltage: null,
       ...overrides,
     });
 
@@ -71,6 +72,20 @@ describe('Device', () => {
       });
 
       expect(device.isOnline()).toBe(true);
+    });
+  });
+
+  describe('hasUps', () => {
+    it('should return false when batteryVoltage is null', () => {
+      const device = createDevice({ batteryVoltage: null });
+
+      expect(device.hasUps).toBe(false);
+    });
+
+    it('should return true when batteryVoltage is a number', () => {
+      const device = createDevice({ batteryVoltage: 3850 });
+
+      expect(device.hasUps).toBe(true);
     });
   });
 });

@@ -10,6 +10,7 @@ describe('mapPrismaPowerEventToEntity', () => {
       timestamp: new Date('2024-01-01T12:00:00Z'),
       duration: 3600,
       voltage: 228.5,
+      batteryVoltage: null,
     };
 
     const result = mapPrismaPowerEventToEntity(prismaPowerEvent);
@@ -31,6 +32,7 @@ describe('mapPrismaPowerEventToEntity', () => {
       timestamp: new Date('2024-01-01T12:00:00Z'),
       duration: null,
       voltage: null,
+      batteryVoltage: null,
     };
 
     const result = mapPrismaPowerEventToEntity(prismaPowerEvent);

@@ -47,6 +47,7 @@ export class DeviceStatusController {
         status: dto.status,
         voltage: dto.voltage ?? null,
         firmwareVersion: dto.firmwareVersion ?? null,
+        batteryVoltage: dto.batteryVoltage ?? null,
       },
       { deviceId },
     );

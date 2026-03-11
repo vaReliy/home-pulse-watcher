@@ -49,6 +49,7 @@ export interface IPowerEventRepository {
     timestamp?: Date;
     duration?: number | null;
     voltage?: number | null;
+    batteryVoltage?: number | null;
   }): Promise<PowerEvent>;
 
   /**

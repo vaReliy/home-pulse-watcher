@@ -46,6 +46,11 @@ static bool timeInitialized = false;
 static int wifiFailureCount = 0;
 static int lastAdcValue = 0;               // Most recent averaged ADC reading
 
+#if HAS_UPS_MODULE
+static int lastBatteryAdcValue = 0;        // Most recent battery ADC reading
+static unsigned long lastSosTime = 0;      // Last SOS ping timestamp (for cooldown)
+#endif
+
 // Confirmation state (2 consecutive reads to confirm)
 static int consecutiveNewState = 0;        // Consecutive reads of a new state
 static int pendingStatus = POWER_STATUS_UNKNOWN;  // What that new state is (UNKNOWN = none)
@@ -98,6 +103,9 @@ void setupHardware() {
 
     // Configure GPIO
     pinMode(POWER_SENSE_PIN, INPUT_PULLDOWN);
+#if HAS_UPS_MODULE
+    pinMode(BATTERY_SENSE_PIN, INPUT);
+#endif
 
     // Initialize WS2812B RGB LED
     led.begin();
@@ -225,6 +233,26 @@ int adcToStatus(int adcValue, int currentStatus) {
     return (currentStatus >= 0) ? currentStatus : POWER_STATUS_ON;
 }
 
+#if HAS_UPS_MODULE
+/**
+ * Read averaged battery voltage from GPIO3 (100k/100k divider).
+ * Takes BATTERY_ADC_SAMPLES readings and returns millivolts.
+ *
+ * Divider formula: adcAvg * 2 * 3300 / 4095
+ *
+ * @return Battery voltage in millivolts
+ */
+int readBatteryVoltage() {
+    long sum = 0;
+    for (int i = 0; i < BATTERY_ADC_SAMPLES; i++) {
+        sum += analogRead(BATTERY_SENSE_PIN);
+        delay(BATTERY_ADC_SAMPLE_DELAY_MS);
+    }
+    int adcAvg = (int)(sum / BATTERY_ADC_SAMPLES);
+    return adcAvg * 2 * 3300 / 4095;
+}
+#endif
+
 /**
  * Send power status to backend
  *
@@ -276,7 +304,15 @@ bool sendPowerStatus(int status, int adcValue) {
 
     // Build JSON body (voltage and firmwareVersion are informational, not part of HMAC payload)
     char body[JSON_BODY_BUFFER];
-    snprintf(body, sizeof(body), "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\"}", status, adcValue, FIRMWARE_VERSION);
+#if HAS_UPS_MODULE
+    snprintf(body, sizeof(body),
+        "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\",\"batteryVoltage\":%d}",
+        status, adcValue, FIRMWARE_VERSION, lastBatteryAdcValue);
+#else
+    snprintf(body, sizeof(body),
+        "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\"}",
+        status, adcValue, FIRMWARE_VERSION);
+#endif
 
     // Send request
     setLedColor(0, 0, 255);  // Blue during request
@@ -438,7 +474,12 @@ void loop() {
     // Heartbeat — periodic sync to backend
     if (currentTime - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
         lastHeartbeatTime = currentTime;
+#if HAS_UPS_MODULE
+        lastBatteryAdcValue = readBatteryVoltage();
+        Serial.printf("Heartbeat: status=%d, ADC=%d, battery=%dmV\n", lastPowerStatus, lastAdcValue, lastBatteryAdcValue);
+#else
         Serial.printf("Heartbeat: status=%d, ADC=%d\n", lastPowerStatus, lastAdcValue);
+#endif
         if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
             lastSendTime = currentTime;
             Serial.println("Heartbeat sent");
@@ -446,6 +487,25 @@ void loop() {
             Serial.println("Heartbeat failed, will retry next interval");
         }
     }
+
+#if HAS_UPS_MODULE
+    // SOS — battery low alert during power outage
+    if (lastPowerStatus == POWER_STATUS_OFF) {
+        lastBatteryAdcValue = readBatteryVoltage();
+        if (lastBatteryAdcValue > 0 && lastBatteryAdcValue < BATTERY_VOLTAGE_LOW_MV) {
+            if (currentTime - lastSosTime >= SOS_COOLDOWN_MS) {
+                lastSosTime = currentTime;
+                Serial.printf("SOS: battery low %dmV (threshold %dmV)\n", lastBatteryAdcValue, BATTERY_VOLTAGE_LOW_MV);
+                if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
+                    lastSendTime = currentTime;
+                    Serial.println("SOS ping sent");
+                } else {
+                    Serial.println("SOS ping failed");
+                }
+            }
+        }
+    }
+#endif
 
 #ifdef ENABLE_DEEP_SLEEP
     // Enter deep sleep for battery operation

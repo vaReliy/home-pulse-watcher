@@ -127,7 +127,7 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 ### Hardware Variants
 
-Two hardware configurations are supported. Both use the same firmware (V3.1.0) and identical ADC sensing.
+Two hardware configurations are supported. Both use the same firmware (V3.2.0) and identical ADC sensing.
 
 | Variant | Power Source | Battery Backup | Guide |
 |---------|-------------|----------------|-------|
@@ -136,11 +136,18 @@ Two hardware configurations are supported. Both use the same firmware (V3.1.0) a
 
 **V2.3 Key Design**: Dual-diode OR-gate (1N4007 x 2). R1 of the voltage divider connects BEFORE Diode 1 (directly to adapter 5V). When mains drops, GPIO2 reads 0V instantly while ESP32 stays powered via battery through Diode 2. This "Isolated Sensor" design is what enables outage detection with battery backup.
 
+#### Battery Monitoring (V2.3 UPS Edition)
+
+- **GPIO3** with 100k/100k divider for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
+- Voltage formula: `adcAvg * 2 * 3300 / 4095` millivolts
+- SOS alert threshold: **3400 mV** (`BATTERY_VOLTAGE_LOW_MV`, `BATTERY_LOW_THRESHOLD_MV`)
+- SOS cooldown: 5 min (`SOS_COOLDOWN_MS`) — firmware only sends SOS when power is OFF
+- Backend emits `BATTERY_LOW_EVENT` when `batteryVoltage < 3400 && batteryVoltage > 0`
+- `/status` shows battery line for UPS devices: `🔋 Battery: 3.85V (79%)`
+
 #### Future Optimizations (TODO)
 
 - **V2.4 (Priority UPS)**: Replace Diode 1 with Schottky (SS34) or P-MOSFET load-sharing for production
-- **Battery Monitoring**: GPIO3 with 100k/100k divider for battery voltage sensing -> "SOS / Low Battery" alerts
-- **Phase 5.2 — Bot UI**: Add UPS metrics (battery voltage) to `/status` Telegram command
 
 ### Telegram Bot
 
@@ -225,7 +232,7 @@ Two hardware configurations are supported. Both use the same firmware (V3.1.0) a
 
 ## Firmware Version Tracking
 
-- Current firmware version: **3.1.0** (defined in `FIRMWARE_VERSION` constant in each `config.h`)
+- Current firmware version: **3.2.0** (defined in `FIRMWARE_VERSION` constant in each `config.h`)
 - Devices report `firmwareVersion` in the JSON body of every status ping
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
