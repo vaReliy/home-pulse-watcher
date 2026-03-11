@@ -234,13 +234,7 @@ docker-compose --profile full up --build
 
 ## 📋 Changelog
 
-### Power Sensing v2
-
-Implemented ADC-based sensing with ADC hysteresis, firmware confirmation (~400 ms), and server-side notification debounce (5 s) to eliminate grid flapping noise.
-
-### Telegram UI Upgrade
-
-Migrated from slash commands to interactive Reply/Inline keyboards, implemented MarkdownV2 formatting, and added a stateless Settings menu with locale/timezone support.
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 📄 License
 

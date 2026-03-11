@@ -218,6 +218,10 @@ export class ServiceNameService extends BaseService<ServiceNameInput, ServiceNam
 - **Concise descriptions**: One-line summary preferred
 - **Include parameter/return descriptions** for non-obvious cases
 
+### Keeping CHANGELOG.md in Sync
+
+After completing a feature, bug fix, or significant change — add or update an entry in [`CHANGELOG.md`](CHANGELOG.md). Each entry should be a concise summary under a descriptive heading. Update existing entries if enhancing a previously logged feature.
+
 ### Keeping PROJECT_CONTEXT.md in Sync
 
 After any change that affects the project's architecture, domain rules, tech stack, deployment, or historical context — update [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) to reflect the new state. This file is the shared mental model loaded at the start of every AI session.
