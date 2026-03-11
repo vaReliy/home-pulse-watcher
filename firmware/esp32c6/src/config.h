@@ -28,7 +28,7 @@
 // State Confirmation & Messaging
 #define CONFIRMATION_READS 2            // Consecutive matching reads to confirm state change (2 × 200ms = 400ms)
 #define MIN_STATE_CHANGE_MS 2000        // 2s cooldown between HTTP sends (state always updates locally)
-#define HEARTBEAT_INTERVAL_MS 300000    // 5 min — periodic status sync to backend
+#define HEARTBEAT_INTERVAL_MS 1800000   // 30 min — periodic status sync to backend
 
 // ADC Configuration (voltage divider: 5V adapter -> 10k/10k + 0.1µF cap -> GPIO)
 // Full power: 5V × 10/20 = 2.5V -> ADC ~3100
@@ -84,7 +84,7 @@
 #define BATTERY_VOLTAGE_EMPTY_MV 3000
 
 // SOS cooldown (avoid spam during prolonged outage)
-#define SOS_COOLDOWN_MS 300000            // 5 min
+#define SOS_COOLDOWN_MS 900000            // 15 min
 
 // Buffer Sizes
 #define HMAC_PAYLOAD_BUFFER 128     // "MAC:TIMESTAMP:STATUS" buffer

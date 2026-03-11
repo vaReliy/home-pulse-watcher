@@ -90,7 +90,7 @@ The UPS Edition supports real-time battery voltage monitoring via a dedicated AD
 ### Backend & Notifications
 
 - `batteryVoltage` stored on both `Device` (latest reading) and `PowerEvent` (per-event snapshot)
-- **SOS Alert**: When voltage drops below **3400 mV** (~33%), a `battery.low` event triggers a `🆘 Low Battery Alert` Telegram notification with a **5-minute cooldown** between alerts
+- **SOS Alert**: When voltage drops below **3400 mV** (~33%), a `battery.low` event triggers a `🆘 Low Battery Alert` Telegram notification with a **15-minute cooldown** between alerts
 - **Power Lost** notifications include battery level when available
 - `/status` command shows `🔋 Battery: X.XXV (YY%)` for UPS devices
 - Battery percentage uses linear mapping: 3000 mV = 0%, 4200 mV = 100%

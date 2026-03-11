@@ -14,7 +14,7 @@ import type { TelegramContext } from '../types/telegram-context.type.js';
 /** History window: 7 days in milliseconds. */
 const HISTORY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Upper bound for events fetched per device (covers 7 days of 5-min heartbeats). */
+/** Upper bound for events fetched per device (covers 7 days of 30-min heartbeats). */
 const HISTORY_EVENT_MAX = 2000;
 
 /**

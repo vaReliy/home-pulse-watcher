@@ -49,15 +49,15 @@ describe('Device', () => {
         lastSeenAt: new Date(Date.now() - 60_000), // 1 minute ago
       });
 
-      expect(device.isOnline(300_000)).toBe(true);
+      expect(device.isOnline(2_100_000)).toBe(true);
     });
 
     it('should return false when lastSeenAt is beyond threshold', () => {
       const device = createDevice({
-        lastSeenAt: new Date(Date.now() - 600_000), // 10 minutes ago
+        lastSeenAt: new Date(Date.now() - 3_600_000), // 1 hour ago
       });
 
-      expect(device.isOnline(300_000)).toBe(false);
+      expect(device.isOnline(2_100_000)).toBe(false);
     });
 
     it('should return false when lastSeenAt is null', () => {
@@ -66,9 +66,9 @@ describe('Device', () => {
       expect(device.isOnline()).toBe(false);
     });
 
-    it('should use default threshold of 5 minutes', () => {
+    it('should use default threshold of 35 minutes', () => {
       const device = createDevice({
-        lastSeenAt: new Date(Date.now() - 299_000), // Just under 5 minutes
+        lastSeenAt: new Date(Date.now() - 2_099_000), // Just under 35 minutes
       });
 
       expect(device.isOnline()).toBe(true);

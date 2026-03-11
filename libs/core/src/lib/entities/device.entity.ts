@@ -46,9 +46,9 @@ export class Device {
 
   /**
    * Returns true if device has reported status within the threshold.
-   * @param thresholdMs - Maximum time since last seen in milliseconds (default: 5 minutes)
+   * @param thresholdMs - Maximum time since last seen in milliseconds (default: 35 minutes = 30 min heartbeat + 5 min grace)
    */
-  isOnline(thresholdMs = 300_000): boolean {
+  isOnline(thresholdMs = 2_100_000): boolean {
     if (!this.lastSeenAt) return false;
     return Date.now() - this.lastSeenAt.getTime() < thresholdMs;
   }
