@@ -230,7 +230,7 @@ int adcToStatus(int adcValue, int currentStatus) {
         return POWER_STATUS_OFF;
     }
     // Hysteresis band: keep current state (brownout ignored)
-    return (currentStatus >= 0) ? currentStatus : POWER_STATUS_ON;
+    return (currentStatus >= 0) ? currentStatus : POWER_STATUS_OFF;
 }
 
 #if HAS_UPS_MODULE
