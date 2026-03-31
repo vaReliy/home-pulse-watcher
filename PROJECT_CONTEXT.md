@@ -127,7 +127,7 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 
 ### Hardware Variants
 
-Two hardware configurations are supported. Both use the same firmware (V3.2.0) and identical ADC sensing.
+Two hardware configurations are supported. Both use identical ADC sensing. UPS is a wiring option for either chip; the C6 config ships with it enabled.
 
 | Variant              | Power Source                | Battery Backup     | Guide                                                    |
 | -------------------- | --------------------------- | ------------------ | -------------------------------------------------------- |
@@ -138,8 +138,9 @@ Two hardware configurations are supported. Both use the same firmware (V3.2.0) a
 
 #### Battery Monitoring (V2.3 UPS Edition)
 
-- **GPIO3** with 100k/100k divider for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
-- Voltage formula: `adcAvg * 2 * 3300 / 4095` millivolts
+- **GPIO3** with 10k/10k divider (calibrated) for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
+- Voltage formula: `(long)adcAvg * BATTERY_CALIBRATED_SCALE / 4095` millivolts (`BATTERY_CALIBRATED_SCALE = 6953`)
+- Calibrated from hardware measurement: 2.95V battery → 1.40V at GPIO3 → scale = 3300 × (2950/1400) = 6953
 - SOS alert threshold: **3400 mV** (`BATTERY_VOLTAGE_LOW_MV`, `BATTERY_LOW_THRESHOLD_MV`)
 - SOS cooldown: 15 min (`SOS_COOLDOWN_MS`) — firmware only sends SOS when power is OFF
 - Backend emits `BATTERY_LOW_EVENT` when `batteryVoltage < 3400 && batteryVoltage > 0`
@@ -232,8 +233,10 @@ Two hardware configurations are supported. Both use the same firmware (V3.2.0) a
 
 ## Firmware Version Tracking
 
-- Current firmware version: **3.2.0** (defined in `FIRMWARE_VERSION` constant in each `config.h`)
+- Current firmware version: **3.3.0** (ESP32-C6); **3.2.0** (ESP32-C3 — unchanged)
+- Defined in `FIRMWARE_VERSION` constant in each `config.h`
 - Devices report `firmwareVersion` in the JSON body of every status ping
+- Devices with `HAS_UPS_MODULE true` also report `batteryVoltage` in the JSON body
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
 

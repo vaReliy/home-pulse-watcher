@@ -235,10 +235,10 @@ int adcToStatus(int adcValue, int currentStatus) {
 
 #if HAS_UPS_MODULE
 /**
- * Read averaged battery voltage from GPIO3 (100k/100k divider).
+ * Read averaged battery voltage from GPIO3 (10k/10k divider, calibrated).
  * Takes BATTERY_ADC_SAMPLES readings and returns millivolts.
  *
- * Divider formula: adcAvg * 2 * 3300 / 4095
+ * Calibrated formula: adcAvg * BATTERY_CALIBRATED_SCALE / 4095
  *
  * @return Battery voltage in millivolts
  */
@@ -249,7 +249,7 @@ int readBatteryVoltage() {
         delay(BATTERY_ADC_SAMPLE_DELAY_MS);
     }
     int adcAvg = (int)(sum / BATTERY_ADC_SAMPLES);
-    return adcAvg * 2 * 3300 / 4095;
+    return (long)adcAvg * BATTERY_CALIBRATED_SCALE / 4095;
 }
 #endif
 

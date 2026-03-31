@@ -12,7 +12,7 @@
  */
 
 // Firmware Version (reported to backend on every status ping)
-#define FIRMWARE_VERSION "3.2.0"
+#define FIRMWARE_VERSION "3.3.0"
 
 // GPIO Configuration (ESP32-C6 SuperMini pinout)
 #define POWER_SENSE_PIN 2       // GPIO for power detection (connect to optocoupler output)
@@ -69,10 +69,13 @@
 #define HMAC_HEX_LENGTH 64          // Hex-encoded signature length (2 chars/byte)
 #define HMAC_SIGNATURE_BUFFER 65    // HMAC_HEX_LENGTH + null terminator
 
-// UPS Battery Monitoring (disabled by default — enable for V2.3 UPS Edition)
-#define HAS_UPS_MODULE false
+// UPS Battery Monitoring (enable for V2.3 UPS Edition hardware)
+#define HAS_UPS_MODULE true
 
-// Battery ADC (100k/100k divider on GPIO3)
+// Battery ADC (10k/10k divider on GPIO3)
+// Calibrated divider: 2.95V battery → 1.40V at GPIO3
+// Ratio = 2950/1400 = 2.1071; scale factor = 3300 × 2.1071 = 6953
+#define BATTERY_CALIBRATED_SCALE 6953
 #define BATTERY_SENSE_PIN 3
 #define BATTERY_ADC_SAMPLES 8
 #define BATTERY_ADC_SAMPLE_DELAY_MS 5

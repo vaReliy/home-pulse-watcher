@@ -13,9 +13,23 @@
 
 ### Hardware
 
-- **MCU:** ESP32-C3/ESP32-C6 SuperMini (RISC-V).
-- **Sensor:** Non-contact monitoring via a 220V -> 5V USB adapter logic.
-- **Power:** UPS-backed ESP32 to ensure operation during blackouts.
+Two editions are supported:
+
+**Standard Edition (V2.1)**
+- MCU: ESP32-C3 or ESP32-C6 SuperMini (RISC-V)
+- Sensor: Non-contact monitoring via 220V → 5V USB adapter logic
+- Power: USB adapter only (no battery backup)
+- Wiring: [`docs/hardware/standard.md`](docs/hardware/standard.md)
+
+**UPS Edition (V2.3)**
+- MCU: ESP32-C3 or ESP32-C6 SuperMini (RISC-V)
+- Sensor: Same USB adapter logic (10k/10k voltage divider on GPIO2)
+- Power: 18650 Li-Ion battery via TP4056 charge/discharge shield
+- Battery monitoring: GPIO3 ADC with SOS alert at 3400 mV
+- Dual-diode OR-gate ensures outage detection even when battery-powered
+- Wiring: [`docs/hardware/ups.md`](docs/hardware/ups.md)
+
+![UPS Schematic](./docs/assets/ups-schematic-v2.3.png)
 
 ### Software
 
