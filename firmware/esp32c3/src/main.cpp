@@ -238,18 +238,19 @@ int adcToStatus(int adcValue, int currentStatus) {
  * Read averaged battery voltage from GPIO3 (100k/100k divider).
  * Takes BATTERY_ADC_SAMPLES readings and returns millivolts.
  *
- * Divider formula: adcAvg * 2 * 3300 / 4095
+ * Uses analogReadMilliVolts() for factory-calibrated ADC linearity correction,
+ * then multiplies by divider ratio 2 (100k/100k symmetric divider).
  *
  * @return Battery voltage in millivolts
  */
 int readBatteryVoltage() {
     long sum = 0;
     for (int i = 0; i < BATTERY_ADC_SAMPLES; i++) {
-        sum += analogRead(BATTERY_SENSE_PIN);
+        sum += analogReadMilliVolts(BATTERY_SENSE_PIN);
         delay(BATTERY_ADC_SAMPLE_DELAY_MS);
     }
-    int adcAvg = (int)(sum / BATTERY_ADC_SAMPLES);
-    return adcAvg * 2 * 3300 / 4095;
+    int mvAvg = (int)(sum / BATTERY_ADC_SAMPLES);
+    return mvAvg * 2;
 }
 #endif
 

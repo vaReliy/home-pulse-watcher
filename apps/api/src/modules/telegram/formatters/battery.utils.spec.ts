@@ -24,6 +24,17 @@ describe('batteryPercentage', () => {
     // 3100 mV: (100 / 1200) * 100 = 8.33... -> 8
     expect(batteryPercentage(3100)).toBe(8);
   });
+
+  it('should calculate correctly for near-full battery (~4050 mV → 88%)', () => {
+    // Reflects corrected firmware output: GPIO3=1.93V → analogReadMilliVolts≈1930 → 1930×2107/1000=4066 mV
+    // (4050 - 3000) / 1200 * 100 = 87.5 -> 88
+    expect(batteryPercentage(4050)).toBe(88);
+  });
+
+  it('should calculate correctly for typical operating voltage (3800 mV → 67%)', () => {
+    // (3800 - 3000) / 1200 * 100 = 66.67 -> 67
+    expect(batteryPercentage(3800)).toBe(67);
+  });
 });
 
 describe('formatVoltage', () => {
