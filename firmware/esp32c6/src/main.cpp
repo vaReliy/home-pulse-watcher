@@ -39,6 +39,7 @@
 
 #include "config.h"
 #include "credentials.h"
+#include "portal.h"
 
 // Optional: when secrets.h is present at compile time, its values are used to
 // auto-provision NVS on first boot (convenient for development).
@@ -366,18 +367,10 @@ void setup() {
         saveCredentials(&creds);
         Serial.println("Credentials saved to NVS.");
 #else
-        // No credentials configured — enter configuration mode
-        Serial.println("=================================");
-        Serial.println("NO CREDENTIALS CONFIGURED");
-        Serial.println("Device needs provisioning.");
-        Serial.println("=================================");
-        while (true) {
-            setLedColor(255, 0, 255);  // Magenta: awaiting configuration
-            delay(500);
-            setLedOff();
-            delay(500);
-            esp_task_wdt_reset();  // Feed watchdog to prevent reboot
-        }
+        // No credentials configured — start captive portal for provisioning
+        Serial.println("No credentials found. Starting captive portal...");
+        startCaptivePortal(deviceMac, led);
+        // Never returns — reboots after user saves credentials
 #endif
     }
 
@@ -386,9 +379,10 @@ void setup() {
     Serial.printf("Device secret: [%d chars]\n", (int)strlen(creds.device_secret));
 
     if (!connectWiFi()) {
-        Serial.println("Failed to connect to WiFi. Restarting...");
-        delay(RESTART_DELAY_MS);
-        ESP.restart();
+        Serial.println("WiFi connection failed. Wiping credentials and starting captive portal...");
+        wipeCredentials();
+        startCaptivePortal(deviceMac, led);
+        // Never returns — reboots after user saves new credentials
     }
 
     // DEV: HTTP — no TLS setup needed
