@@ -15,7 +15,8 @@
  *
  * Configuration:
  * - config.h: Hardware settings (GPIO pins, timing)
- * - secrets.h: Credentials (WiFi, device secret, backend URL)
+ * - credentials.h: NVS credential loader (WiFi, device secret, backend URL)
+ * - secrets.h (optional): Compile-time fallback for first-boot NVS provisioning
  *
  * HMAC Protocol:
  * - Headers: X-Device-Mac, X-Timestamp, X-Signature
@@ -37,7 +38,18 @@
 #include <Adafruit_NeoPixel.h>
 
 #include "config.h"
+#include "credentials.h"
+
+// Optional: when secrets.h is present at compile time, its values are used to
+// auto-provision NVS on first boot (convenient for development).
+#if __has_include("secrets.h")
 #include "secrets.h"
+#define HAS_COMPILE_TIME_SECRETS
+#endif
+
+// Credentials loaded from NVS at boot
+static DeviceCredentials creds;
+static String deviceMac;  // Read from hardware in setup() via WiFi.macAddress()
 
 // Global state
 static int lastPowerStatus = POWER_STATUS_UNKNOWN;  // Unknown at boot
@@ -121,10 +133,9 @@ void setupHardware() {
  * Connect to WiFi network
  */
 bool connectWiFi() {
-    Serial.printf("Connecting to WiFi: %s\n", WIFI_SSID);
+    Serial.printf("Connecting to WiFi: %s\n", creds.wifi_ssid);
 
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(creds.wifi_ssid, creds.wifi_password);
 
     unsigned long startTime = millis();
     while (WiFi.status() != WL_CONNECTED) {
@@ -185,7 +196,7 @@ void computeHmacSignature(const char* payload, char* output) {
     mbedtls_md_context_t ctx;
     mbedtls_md_init(&ctx);
     mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
-    mbedtls_md_hmac_starts(&ctx, (const unsigned char*)DEVICE_SECRET, strlen(DEVICE_SECRET));
+    mbedtls_md_hmac_starts(&ctx, (const unsigned char*)creds.device_secret, strlen(creds.device_secret));
     mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload, strlen(payload));
     mbedtls_md_hmac_finish(&ctx, hash);
     mbedtls_md_free(&ctx);
@@ -279,7 +290,7 @@ bool sendPowerStatus(int status, int adcValue) {
     // Build payload for HMAC: "MAC:TIMESTAMP:STATUS"
     char payload[HMAC_PAYLOAD_BUFFER];
     snprintf(payload, sizeof(payload), "%s:%lu:%d",
-             DEVICE_MAC, (unsigned long)timestamp, status);
+             deviceMac.c_str(), (unsigned long)timestamp, status);
 
     // Compute signature
     char signature[HMAC_SIGNATURE_BUFFER];
@@ -292,14 +303,14 @@ bool sendPowerStatus(int status, int adcValue) {
     // Send HTTP POST request
     HTTPClient http;
     // DEV: HTTP (local development) — active by default
-    http.begin(client, BACKEND_URL);
+    http.begin(client, creds.backend_url);
     // PROD: HTTPS — uncomment below, comment above
     // http.begin(secureClient, BACKEND_URL);
     http.setTimeout(HTTP_TIMEOUT_MS);
 
     // Set headers
     http.addHeader("Content-Type", "application/json");
-    http.addHeader("X-Device-Mac", DEVICE_MAC);
+    http.addHeader("X-Device-Mac", deviceMac.c_str());
     http.addHeader("X-Timestamp", String((unsigned long)timestamp));
     http.addHeader("X-Signature", signature);
 
@@ -337,6 +348,42 @@ bool sendPowerStatus(int status, int adcValue) {
 
 void setup() {
     setupHardware();
+
+    // Read hardware MAC address (requires WIFI_STA mode to be set first)
+    WiFi.mode(WIFI_STA);
+    deviceMac = WiFi.macAddress();
+    Serial.printf("Hardware MAC: %s\n", deviceMac.c_str());
+
+    // Load credentials from NVS
+    if (!loadCredentials(&creds)) {
+#ifdef HAS_COMPILE_TIME_SECRETS
+        // First boot with secrets.h present — auto-provision NVS from compile-time values
+        Serial.println("NVS empty, provisioning from compile-time secrets...");
+        strncpy(creds.wifi_ssid,      WIFI_SSID,      CRED_SSID_MAX - 1);
+        strncpy(creds.wifi_password,  WIFI_PASSWORD,  CRED_PASSWORD_MAX - 1);
+        strncpy(creds.device_secret,  DEVICE_SECRET,  CRED_SECRET_MAX - 1);
+        strncpy(creds.backend_url,    BACKEND_URL,    CRED_URL_MAX - 1);
+        saveCredentials(&creds);
+        Serial.println("Credentials saved to NVS.");
+#else
+        // No credentials configured — enter configuration mode
+        Serial.println("=================================");
+        Serial.println("NO CREDENTIALS CONFIGURED");
+        Serial.println("Device needs provisioning.");
+        Serial.println("=================================");
+        while (true) {
+            setLedColor(255, 0, 255);  // Magenta: awaiting configuration
+            delay(500);
+            setLedOff();
+            delay(500);
+            esp_task_wdt_reset();  // Feed watchdog to prevent reboot
+        }
+#endif
+    }
+
+    Serial.printf("WiFi SSID: %s\n", creds.wifi_ssid);
+    Serial.printf("Backend URL: %s\n", creds.backend_url);
+    Serial.printf("Device secret: [%d chars]\n", (int)strlen(creds.device_secret));
 
     if (!connectWiFi()) {
         Serial.println("Failed to connect to WiFi. Restarting...");
