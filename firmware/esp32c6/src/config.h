@@ -73,10 +73,11 @@
 #define HAS_UPS_MODULE false
 
 // Battery ADC (10k/10k divider on GPIO3)
-// Uses analogReadMilliVolts() which still over-reads by ~6% on ESP32-C6.
-// Empirically calibrated: 4.06V battery, analogReadMilliVolts=2055 → ratio = 4060/2055 ≈ 1.976
-// Stored as integer fraction: 1976/1000 to avoid float arithmetic.
-#define BATTERY_DIVIDER_RATIO_NUM 1976
+// Uses analogReadMilliVolts() which under-reads on ESP32-C6.
+// Empirically calibrated from 4 measurements (3.46–4.01V range):
+//   actual_mV / adc_mV ratios: 1.991, 1.975, 1.993, 2.011 → avg ≈ 1.993
+// Stored as integer fraction: 1993/1000 to avoid float arithmetic.
+#define BATTERY_DIVIDER_RATIO_NUM 1993
 #define BATTERY_DIVIDER_RATIO_DEN 1000
 #define BATTERY_SENSE_PIN 3
 #define BATTERY_ADC_SAMPLES 8
