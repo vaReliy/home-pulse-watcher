@@ -8,6 +8,7 @@
 #include <Adafruit_NeoPixel.h>
 
 #include "credentials.h"
+#include "led.h"
 #include "portal_html.h"
 
 // ─── Portal Network Configuration ────────────────────────────────────────────
@@ -21,8 +22,6 @@
 /** HTTP server port */
 #define PORTAL_HTTP_PORT    80
 
-/** LED blink period while portal is active (ms) */
-#define PORTAL_LED_BLINK_MS 800
 
 // ─── Internal state ───────────────────────────────────────────────────────────
 
@@ -180,26 +179,13 @@ inline void startCaptivePortal(const String& deviceMac, Adafruit_NeoPixel& led) 
     _webServer.begin();
     Serial.println("[Portal] Web server started.");
 
-    unsigned long lastBlink = 0;
-    bool ledOn = false;
-
     // Serve requests indefinitely — only exit path is handleSave() → ESP.restart()
     while (true) {
         _dnsServer.processNextRequest();
         _webServer.handleClient();
 
-        // Cyan pulse: indicates portal mode
-        unsigned long now = millis();
-        if (now - lastBlink >= PORTAL_LED_BLINK_MS) {
-            lastBlink = now;
-            ledOn = !ledOn;
-            if (ledOn) {
-                led.setPixelColor(0, led.Color(0, 200, 200));  // Cyan
-            } else {
-                led.clear();
-            }
-            led.show();
-        }
+        // Orange breathing: indicates configuration/portal mode
+        tickBreathingLed(led);
 
         yield();  // Feed RTOS scheduler / soft WDT
     }

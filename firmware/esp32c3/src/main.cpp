@@ -39,7 +39,9 @@
 
 #include "config.h"
 #include "credentials.h"
+#include "led.h"
 #include "portal.h"
+#include "reset.h"
 
 // Optional: when secrets.h is present at compile time, its values are used to
 // auto-provision NVS on first boot (convenient for development).
@@ -80,26 +82,6 @@ static WiFiClient client;
 // PROD: HTTPS client — uncomment below, comment above
 // static WiFiClientSecure secureClient;
 
-/** Set WS2812 LED color */
-void setLedColor(uint8_t r, uint8_t g, uint8_t b) {
-    led.setPixelColor(0, led.Color(r, g, b));
-    led.show();
-}
-
-/** Turn LED off */
-void setLedOff() {
-    led.clear();
-    led.show();
-}
-
-/** Set LED to power status color (green = ON, red = OFF) */
-void updateStatusLed(int powerStatus) {
-    if (powerStatus == POWER_STATUS_ON) {
-        setLedColor(0, 255, 0);   // Green
-    } else {
-        setLedColor(255, 0, 0);   // Red
-    }
-}
 
 /**
  * Initialize serial and LED
@@ -146,8 +128,8 @@ bool connectWiFi() {
         }
         static bool wifiLedOn = false;
         wifiLedOn = !wifiLedOn;
-        if (wifiLedOn) setLedColor(255, 200, 0);  // Yellow
-        else setLedOff();
+        if (wifiLedOn) setLedColor(led, 255, 200, 0);  // Yellow
+        else setLedOff(led);
         delay(WIFI_BLINK_INTERVAL_MS);
         Serial.print(".");
     }
@@ -155,7 +137,7 @@ bool connectWiFi() {
     Serial.println();
     Serial.printf("Connected! IP: %s\n", WiFi.localIP().toString().c_str());
     Serial.printf("MAC: %s\n", WiFi.macAddress().c_str());
-    setLedOff();
+    setLedOff(led);
     return true;
 }
 
@@ -328,9 +310,9 @@ bool sendPowerStatus(int status, int adcValue) {
 #endif
 
     // Send request
-    setLedColor(0, 0, 255);  // Blue during request
+    setLedColor(led, 0, 0, 255);  // Blue during request
     int httpCode = http.POST(body);
-    updateStatusLed(status);
+    updateStatusLed(led, status);
 
     if (httpCode > 0) {
         String response = http.getString();
@@ -349,6 +331,7 @@ bool sendPowerStatus(int status, int adcValue) {
 
 void setup() {
     setupHardware();
+    initResetButton();
 
     // Read hardware MAC address (requires WIFI_STA mode to be set first)
     WiFi.mode(WIFI_STA);
@@ -405,7 +388,7 @@ void setup() {
     lastAdcValue = readAdcAverage();
     lastPowerStatus = adcToStatus(lastAdcValue, POWER_STATUS_UNKNOWN);
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
-    updateStatusLed(lastPowerStatus);
+    updateStatusLed(led, lastPowerStatus);
 
     if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
         lastSendTime = millis();
@@ -434,6 +417,9 @@ void setup() {
 void loop() {
     // Feed hardware watchdog — if loop() hangs, device auto-reboots
     esp_task_wdt_reset();
+
+    // Check BOOT button for factory reset (hold 10s)
+    pollResetButton(led, lastPowerStatus);
 
     // Periodic reboot for long-term stability
     if (millis() >= REBOOT_INTERVAL_MS) {
@@ -487,7 +473,7 @@ void loop() {
                 Serial.printf("State confirmed: %d -> %d (ADC: %d [%s])\n",
                     lastPowerStatus, pendingStatus, lastAdcValue, adcBand);
                 lastPowerStatus = pendingStatus;
-                updateStatusLed(lastPowerStatus);
+                updateStatusLed(led, lastPowerStatus);
 
                 // Reset confirmation
                 pendingStatus = POWER_STATUS_UNKNOWN;
