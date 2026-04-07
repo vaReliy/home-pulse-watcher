@@ -138,7 +138,7 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 
 #### Battery Monitoring (V2.3 UPS Edition)
 
-- **GPIO3** with 10k/10k divider (calibrated) for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
+- **GPIO3** with 100k/100k divider (calibrated) for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
 - Voltage formula: `(long)adcAvg * BATTERY_CALIBRATED_SCALE / 4095` millivolts (`BATTERY_CALIBRATED_SCALE = 6953`)
 - Calibrated from hardware measurement: 2.95V battery → 1.40V at GPIO3 → scale = 3300 × (2950/1400) = 6953
 - SOS alert threshold: **3400 mV** (`BATTERY_VOLTAGE_LOW_MV`, `BATTERY_LOW_THRESHOLD_MV`)

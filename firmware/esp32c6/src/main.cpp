@@ -189,7 +189,7 @@ int readAdcAverage() {
 
 #if HAS_UPS_MODULE
 /**
- * Read averaged battery voltage from GPIO3 (10k/10k divider, calibrated).
+ * Read averaged battery voltage from GPIO3 (100k/100k divider, calibrated).
  * Takes BATTERY_ADC_SAMPLES readings and returns millivolts.
  *
  * Uses analogReadMilliVolts() for factory-calibrated ADC linearity correction,

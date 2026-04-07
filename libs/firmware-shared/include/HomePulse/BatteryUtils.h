@@ -17,7 +17,7 @@ static const uint16_t kBatteryEmptyMv = 3000;
 /**
  * Apply voltage divider correction to a raw ADC millivolt reading.
  *
- * C6 (10k/10k calibrated): call with (mvAvg, BATTERY_DIVIDER_RATIO_NUM, BATTERY_DIVIDER_RATIO_DEN)
+ * C6 (100k/100k calibrated): call with (mvAvg, BATTERY_DIVIDER_RATIO_NUM, BATTERY_DIVIDER_RATIO_DEN)
  * C3 (100k/100k symmetric): call with (mvAvg) — uses default x2 ratio
  *
  * @param adcMillivolts  Averaged reading from analogReadMilliVolts()

@@ -72,7 +72,7 @@
 // UPS Battery Monitoring (enable for V2.3 UPS Edition hardware)
 #define HAS_UPS_MODULE false
 
-// Battery ADC (10k/10k divider on GPIO3)
+// Battery ADC (100k/100k divider on GPIO3)
 // Uses analogReadMilliVolts() which under-reads on ESP32-C6.
 // Empirically calibrated from 4 measurements (3.46–4.01V range):
 //   actual_mV / adc_mV ratios: 1.991, 1.975, 1.993, 2.011 → avg ≈ 1.993
