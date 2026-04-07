@@ -241,12 +241,24 @@ docker-compose --profile full up --build
 - [x] Phase 3: Core Power Status Logic & Event Handling
 - [x] Phase 4: Telegram Bot Integration
 - [ ] **Phase 5: Production Hardening** _(In Progress)_
-  - [x] 5.1: Power Sensing v2 — ADC-based sensing with ADC hysteresis, firmware confirmation (~400 ms), and server-side notification debounce (5 s)
-  - [x] 5.2: Telegram UX/UI Upgrade — Migrated from slash commands to interactive Reply/Inline keyboards with MarkdownV2 formatting and stateless Settings menu
-  - [x] 5.3: Observability — Structured JSON logging (pino), health check endpoints (`/health/live`, `/health/ready`), startup env validation
-  - [x] 5.4: Wi-Fi Provisioning — Captive portal AP (`HomePulse-Setup-XXXX`) provisions credentials into NVS; no compiled-in secrets. Factory reset via GPIO9 hold (10 s). Optional `secrets.h` dev shortcut for first-boot NVS population.
-  - [ ] 5.5: OTA Updates — Remote firmware updates via Google Cloud Storage triggered by Telegram commands; includes "Admin Force Update" to trigger remote flashing of specific devices
-  - [ ] 5.6: Admin CLI Integration — Specialized slash commands for remote device management (reboot, log retrieval) restricted to owners
+  - [x] 5.1: Power Sensing v2 — ADC-based sensing with hysteresis and firmware/server debounce
+  - [x] 5.2: Telegram UX/UI Upgrade — Interactive Reply/Inline keyboards and stateless Settings menu
+  - [x] 5.3: Observability — Structured JSON logging (pino), health checks, and startup env validation
+  - [x] 5.4: Wi-Fi Provisioning — Captive portal AP and NVS-based storage; 10s factory reset logic
+  - [ ] 5.5: Firmware Refactoring & Quality Assurance
+    - [ ] Modularize `main.cpp`: Extract HMAC, Battery math, and Voltage logic into pure functions
+    - [ ] Unit Testing: Implement Unity/Native tests for core logic (no-hardware required tests)
+    - [ ] Code Parity: Ensure seamless shared logic between ESP32-C3 and ESP32-C6 variants
+  - [ ] 5.6: OTA Updates (Secure Remote Delivery)
+    - [ ] Binary Hosting: Setup Google Cloud Storage with local `firmware/bin` mirror for dev
+    - [ ] Release Management: Prisma-based Release DB to track versions, checksums, and stability
+    - [ ] Secure Service: Backend endpoint for update checks with HMAC-signed validation
+    - [ ] Firmware Logic: `httpUpdate` integration with white LED status and auto-rollback protection
+    - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
+  - [ ] 5.7: Telegram Admin UI & Role Management
+    - [ ] Access Control: Implementation of Owner and Editor roles (RBAC)
+    - [ ] Remote Control: Commands for remote reboot, OTA triggers, and device settings via bot
+    - [ ] Status Reporting: Enhanced status templates with firmware versioning and system health
 
 ## 📋 Changelog
 
