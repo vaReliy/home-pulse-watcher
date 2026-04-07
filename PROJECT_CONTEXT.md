@@ -150,6 +150,26 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 
 - **V2.4 (Priority UPS)**: Replace Diode 1 with Schottky (SS34) or P-MOSFET load-sharing for production
 
+### Wi-Fi Provisioning (V3.4)
+
+Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No hardcoded secrets.
+
+**First-boot / factory-reset flow:**
+- Device starts as AP: `HomePulse-Setup-XXXX` (last 4 hex chars of MAC, open network)
+- Captive portal at `http://192.168.4.1/` — user enters WiFi SSID/password, device secret, backend URL
+- On save: credentials written to NVS → device reboots → connects as normal STA
+
+**Development shortcut:** If `include/secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty). Subsequent builds do not need `secrets.h`; credentials persist.
+
+**WiFi retry (transient failures):**
+- If credentials exist but WiFi is unreachable (router down, ISP issue), the device retries every 5 s for 5 minutes, then reboots to retry again
+- The captive portal is **never** opened automatically when credentials exist — only via explicit factory reset
+
+**Factory reset:**
+- Hold BOOT button (GPIO9) for 10 s
+- LED: orange blink with accelerating frequency → solid purple (1 s) = confirmed
+- Action: wipe NVS + reboot into captive portal
+
 ### Telegram Bot
 
 - **Interaction model**: Button-driven via Reply Keyboard (Status, Devices, Settings, Help); `/start` is the only slash command (user registration)
@@ -233,11 +253,11 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 
 ## Firmware Version Tracking
 
-- Current firmware version: **3.3.0** (ESP32-C6); **3.2.0** (ESP32-C3 — unchanged)
+- Current firmware version: **3.4.0** (both ESP32-C3 and ESP32-C6)
 - Defined in `FIRMWARE_VERSION` constant in each `config.h`
 - Devices report `firmwareVersion` in the JSON body of every status ping
 - Devices with `HAS_UPS_MODULE true` also report `batteryVoltage` in the JSON body
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
 
-**Firmware hosting** (future Phase 5.4 OTA): Firmware binaries will be stored on Google Cloud Storage (Always Free tier).
+**Firmware hosting** (future Phase 5.5 OTA): Firmware binaries will be stored on Google Cloud Storage (Always Free tier).

@@ -95,14 +95,15 @@ See `secrets.h.example` for the full template.
 
 ### config.h (Hardware-specific)
 
-| Setting             | Default      | Description                              |
-| ------------------- | ------------ | ---------------------------------------- |
-| `FIRMWARE_VERSION`  | `"3.1.0"`    | Reported to backend on every status ping |
-| `POWER_SENSE_PIN`   | 2            | GPIO for power detection                 |
-| `STATUS_LED_PIN`    | 8            | Onboard WS2812B RGB LED                  |
-| `LED_BRIGHTNESS`    | 10           | WS2812 LED brightness (0-255)            |
-| `CHECK_INTERVAL_MS` | 200          | Power check interval (ms)                |
-| `NTP_SERVER`        | pool.ntp.org | Time sync server                         |
+| Setting                  | Default       | Description                                   |
+| ------------------------ | ------------- | --------------------------------------------- |
+| `FIRMWARE_VERSION`       | `"3.4.0"`     | Reported to backend on every status ping      |
+| `POWER_SENSE_PIN`        | 2             | GPIO for power detection                      |
+| `STATUS_LED_PIN`         | 8             | Onboard WS2812B RGB LED                       |
+| `LED_BRIGHTNESS`         | 10            | WS2812 LED brightness (0-255)                 |
+| `CHECK_INTERVAL_MS`      | 200           | Power check interval (ms)                     |
+| `NTP_SERVER`             | pool.ntp.org  | Time sync server                              |
+| `WIFI_RETRY_DURATION_MS` | 300000 (5 min)| WiFi retry window before rebooting (setup)   |
 
 ## Device Setup
 
@@ -120,12 +121,45 @@ To register a device, obtain credentials, and configure `secrets.h`, follow the 
 
 The onboard WS2812B RGB LED shows device status:
 
-| Color        | Meaning                     |
-| ------------ | --------------------------- |
-| Yellow blink | WiFi connecting             |
-| Green        | 220V power present (normal) |
-| Red          | 220V power lost (outage)    |
-| Blue flash   | HTTP request in progress    |
+| Color                      | Meaning                                  |
+| -------------------------- | ---------------------------------------- |
+| Yellow blink               | WiFi connecting                          |
+| Orange breathing (slow)    | Captive portal active (awaiting config)  |
+| Orange blink (accelerating)| Factory reset hold in progress (0–10 s) |
+| Purple (1 s solid)         | Factory reset confirmed                  |
+| Green                      | 220V power present (normal)              |
+| Red                        | 220V power lost (outage)                 |
+| Blue flash                 | HTTP request in progress                 |
+
+### Initial Configuration (Captive Portal)
+
+On first boot (or after a factory reset), the device starts a WiFi access point for provisioning:
+
+- **AP name:** `HomePulse-Setup-XXXX` — where `XXXX` is the last 4 hex characters of the device MAC address
+- **Password:** none (open network — connect directly)
+- **Config page:** `http://192.168.4.1/` (opens automatically on most phones as a captive portal)
+
+**UI fields:**
+
+| Field           | Description                                                |
+| --------------- | ---------------------------------------------------------- |
+| WiFi Network    | Select from scanned networks or type manually              |
+| WiFi Password   | Your router password (leave blank for open networks)       |
+| Device Secret   | 64-character hex secret from `device:register` CLI command |
+| Backend URL     | `https://your-server.com/api/device/status`                |
+
+After saving, credentials are written to NVS (flash) and the device reboots to connect. Credentials persist across power cycles.
+
+### Factory Reset (10-Second BOOT Button Hold)
+
+To re-provision the device (e.g., new WiFi network or backend):
+
+1. Hold the **BOOT button** (GPIO9) for **10 seconds**
+2. LED blinks orange with accelerating frequency
+3. At 10 s: LED turns **solid purple** for 1 second — reset confirmed
+4. Device wipes NVS credentials and reboots into the captive portal
+
+> **WiFi unavailable (not a reset):** If credentials are already configured but the router is unreachable, the device retries for 5 minutes, then reboots to try again. The captive portal does **not** open automatically — credentials are always preserved unless you perform an explicit factory reset.
 
 ### HTTP 401 Unauthorized
 

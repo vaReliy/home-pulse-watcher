@@ -362,10 +362,22 @@ void setup() {
     Serial.printf("Device secret: [%d chars]\n", (int)strlen(creds.device_secret));
 
     if (!connectWiFi()) {
-        Serial.println("WiFi connection failed. Wiping credentials and starting captive portal...");
-        wipeCredentials();
-        startCaptivePortal(deviceMac, led);
-        // Never returns — reboots after user saves new credentials
+        // WiFi unavailable — retry for 5 minutes before giving up.
+        // Credentials are preserved: this may be a temporary outage (router reboot, ISP hiccup).
+        // The captive portal ONLY opens when NVS is truly empty; never on a transient WiFi failure.
+        Serial.println("WiFi connection failed. Retrying for 5 minutes...");
+        bool connected = false;
+        unsigned long retryStart = millis();
+        while (millis() - retryStart < WIFI_RETRY_DURATION_MS) {
+            delay(RETRY_DELAY_MS);
+            Serial.printf("WiFi retry (%lus elapsed)...\n", (millis() - retryStart) / MS_PER_SECOND);
+            if (connectWiFi()) { connected = true; break; }
+        }
+        if (!connected) {
+            Serial.println("WiFi unavailable after 5 minutes. Restarting to retry...");
+            delay(RESTART_DELAY_MS);
+            ESP.restart();
+        }
     }
 
     // DEV: HTTP — no TLS setup needed

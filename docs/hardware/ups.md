@@ -124,6 +124,10 @@ The UPS Edition supports real-time battery voltage monitoring via a dedicated AD
 - `/status` command shows `🔋 Battery: X.XXV (YY%)` for UPS devices
 - Battery percentage uses linear mapping: 3000 mV = 0%, 4200 mV = 100%
 
+## Visual Reference
+
+> **TODO**: Add photo of assembled UPS Edition hardware and annotated wiring diagram showing component placement on the board.
+
 ## Future Optimizations (TODO)
 
 ### Hardware V2.4 — Priority UPS

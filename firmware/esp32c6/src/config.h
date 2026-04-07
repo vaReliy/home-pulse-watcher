@@ -12,7 +12,7 @@
  */
 
 // Firmware Version (reported to backend on every status ping)
-#define FIRMWARE_VERSION "3.3.1"
+#define FIRMWARE_VERSION "3.4.0"
 
 // GPIO Configuration (ESP32-C6 SuperMini pinout)
 #define POWER_SENSE_PIN 2       // GPIO for power detection (connect to optocoupler output)
@@ -109,6 +109,9 @@
 #define WATCHDOG_TIMEOUT_S 60           // Hardware watchdog timeout (seconds)
 #define REBOOT_INTERVAL_MS 172800000UL  // Periodic reboot interval (48 hours)
 #define MAX_WIFI_FAILURES 10            // Consecutive WiFi failures before reboot
+
+// WiFi Retry (setup phase — credentials already provisioned but network unavailable)
+#define WIFI_RETRY_DURATION_MS 300000UL // Retry for 5 minutes before rebooting (credentials preserved)
 
 // Deep Sleep (optional, for battery operation)
 // #define ENABLE_DEEP_SLEEP
