@@ -110,10 +110,10 @@ static void handleSave() {
     DeviceCredentials creds;
     memset(&creds, 0, sizeof(creds));
 
-    _webServer.arg("ssid").toCharArray(creds.wifi_ssid,      CRED_SSID_MAX - 1);
-    _webServer.arg("password").toCharArray(creds.wifi_password, CRED_PASSWORD_MAX - 1);
-    _webServer.arg("secret").toCharArray(creds.device_secret, CRED_SECRET_MAX - 1);
-    _webServer.arg("url").toCharArray(creds.backend_url,      CRED_URL_MAX - 1);
+    _webServer.arg("ssid").toCharArray(creds.wifi_ssid,      CRED_SSID_MAX);
+    _webServer.arg("password").toCharArray(creds.wifi_password, CRED_PASSWORD_MAX);
+    _webServer.arg("secret").toCharArray(creds.device_secret, CRED_SECRET_MAX);
+    _webServer.arg("url").toCharArray(creds.backend_url,      CRED_URL_MAX);
 
     if (!saveCredentials(&creds)) {
         _webServer.send(500, "text/plain", "Failed to save credentials");
