@@ -88,26 +88,29 @@ See [CLI Reference](./cli-reference.md#deviceregister) for full options.
    cd firmware/esp32c3  # or esp32c6
    ```
 
-2. Copy the secrets template:
+2. Build and flash (no secrets file needed):
 
-   ```bash
-   cp include/secrets.h.example include/secrets.h
-   ```
-
-3. Edit `include/secrets.h` with the credentials from Steps 1-2:
-
-   ```cpp
-   #define WIFI_SSID "your-wifi-network"
-   #define WIFI_PASSWORD "your-wifi-password"
-   #define DEVICE_MAC "AA:BB:CC:DD:EE:FF"
-   #define DEVICE_SECRET "f9f9a250ad3b12cddff98fe71f28f7d994b3353b764a297f4f888474eef8c834"
-   #define BACKEND_URL "https://your-server.com/api/device/status"
-   ```
-
-4. Build and flash:
    ```bash
    pio run -t upload
    ```
+
+3. Provision via captive portal:
+
+   On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). Connect to it and open `http://192.168.4.1`. Fill in:
+
+   | Field | Value |
+   |---|---|
+   | Wi-Fi SSID | Your network name |
+   | Wi-Fi Password | Your network password |
+   | Device MAC | `AA:BB:CC:DD:EE:FF` (from Step 1) |
+   | Device Secret | 64-char hex string (from Step 1) |
+   | Backend URL | `https://your-server.com/api/device/status` |
+
+   After saving, the device reboots and connects automatically. Credentials are stored in NVS (non-volatile flash) and persist across reboots and reflashes.
+
+   > **Dev shortcut**: Copy `include/secrets.h.example` to `include/secrets.h`, fill in the values, and rebuild. If `secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty) — the captive portal is skipped. Do **not** commit `secrets.h` to version control.
+
+   > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s. The LED flashes SOS, credentials are cleared, and the captive portal starts again.
 
 See [Flashing Guide](../firmware/docs/FLASHING_GUIDE.md) for detailed PlatformIO setup, USB drivers, and troubleshooting upload issues.
 
@@ -216,7 +219,7 @@ Two hardware variants are supported. Choose based on your needs:
 | **Standard V2.1**    | Grid-only monitoring (no battery)                  | [docs/hardware/standard.md](hardware/standard.md) |
 | **UPS Edition V2.3** | Battery backup — ESP32 stays online during outages | [docs/hardware/ups.md](hardware/ups.md)           |
 
-Both variants use the same firmware (V3.1.0) and identical ADC sensing logic. The UPS edition adds a dual-diode OR-gate for battery failover while keeping the power sensor isolated from the backup supply.
+Both variants use the same firmware (V3.4.0) and identical ADC sensing logic. The UPS edition adds a dual-diode OR-gate for battery failover while keeping the power sensor isolated from the backup supply.
 
 > For ADC thresholds, voltage divider formula, and calibration — see the hardware guide for your variant.
 

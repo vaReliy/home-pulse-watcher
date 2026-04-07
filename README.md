@@ -119,13 +119,15 @@ ESP32 firmware for power monitoring devices is located in the `firmware/` direct
 ```bash
 cd firmware/esp32c3  # or esp32c6
 
-# Configure secrets
-cp include/secrets.h.example include/secrets.h
-# Edit secrets.h with WiFi and device credentials
-
-# Build and flash
+# Build and flash (no secrets file needed)
 pio run -t upload
 ```
+
+On first boot the device starts a `HomePulse-Setup-XXXX` Wi-Fi AP. Connect to it and open `http://192.168.4.1` to enter your Wi-Fi SSID, password, device MAC, secret, and backend URL. Credentials are saved to NVS (non-volatile flash) and persist across reboots.
+
+> **Dev shortcut**: Copy `include/secrets.h.example` to `include/secrets.h` and fill in credentials. If the file exists at compile time, its values are written to NVS on the first boot (when NVS is empty) — no captive portal required. Do **not** commit `secrets.h`.
+
+> **Factory reset**: Hold the BOOT button (GPIO9) for 10 s — the LED will flash SOS, credentials are cleared, and the captive portal starts again.
 
 See [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 
@@ -242,7 +244,7 @@ docker-compose --profile full up --build
   - [x] 5.1: Power Sensing v2 — ADC-based sensing with ADC hysteresis, firmware confirmation (~400 ms), and server-side notification debounce (5 s)
   - [x] 5.2: Telegram UX/UI Upgrade — Migrated from slash commands to interactive Reply/Inline keyboards with MarkdownV2 formatting and stateless Settings menu
   - [x] 5.3: Observability — Structured JSON logging (pino), health check endpoints (`/health/live`, `/health/ready`), startup env validation
-  - [ ] 5.4: Wi-Fi Provisioning — Implement Captive Portal to remove hardcoded Wi-Fi credentials from firmware
+  - [x] 5.4: Wi-Fi Provisioning — Captive portal AP (`HomePulse-Setup-XXXX`) provisions credentials into NVS; no compiled-in secrets. Factory reset via GPIO9 hold (10 s). Optional `secrets.h` dev shortcut for first-boot NVS population.
   - [ ] 5.5: OTA Updates — Remote firmware updates via Google Cloud Storage triggered by Telegram commands; includes "Admin Force Update" to trigger remote flashing of specific devices
   - [ ] 5.6: Admin CLI Integration — Specialized slash commands for remote device management (reboot, log retrieval) restricted to owners
 

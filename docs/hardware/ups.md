@@ -6,13 +6,13 @@ The UPS Edition keeps the ESP32 online during power outages so it can report POW
 
 Use this variant when you need immediate outage detection rather than inferring outages from device silence.
 
-**Firmware compatibility:** V3.1.0 works without modifications. The firmware doesn't need to know about the battery — it only reads the voltage divider on GPIO2, which is isolated from the power supply path.
+**Firmware compatibility:** V3.4.0 works without modifications. The firmware doesn't need to know about the battery — it only reads the voltage divider on GPIO2, which is isolated from the power supply path.
 
 ## Wiring Diagram
 
 ```
 ================================================================================
-                 HOME_PULSE WATCHER V2.3.1 — WIRING SCHEMATIC
+                 HOME_PULSE WATCHER V2.3 — WIRING SCHEMATIC
 ================================================================================
 
 [ ADAPTER 5V ] (Input Source)
@@ -83,7 +83,7 @@ R1 of the voltage divider connects **BEFORE** Diode 1 — directly to the adapte
 
 ## Firmware Compatibility
 
-- Firmware V3.1.0 works without modifications
+- Firmware V3.4.0 works without modifications
 - Same ADC thresholds, same voltage divider values (10k/10k + 0.1uF cap)
 - The only difference is the power supply path — firmware doesn't need to know about it
 

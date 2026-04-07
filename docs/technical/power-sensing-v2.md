@@ -76,11 +76,13 @@ Even after firmware filtering, the server applies a final notification debounce:
 ```json
 {
   "status": 0 | 1,
-  "voltage": 0-4095   // optional
+  "voltage": 0-4095,           // optional
+  "firmwareVersion": "3.4.0",  // always present
+  "batteryVoltage": 0-4095     // optional — only when HAS_UPS_MODULE=true
 }
 ```
 
-`voltage` is optional (`Int?` in Prisma schema) and is **not** included in the HMAC payload.
+`voltage` and `batteryVoltage` are optional (`Int?` in Prisma schema) and are **not** included in the HMAC payload. `firmwareVersion` is always sent as a string.
 
 **Response**:
 
