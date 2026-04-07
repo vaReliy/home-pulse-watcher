@@ -38,10 +38,15 @@
 #include <Adafruit_NeoPixel.h>
 
 #include "config.h"
-#include "credentials.h"
-#include "led.h"
-#include "portal.h"
-#include "reset.h"
+#include <HomePulse/credentials.h>
+#include <HomePulse/led.h>
+#include <HomePulse/portal.h>
+#include <HomePulse/reset.h>
+#include <HomePulse/SecurityUtils.h>
+#include <HomePulse/PowerUtils.h>
+#if HAS_UPS_MODULE
+#include <HomePulse/BatteryUtils.h>
+#endif
 
 // Optional: when secrets.h is present at compile time, its values are used to
 // auto-provision NVS on first boot (convenient for development).
@@ -168,30 +173,6 @@ bool initializeTime() {
 }
 
 /**
- * Compute HMAC-SHA256 signature
- *
- * @param payload String to sign (format: "MAC:TIMESTAMP:STATUS")
- * @param output Buffer for hex signature (must be at least 65 bytes)
- */
-void computeHmacSignature(const char* payload, char* output) {
-    uint8_t hash[HMAC_HASH_LENGTH];
-
-    mbedtls_md_context_t ctx;
-    mbedtls_md_init(&ctx);
-    mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
-    mbedtls_md_hmac_starts(&ctx, (const unsigned char*)creds.device_secret, strlen(creds.device_secret));
-    mbedtls_md_hmac_update(&ctx, (const unsigned char*)payload, strlen(payload));
-    mbedtls_md_hmac_finish(&ctx, hash);
-    mbedtls_md_free(&ctx);
-
-    // Convert to hex string
-    for (int i = 0; i < HMAC_HASH_LENGTH; i++) {
-        sprintf(output + (i * 2), "%02x", hash[i]);
-    }
-    output[HMAC_HEX_LENGTH] = '\0';
-}
-
-/**
  * Read averaged ADC value from power sense pin.
  * Takes ADC_SAMPLES readings with ADC_SAMPLE_DELAY_MS between each.
  *
@@ -204,27 +185,6 @@ int readAdcAverage() {
         delay(ADC_SAMPLE_DELAY_MS);
     }
     return (int)(sum / ADC_SAMPLES);
-}
-
-/**
- * Convert ADC value to power status with hysteresis.
- * - Above ADC_THRESHOLD_HIGH: power ON
- * - Below ADC_THRESHOLD_LOW: power OFF
- * - In between (brownout band): retain current state
- *
- * @param adcValue Averaged ADC reading
- * @param currentStatus Current known power status
- * @return Resolved power status
- */
-int adcToStatus(int adcValue, int currentStatus) {
-    if (adcValue >= ADC_THRESHOLD_HIGH) {
-        return POWER_STATUS_ON;
-    }
-    if (adcValue <= ADC_THRESHOLD_LOW) {
-        return POWER_STATUS_OFF;
-    }
-    // Hysteresis band: keep current state (brownout ignored)
-    return (currentStatus >= 0) ? currentStatus : POWER_STATUS_OFF;
 }
 
 #if HAS_UPS_MODULE
@@ -244,7 +204,7 @@ int readBatteryVoltage() {
         delay(BATTERY_ADC_SAMPLE_DELAY_MS);
     }
     int mvAvg = (int)(sum / BATTERY_ADC_SAMPLES);
-    return (long)mvAvg * BATTERY_DIVIDER_RATIO_NUM / BATTERY_DIVIDER_RATIO_DEN;
+    return HomePulse::calculateBatteryMv(mvAvg, BATTERY_DIVIDER_RATIO_NUM, BATTERY_DIVIDER_RATIO_DEN);
 }
 #endif
 
@@ -276,8 +236,7 @@ bool sendPowerStatus(int status, int adcValue) {
              deviceMac.c_str(), (unsigned long)timestamp, status);
 
     // Compute signature
-    char signature[HMAC_SIGNATURE_BUFFER];
-    computeHmacSignature(payload, signature);
+    String signature = HomePulse::calculateSignature(String(payload), creds.device_secret);
 
     Serial.printf("Sending status: %d\n", status);
     Serial.printf("Timestamp: %lu\n", (unsigned long)timestamp);
@@ -398,7 +357,7 @@ void setup() {
 
     // Read initial status and send
     lastAdcValue = readAdcAverage();
-    lastPowerStatus = adcToStatus(lastAdcValue, POWER_STATUS_UNKNOWN);
+    lastPowerStatus = HomePulse::computePowerStatus(lastAdcValue, HomePulse::kPowerStatusUnknown);
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(led, lastPowerStatus);
 
@@ -457,7 +416,7 @@ void loop() {
         lastCheckTime = currentTime;
 
         lastAdcValue = readAdcAverage();
-        int resolvedStatus = adcToStatus(lastAdcValue, lastPowerStatus);
+        int resolvedStatus = HomePulse::computePowerStatus(lastAdcValue, lastPowerStatus);
 
         // Determine ADC threshold band for diagnostics
         const char* adcBand = (lastAdcValue >= ADC_THRESHOLD_HIGH) ? ">HIGH" :

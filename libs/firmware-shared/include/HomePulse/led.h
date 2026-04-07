@@ -1,5 +1,5 @@
-#ifndef LED_H
-#define LED_H
+#ifndef HOMEPULSE_LED_H
+#define HOMEPULSE_LED_H
 
 /**
  * HomePulse Watcher - LED Helpers
@@ -120,4 +120,4 @@ inline void tickFlashLed(Adafruit_NeoPixel& led) {
     }
 }
 
-#endif // LED_H
+#endif // HOMEPULSE_LED_H

@@ -1,5 +1,5 @@
-#ifndef PORTAL_H
-#define PORTAL_H
+#ifndef HOMEPULSE_PORTAL_H
+#define HOMEPULSE_PORTAL_H
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -191,4 +191,4 @@ inline void startCaptivePortal(const String& deviceMac, Adafruit_NeoPixel& led) 
     }
 }
 
-#endif  // PORTAL_H
+#endif  // HOMEPULSE_PORTAL_H

@@ -1,5 +1,5 @@
-#ifndef CREDENTIALS_H
-#define CREDENTIALS_H
+#ifndef HOMEPULSE_CREDENTIALS_H
+#define HOMEPULSE_CREDENTIALS_H
 
 #include <Preferences.h>
 #include <cstring>
@@ -87,4 +87,4 @@ inline void wipeCredentials() {
     prefs.end();
 }
 
-#endif  // CREDENTIALS_H
+#endif  // HOMEPULSE_CREDENTIALS_H

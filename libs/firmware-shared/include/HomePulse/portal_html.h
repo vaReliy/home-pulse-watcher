@@ -1,5 +1,5 @@
-#ifndef PORTAL_HTML_H
-#define PORTAL_HTML_H
+#ifndef HOMEPULSE_PORTAL_HTML_H
+#define HOMEPULSE_PORTAL_HTML_H
 
 #include <pgmspace.h>
 
@@ -200,4 +200,4 @@ window.onload = function() {
 </html>
 )rawhtml";
 
-#endif  // PORTAL_HTML_H
+#endif  // HOMEPULSE_PORTAL_HTML_H

@@ -1,5 +1,5 @@
-#ifndef RESET_H
-#define RESET_H
+#ifndef HOMEPULSE_RESET_H
+#define HOMEPULSE_RESET_H
 
 /**
  * HomePulse Watcher - Factory Reset via BOOT Button
@@ -119,4 +119,4 @@ inline void pollResetButton(Adafruit_NeoPixel& led, int currentPowerStatus) {
     }
 }
 
-#endif // RESET_H
+#endif // HOMEPULSE_RESET_H

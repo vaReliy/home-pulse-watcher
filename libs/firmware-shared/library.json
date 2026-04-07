@@ -1,0 +1,10 @@
+{
+  "name": "HomePulse",
+  "version": "1.0.0",
+  "description": "Shared utility functions for HomePulse Watcher firmware",
+  "frameworks": "arduino",
+  "platforms": ["espressif32"],
+  "dependencies": {
+    "adafruit/Adafruit NeoPixel": "^1.12.0"
+  }
+}
