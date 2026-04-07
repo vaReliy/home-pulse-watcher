@@ -361,10 +361,22 @@ void setup() {
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(led, lastPowerStatus);
 
-    if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
-        lastSendTime = millis();
-    } else {
-        Serial.println("Failed to send initial status");
+    // Send initial status with retries (first TCP connection after WiFi often fails — ARP not yet cached)
+    bool initialSendOk = false;
+    for (int attempt = 1; attempt <= INITIAL_SEND_RETRIES; attempt++) {
+        if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
+            lastSendTime = millis();
+            initialSendOk = true;
+            break;
+        }
+        if (attempt < INITIAL_SEND_RETRIES) {
+            Serial.printf("Initial send attempt %d/%d failed, retrying in %ds...\n",
+                attempt, INITIAL_SEND_RETRIES, INITIAL_SEND_RETRY_DELAY_MS / MS_PER_SECOND);
+            delay(INITIAL_SEND_RETRY_DELAY_MS);
+        }
+    }
+    if (!initialSendOk) {
+        Serial.println("Failed to send initial status after retries, heartbeat will resync");
     }
     lastHeartbeatTime = millis();
 

@@ -104,6 +104,10 @@
 // WiFi Retry (setup phase — credentials already provisioned but network unavailable)
 #define WIFI_RETRY_DURATION_MS 300000UL // Retry for 5 minutes before rebooting (credentials preserved)
 
+// Initial Status Send Retry (first TCP connection after WiFi often fails — ARP not yet cached)
+#define INITIAL_SEND_RETRIES 5          // Number of retry attempts for initial status send
+#define INITIAL_SEND_RETRY_DELAY_MS 10000 // Delay between retries (milliseconds)
+
 // Deep Sleep (optional, for battery operation)
 // #define ENABLE_DEEP_SLEEP
 #define DEEP_SLEEP_DURATION_US 60000000  // 60 seconds
