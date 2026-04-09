@@ -147,6 +147,8 @@ No local `gcloud` CLI installation required -- all setup runs in [Google Cloud S
 2. Copy the connection string (includes `?sslmode=require` by default)
 3. No application code changes needed -- the `pg` driver handles SSL via the connection string
 
+> **Note:** Neon free tier suspends compute after inactivity. The `docker-entrypoint.sh` retries `prisma migrate deploy` up to 5 times with exponential backoff (3 s → 6 s → …) to handle Neon cold starts gracefully.
+
 ### Bootstrap (one-time)
 
 The bootstrap script creates all GCP resources: APIs, Secret Manager secrets, service account, and Workload Identity Federation for GitHub Actions.

@@ -249,6 +249,16 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Never move R1 connection point to after Diode 1 in V2.3 — sensor must read adapter voltage directly, isolated from battery power path
 - OR-gate diodes must prevent battery backfeed into the sensing circuit
 
+### Neon Cold Start / Cloud Run Startup Failure (Apr 2026)
+
+**What happened**: Cloud Run revisions started failing with `exit(1)` and `P1001: Can't reach database server` during `prisma migrate deploy`. The app never reached the listen phase.
+
+**Root cause**: Neon free tier suspends compute after ~5 minutes of inactivity (verified: free CPU quota exhausted in March, ~3 weeks of no traffic before the failed deploy on 01.04). The entrypoint had `set -e` and a single unarmed `prisma migrate deploy` call — first connection attempt failed before Neon woke up, killing the container.
+
+**Fix**: `docker-entrypoint.sh` now retries `prisma migrate deploy` up to 5 times with exponential backoff (3 s, 6 s, 12 s, 24 s, 48 s). Total max wait ~93 s, well under Cloud Run's 300 s startup timeout.
+
+**Do not regress**: Never remove retry logic from the entrypoint — Neon free tier cold starts are expected behavior with low-traffic deployments.
+
 ---
 
 ## Firmware Version Tracking
