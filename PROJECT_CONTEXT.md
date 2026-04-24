@@ -31,6 +31,7 @@
 | CLI        | nest-commander                                    |
 | Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6       |
 | Bundler    | Webpack (all deps bundled; Prisma externals only) |
+| AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher |
 
 ---
 
@@ -216,6 +217,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 | Document         | Path                                                                       | Purpose                                               |
 | ---------------- | -------------------------------------------------------------------------- | ----------------------------------------------------- |
 | README           | [`README.md`](README.md)                                                   | Quick start, feature overview                         |
+| AI Workflow      | [`CLAUDE.md`](CLAUDE.md)                                                   | Agent dispatch rules, pipelines, and coding standards |
 | Architecture     | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                             | Layer diagrams, DI patterns, Webpack config           |
 | Power Sensing v2 | [`docs/technical/power-sensing-v2.md`](docs/technical/power-sensing-v2.md) | Full 4-layer pipeline spec with ADC values            |
 | Admin Guide      | [`docs/admin-guide.md`](docs/admin-guide.md)                               | Device provisioning, hardware wiring, troubleshooting |
