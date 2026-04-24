@@ -235,6 +235,21 @@ docker-compose --profile full up --build
 # API available at http://localhost:8080/api
 ```
 
+## 🤖 AI Development Setup
+
+This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — a Claude Code configuration for Node.js/TypeScript projects. It turns Claude Code into a structured AI development team with specialized agents, rules, and skills.
+
+**What's included in `.claude/`:**
+
+- **18 agents** — `ba`, `ddd-architect`, `backend-developer`, `vue-developer`, `react-developer`, `angular-developer`, `tester`, `qa`, `reviewer`, `security-scanner`, `debugger`, `devops`, `docs-writer`, `dba`, `queue-specialist`, `integration-architect`, `refactoring-expert`, `devil`
+- **23 skills** — TypeScript, Vitest, Playwright, PostgreSQL, Vue, React, Angular, DevOps, architecture, debugging, and more
+- **9 rules** — architecture, code style, Docker, validation, git, MCP stack, migrations, testing, workflow
+- **2 commands** — `/fix-ci`, `/review-pr`
+
+**Requirements:**
+
+- [Superpowers plugin](https://github.com/obra/superpowers) (already configured in `.claude/settings.json`)
+
 ## 🗺 Roadmap
 
 - [x] Phase 0: System Architecture & Initial Setup
