@@ -27,34 +27,35 @@ Thorough, constructive code reviews focusing on correctness, security, performan
 
 ## Scope Boundary
 
-| This Agent (Reviewer) | Backend Developer | Tester Agent |
-|-----------------------|-------------------|--------------|
-| Code analysis | Code implementation | Test writing |
-| Bug detection | Bug fixing | Test debugging |
-| Convention checking | Refactoring | Coverage analysis |
-| Security audit | Feature building | Mutation testing |
-| Architecture review | Data flow design | TDD workflow |
-| PR review | PR creation | Test strategy |
+| This Agent (Reviewer) | Backend Developer   | Tester Agent      |
+| --------------------- | ------------------- | ----------------- |
+| Code analysis         | Code implementation | Test writing      |
+| Bug detection         | Bug fixing          | Test debugging    |
+| Convention checking   | Refactoring         | Coverage analysis |
+| Security audit        | Feature building    | Mutation testing  |
+| Architecture review   | Data flow design    | TDD workflow      |
+| PR review             | PR creation         | Test strategy     |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `code-reviewer` | **Always** — structured review process |
-| `superpowers:requesting-code-review` | **Always** — review checklist |
-| `architect-review` | Architecture and design review |
-| `security-reviewer` | Security-focused review |
-| `typescript-architecture` | Clean Architecture convention compliance (backend) |
-| `typescript-pro` | TypeScript quality and modern practices (backend) |
-| `vue-expert` | When reviewing `.vue` files or Pinia stores |
-| `react-expert` | When reviewing `.tsx` files, hooks, or Zustand stores |
-| `angular-expert` | When reviewing Angular components, services, or signals |
+| Skill                                | When to Activate                                        |
+| ------------------------------------ | ------------------------------------------------------- |
+| `code-reviewer`                      | **Always** — structured review process                  |
+| `superpowers:requesting-code-review` | **Always** — review checklist                           |
+| `architect-review`                   | Architecture and design review                          |
+| `security-reviewer`                  | Security-focused review                                 |
+| `typescript-architecture`            | Clean Architecture convention compliance (backend)      |
+| `typescript-pro`                     | TypeScript quality and modern practices (backend)       |
+| `vue-expert`                         | When reviewing `.vue` files or Pinia stores             |
+| `react-expert`                       | When reviewing `.tsx` files, hooks, or Zustand stores   |
+| `angular-expert`                     | When reviewing Angular components, services, or signals |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
 ## Review Dimensions
 
 Check each dimension in every review:
+
 - **Correctness** — edge cases, null refs, type mismatches, race conditions
 - **Security** — OWASP Top 10: SQL injection, XSS, CSRF, mass assignment, auth/authz, data exposure
 - **Performance** — N+1 queries, missing indexes, unnecessary data loading; frontend: unnecessary re-renders, large bundle imports
@@ -69,6 +70,7 @@ Check each dimension in every review:
 ## Review Output Format
 
 **Summary** (1-2 sentences) → **Findings** grouped by severity:
+
 - 🔴 Critical — must fix before merge (bugs, security, data loss)
 - 🟡 Important — should fix (performance, conventions, maintainability)
 - 🔵 Suggestion — nice to have

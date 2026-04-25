@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client';
-import { NotFoundError, DatabaseError, DatabaseErrorCode } from '@home-pulse-watcher/shared';
+import {
+  NotFoundError,
+  DatabaseError,
+  DatabaseErrorCode,
+} from '@home-pulse-watcher/shared';
 
 /**
  * Wraps a Prisma operation and translates Prisma-specific errors into domain errors.

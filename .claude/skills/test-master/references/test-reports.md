@@ -12,16 +12,17 @@
 
 ## Summary
 
-| Metric | Value |
-|--------|-------|
-| Total Tests | X |
-| Passed | X |
-| Failed | X |
-| Coverage | X% |
+| Metric      | Value |
+| ----------- | ----- |
+| Total Tests | X     |
+| Passed      | X     |
+| Failed      | X     |
+| Coverage    | X%    |
 
 ## Findings
 
 ### [CRITICAL] {Issue Title}
+
 - **Location**: src/api/users.ts:45
 - **Steps**: 1. Send POST without auth 2. Request succeeds
 - **Expected**: 401 Unauthorized
@@ -30,10 +31,10 @@
 
 ## Severity Definitions
 
-| Severity | Criteria |
-|----------|----------|
+| Severity     | Criteria                          |
+| ------------ | --------------------------------- |
 | **CRITICAL** | Security vulnerability, data loss |
-| **HIGH** | Major functionality broken |
-| **MEDIUM** | Feature partially working |
-| **LOW** | Minor issue, cosmetic |
+| **HIGH**     | Major functionality broken        |
+| **MEDIUM**   | Feature partially working         |
+| **LOW**      | Minor issue, cosmetic             |
 ```

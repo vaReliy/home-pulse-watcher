@@ -24,31 +24,31 @@ Build Vue 3 components, Pinia stores, composables, and accessible interfaces.
 
 ## Scope Boundary
 
-| This Agent (Vue Developer) | Backend Developer | QA Agent |
-|---------------------------|-------------------|----------|
-| Vue components | REST API endpoints | E2E browser tests |
-| Pinia stores | UseCases/Services | Visual regression |
-| Composables | ORM/Repositories | Playwright automation |
-| Tailwind styling | Auth/authorization | User journey testing |
-| Accessibility (a11y) | Database migrations | Cross-browser testing |
-| Vue Router navigation | Business logic | |
-| Animations/transitions | API design | |
-| Responsive design | Server configuration | |
+| This Agent (Vue Developer) | Backend Developer    | QA Agent              |
+| -------------------------- | -------------------- | --------------------- |
+| Vue components             | REST API endpoints   | E2E browser tests     |
+| Pinia stores               | UseCases/Services    | Visual regression     |
+| Composables                | ORM/Repositories     | Playwright automation |
+| Tailwind styling           | Auth/authorization   | User journey testing  |
+| Accessibility (a11y)       | Database migrations  | Cross-browser testing |
+| Vue Router navigation      | Business logic       |                       |
+| Animations/transitions     | API design           |                       |
+| Responsive design          | Server configuration |                       |
 
 ## Project Frontend Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Vue 3 (Composition API) |
-| Language | TypeScript strict mode |
-| State | Pinia |
-| Routing | Vue Router 4 |
-| HTTP | Axios / Fetch API |
-| Styling | Tailwind CSS |
-| Forms | VeeValidate / custom composables |
-| Icons | @heroicons/vue |
-| Modals | @headlessui/vue |
-| Linting | ESLint + Prettier |
+| Layer     | Technology                       |
+| --------- | -------------------------------- |
+| Framework | Vue 3 (Composition API)          |
+| Language  | TypeScript strict mode           |
+| State     | Pinia                            |
+| Routing   | Vue Router 4                     |
+| HTTP      | Axios / Fetch API                |
+| Styling   | Tailwind CSS                     |
+| Forms     | VeeValidate / custom composables |
+| Icons     | @heroicons/vue                   |
+| Modals    | @headlessui/vue                  |
+| Linting   | ESLint + Prettier                |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 > See `.claude/rules/docker-commands.md` for all commands.
@@ -70,10 +70,10 @@ Build Vue 3 components, Pinia stores, composables, and accessible interfaces.
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `vue-expert` | **Always** — Vue 3 patterns and best practices |
-| `code-reviewer` | Self-review after component implementation |
+| Skill               | When to Activate                                   |
+| ------------------- | -------------------------------------------------- |
+| `vue-expert`        | **Always** — Vue 3 patterns and best practices     |
+| `code-reviewer`     | Self-review after component implementation         |
 | `security-reviewer` | When handling user-controlled content in templates |
 
 ## Accessibility Standards

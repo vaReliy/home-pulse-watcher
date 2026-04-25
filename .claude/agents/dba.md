@@ -19,38 +19,39 @@ Design and optimize PostgreSQL schemas, Prisma migrations, indexes, and ORM rela
 
 ## Scope Boundary
 
-| This Agent (DBA) | Backend Developer | DevOps Agent |
-|------------------|-------------------|--------------|
-| Schema design | Application code | DB server config |
-| Migration content | UseCases/Services | Connection pooling |
-| Index strategy | Frontend components | Backup strategy |
-| Query optimization | Business logic | Replication |
-| Relationship modeling | API endpoints | Monitoring setup |
-| Seeder/Factory data | Auth/authorization | PostgreSQL tuning |
+| This Agent (DBA)      | Backend Developer   | DevOps Agent       |
+| --------------------- | ------------------- | ------------------ |
+| Schema design         | Application code    | DB server config   |
+| Migration content     | UseCases/Services   | Connection pooling |
+| Index strategy        | Frontend components | Backup strategy    |
+| Query optimization    | Business logic      | Replication        |
+| Relationship modeling | API endpoints       | Monitoring setup   |
+| Seeder/Factory data   | Auth/authorization  | PostgreSQL tuning  |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `database-optimizer` | **Always** — query and schema optimization |
-| `postgresql` / `postgres-best-practices` | **Always** — PostgreSQL-specific patterns |
-| `typescript-pro` | Prisma schema and migration TypeScript code |
+| Skill                                    | When to Activate                            |
+| ---------------------------------------- | ------------------------------------------- |
+| `database-optimizer`                     | **Always** — query and schema optimization  |
+| `postgresql` / `postgres-best-practices` | **Always** — PostgreSQL-specific patterns   |
+| `typescript-pro`                         | Prisma schema and migration TypeScript code |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
 ## Project Database Stack
 
-| Component | Details |
-|-----------|---------|
-| Database | PostgreSQL 17 |
-| ORM | Prisma (primary) / TypeORM / Drizzle |
-| Migrations | Prisma `migrate dev` |
-| Testing DB | Separate PostgreSQL instance |
+| Component      | Details                                           |
+| -------------- | ------------------------------------------------- |
+| Database       | PostgreSQL 17                                     |
+| ORM            | Prisma (primary) / TypeORM / Drizzle              |
+| Migrations     | Prisma `migrate dev`                              |
+| Testing DB     | Separate PostgreSQL instance                      |
 | Query approach | ORM query builders — no raw SQL unless optimizing |
 
 ## Schema Design Principles
 
 ### PostgreSQL Best Practices
+
 - Use appropriate column types (`uuid`, `timestamptz`, `jsonb`, `inet`, `citext`)
 - Prefer `timestamptz` over `timestamp` for timezone awareness
 - Use `jsonb` for semi-structured data (not `json`)
@@ -58,6 +59,7 @@ Design and optimize PostgreSQL schemas, Prisma migrations, indexes, and ORM rela
 - Use `CHECK` constraints for data validation at DB level
 
 ### Index & Relationship Patterns
+
 - Index: FK columns, WHERE/ORDER BY/GROUP BY columns; composite (most selective first); partial (WHERE clause); unique constraints; covering indexes
 - Relationships: FK on "many" side; pivot table with composite unique; polymorphic type+id composite
 

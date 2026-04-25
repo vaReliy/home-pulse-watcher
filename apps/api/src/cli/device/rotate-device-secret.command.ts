@@ -61,9 +61,7 @@ export class RotateDeviceSecretCommand extends CommandRunner {
       console.log('\n=== IMPORTANT: Save this secret ===');
       console.log(`Secret:      ${secret}`);
       console.log('\nThis secret will NOT be shown again!');
-      console.log(
-        'Update secrets.h on the ESP32 and re-flash the firmware.\n',
-      );
+      console.log('Update secrets.h on the ESP32 and re-flash the firmware.\n');
     } catch (error) {
       if (error instanceof BaseError) {
         this.logger.error(`${error.code}: ${error.message}`);

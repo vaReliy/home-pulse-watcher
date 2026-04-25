@@ -32,7 +32,9 @@ it('should return user data from API', async () => {
 ```typescript
 // ❌ BAD: Production code polluted with test concerns
 class UserCache {
-  _resetForTesting(): void { this.cache.clear(); }
+  _resetForTesting(): void {
+    this.cache.clear();
+  }
 }
 
 // ✅ GOOD: Use fresh instances per test instead
@@ -74,20 +76,20 @@ mockResolvedValue(createMockUser({ name: 'Test' }));
 // ✅ GOOD: Tests ship with feature
 it('should reject duplicate usernames', async () => {
   await createUser({ username: 'alice' });
-  await expect(createUser({ username: 'alice' }))
-    .rejects.toThrow('Username already exists');
+  await expect(createUser({ username: 'alice' })).rejects.toThrow('Username already exists');
 });
 ```
 
 ## Detection Checklist
 
-| Warning Sign | Anti-Pattern |
-|-------------|--------------|
+| Warning Sign                           | Anti-Pattern          |
+| -------------------------------------- | --------------------- |
 | `expect(mock).toHaveBeenCalled()` only | Testing mock behavior |
-| Methods with `_ForTesting` | Test-only methods |
-| Every dependency mocked | Over-mocking |
-| Mocks return minimal stubs | Incomplete mocks |
-| Tests added weeks after feature | Tests as afterthought |
+| Methods with `_ForTesting`             | Test-only methods     |
+| Every dependency mocked                | Over-mocking          |
+| Mocks return minimal stubs             | Incomplete mocks      |
+| Tests added weeks after feature        | Tests as afterthought |
 
 ---
-*Adapted from [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (@obra), MIT License.*
+
+_Adapted from [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (@obra), MIT License._

@@ -1,25 +1,25 @@
 ---
 name: angular-expert
 description: >-
-    Angular specialist for building modern Angular applications. Use when working
-    with Angular components, services, signals, RxJS, NgRx, Angular Router,
-    standalone components, or TypeScript+Angular patterns.
+  Angular specialist for building modern Angular applications. Use when working
+  with Angular components, services, signals, RxJS, NgRx, Angular Router,
+  standalone components, or TypeScript+Angular patterns.
 
-    Українською: Angular, компонент, сервіс, сигнали, RxJS, NgRx, маршрутизатор,
-    standalone компонент, декоратор, inject, Angular форма, HttpClient.
+  Українською: Angular, компонент, сервіс, сигнали, RxJS, NgRx, маршрутизатор,
+  standalone компонент, декоратор, inject, Angular форма, HttpClient.
 triggers:
-    - Angular
-    - NgModule
-    - standalone
-    - signals
-    - RxJS
-    - NgRx
-    - Angular Router
-    - inject()
-    - HttpClient
-    - Component decorator
-    - Injectable
-    - ChangeDetection
+  - Angular
+  - NgModule
+  - standalone
+  - signals
+  - RxJS
+  - NgRx
+  - Angular Router
+  - inject()
+  - HttpClient
+  - Component decorator
+  - Injectable
+  - ChangeDetection
 role: specialist
 scope: implementation
 output-format: code
@@ -53,14 +53,7 @@ import { CommonModule } from '@angular/common';
   template: `
     <article class="rounded-lg border p-4">
       <h2 class="text-xl font-semibold">{{ post.title }}</h2>
-      <button
-        *ngIf="showDelete"
-        type="button"
-        (click)="deleted.emit(post.id)"
-        class="text-red-500"
-      >
-        Delete
-      </button>
+      <button *ngIf="showDelete" type="button" (click)="deleted.emit(post.id)" class="text-red-500">Delete</button>
     </article>
   `,
 })

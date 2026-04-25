@@ -1,5 +1,8 @@
 import type { IUserRepository, User } from '@home-pulse-watcher/core';
-import { type LivrRules, type ServiceContext } from '@home-pulse-watcher/shared';
+import {
+  type LivrRules,
+  type ServiceContext,
+} from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
 
 export interface ListUsersInput {
@@ -34,9 +37,7 @@ export class ListUsersService extends BaseService<
 
     if (params.username) {
       const filter = params.username.toLowerCase();
-      users = users.filter(
-        (u) => u.username?.toLowerCase().includes(filter),
-      );
+      users = users.filter((u) => u.username?.toLowerCase().includes(filter));
     }
 
     return {

@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client';
-import { NotFoundError, DatabaseError, DatabaseErrorCode } from '@home-pulse-watcher/shared';
+import {
+  NotFoundError,
+  DatabaseError,
+  DatabaseErrorCode,
+} from '@home-pulse-watcher/shared';
 import { withPrismaError } from './prisma-error.wrapper.js';
 
 describe('withPrismaError', () => {

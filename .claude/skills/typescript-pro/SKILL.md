@@ -1,23 +1,23 @@
 ---
 name: typescript-pro
 description: >-
-    Senior TypeScript/Node.js development. Use when writing TypeScript, Node.js,
-    NestJS, Express, Fastify, Prisma, strict typing patterns, or making
-    TypeScript architecture decisions.
+  Senior TypeScript/Node.js development. Use when writing TypeScript, Node.js,
+  NestJS, Express, Fastify, Prisma, strict typing patterns, or making
+  TypeScript architecture decisions.
 
-    Українською: TypeScript, Node.js, строга типізація, async/await, NestJS,
-    Prisma, Express, Fastify, декоратори, generic типи, utility types.
+  Українською: TypeScript, Node.js, строга типізація, async/await, NestJS,
+  Prisma, Express, Fastify, декоратори, generic типи, utility types.
 triggers:
-    - TypeScript
-    - Node.js
-    - NestJS
-    - Express
-    - Fastify
-    - Prisma
-    - strict types
-    - generic types
-    - utility types
-    - async/await
+  - TypeScript
+  - Node.js
+  - NestJS
+  - Express
+  - Fastify
+  - Prisma
+  - strict types
+  - generic types
+  - utility types
+  - async/await
 role: specialist
 scope: implementation
 output-format: code
@@ -56,13 +56,11 @@ const config = {
 type EventName = `on${Capitalize<string>}`;
 
 // Discriminated unions — prefer over boolean flags
-type Result<T> =
-  | { success: true; data: T }
-  | { success: false; error: AppError };
+type Result<T> = { success: true; data: T } | { success: false; error: AppError };
 
 // Const assertion
 const STATUS = ['draft', 'published', 'archived'] as const;
-type PostStatus = typeof STATUS[number]; // 'draft' | 'published' | 'archived'
+type PostStatus = (typeof STATUS)[number]; // 'draft' | 'published' | 'archived'
 ```
 
 ## Node.js Patterns

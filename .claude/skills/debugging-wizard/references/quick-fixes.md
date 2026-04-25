@@ -7,14 +7,14 @@
 
 ```typescript
 // Error
-user.profile.name
+user.profile.name;
 // user or profile is undefined
 
 // Fix: Optional chaining
-user?.profile?.name
+user?.profile?.name;
 
 // Fix: Default value
-user?.profile?.name ?? 'Unknown'
+user?.profile?.name ?? 'Unknown';
 
 // Fix: Guard clause
 if (!user?.profile) {
@@ -33,7 +33,7 @@ fetchData().then(process);
 // Fix: Add catch
 fetchData()
   .then(process)
-  .catch(error => {
+  .catch((error) => {
     console.error('Fetch failed:', error);
   });
 
@@ -92,7 +92,7 @@ async function getData() {
 }
 
 // Error: forEach doesn't await
-items.forEach(async item => {
+items.forEach(async (item) => {
   await process(item); // Doesn't wait!
 });
 
@@ -102,7 +102,7 @@ for (const item of items) {
 }
 
 // Fix: Use Promise.all for parallel
-await Promise.all(items.map(item => process(item)));
+await Promise.all(items.map((item) => process(item)));
 ```
 
 ## PHP / Laravel Common Errors
@@ -124,11 +124,11 @@ DB_PORT=5432
 
 ## Quick Reference
 
-| Error Message | Likely Fix |
-|--------------|------------|
-| Cannot read property of undefined | Optional chaining `?.` |
-| Unhandled promise rejection | Add `.catch()` or try/catch |
-| Maximum call stack | Add recursion base case |
-| Module not found | Check path, install package |
-| await in non-async | Add `async` keyword |
-| Class not found | `composer dump-autoload` |
+| Error Message                     | Likely Fix                  |
+| --------------------------------- | --------------------------- |
+| Cannot read property of undefined | Optional chaining `?.`      |
+| Unhandled promise rejection       | Add `.catch()` or try/catch |
+| Maximum call stack                | Add recursion base case     |
+| Module not found                  | Check path, install package |
+| await in non-async                | Add `async` keyword         |
+| Class not found                   | `composer dump-autoload`    |

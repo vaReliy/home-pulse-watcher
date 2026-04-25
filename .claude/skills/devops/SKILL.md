@@ -1,11 +1,11 @@
 ---
 name: devops
 description: >-
-    DevOps for Node.js/TypeScript applications. Docker setup, CI/CD pipelines,
-    GitHub Actions, PM2 process management, environment configuration, deployment.
+  DevOps for Node.js/TypeScript applications. Docker setup, CI/CD pipelines,
+  GitHub Actions, PM2 process management, environment configuration, deployment.
 
-    Українською: DevOps, деплой, Docker, CI/CD, GitHub Actions, PM2,
-    інфраструктура, конфігурація середовища, налаштування контейнера.
+  Українською: DevOps, деплой, Docker, CI/CD, GitHub Actions, PM2,
+  інфраструктура, конфігурація середовища, налаштування контейнера.
 ---
 
 # DevOps — Node.js/TypeScript

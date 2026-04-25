@@ -14,25 +14,25 @@ import UserCard from './UserCard.vue';
 
 // Props with TypeScript
 interface Props {
-    userId: number;
-    optional?: string;
+  userId: number;
+  optional?: string;
 }
 const props = withDefaults(defineProps<Props>(), {
-    optional: 'default value',
+  optional: 'default value',
 });
 
 // Emits with TypeScript
 interface Emits {
-    (e: 'update', value: string): void;
-    (e: 'delete', id: number): void;
+  (e: 'update', value: string): void;
+  (e: 'delete', id: number): void;
 }
 const emit = defineEmits<Emits>();
 
 // Reactive state
 const count = ref(0);
 const user = reactive({
-    name: 'John',
-    age: 30,
+  name: 'John',
+  age: 30,
 });
 
 // Computed
@@ -40,13 +40,13 @@ const doubled = computed(() => count.value * 2);
 
 // Methods
 function increment() {
-    count.value++;
-    emit('update', count.value.toString());
+  count.value++;
+  emit('update', count.value.toString());
 }
 
 // Lifecycle
 onMounted(() => {
-    console.log('Component mounted');
+  console.log('Component mounted');
 });
 </script>
 ```
@@ -67,11 +67,11 @@ console.log(message.value);
 
 // Use reactive() for objects
 const state = reactive({
-    count: 0,
-    user: {
-        name: 'John',
-        email: 'john@example.com',
-    },
+  count: 0,
+  user: {
+    name: 'John',
+    email: 'john@example.com',
+  },
 });
 
 // No .value needed for reactive
@@ -93,26 +93,24 @@ const lastName = ref('Doe');
 
 // Read-only computed
 const fullName = computed(() => {
-    return `${firstName.value} ${lastName.value}`;
+  return `${firstName.value} ${lastName.value}`;
 });
 
 // Writable computed
 const fullNameWritable = computed({
-    get() {
-        return `${firstName.value} ${lastName.value}`;
-    },
-    set(value: string) {
-        const [first, last] = value.split(' ');
-        firstName.value = first;
-        lastName.value = last;
-    },
+  get() {
+    return `${firstName.value} ${lastName.value}`;
+  },
+  set(value: string) {
+    const [first, last] = value.split(' ');
+    firstName.value = first;
+    lastName.value = last;
+  },
 });
 
 // Computed with complex logic (cached until dependencies change)
 const filteredItems = computed(() => {
-    return items.value.filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.value.toLowerCase()),
-    );
+  return items.value.filter((item) => item.name.toLowerCase().includes(searchQuery.value.toLowerCase()));
 });
 ```
 
@@ -126,39 +124,39 @@ const user = ref({ name: 'John', age: 30 });
 
 // Watch single source
 watch(count, (newValue, oldValue) => {
-    console.log(`Count changed from ${oldValue} to ${newValue}`);
+  console.log(`Count changed from ${oldValue} to ${newValue}`);
 });
 
 // Watch multiple sources
 watch([count, user], ([newCount, newUser], [oldCount, oldUser]) => {
-    console.log('Count or user changed');
+  console.log('Count or user changed');
 });
 
 // Watch with options
 watch(
-    () => user.value.name, // Getter function
-    (newName) => {
-        console.log(`Name changed to ${newName}`);
-    },
-    {
-        immediate: true, // Run immediately
-        deep: true, // Deep watch for objects
-    },
+  () => user.value.name, // Getter function
+  (newName) => {
+    console.log(`Name changed to ${newName}`);
+  },
+  {
+    immediate: true, // Run immediately
+    deep: true, // Deep watch for objects
+  },
 );
 
 // watchEffect - automatically tracks dependencies
 watchEffect(() => {
-    console.log(`Count is ${count.value}`);
-    // Automatically re-runs when count changes
+  console.log(`Count is ${count.value}`);
+  // Automatically re-runs when count changes
 });
 
 // Cleanup and stop watching
 const stop = watchEffect((onCleanup) => {
-    const timer = setInterval(() => console.log('tick'), 1000);
+  const timer = setInterval(() => console.log('tick'), 1000);
 
-    onCleanup(() => {
-        clearInterval(timer);
-    });
+  onCleanup(() => {
+    clearInterval(timer);
+  });
 });
 
 // Stop watching when needed
@@ -168,52 +166,44 @@ stop();
 ## Lifecycle Hooks
 
 ```typescript
-import {
-    onBeforeMount,
-    onMounted,
-    onBeforeUpdate,
-    onUpdated,
-    onBeforeUnmount,
-    onUnmounted,
-    onErrorCaptured,
-} from 'vue';
+import { onBeforeMount, onMounted, onBeforeUpdate, onUpdated, onBeforeUnmount, onUnmounted, onErrorCaptured } from 'vue';
 
 // Before component is mounted
 onBeforeMount(() => {
-    console.log('Before mount');
+  console.log('Before mount');
 });
 
 // After component is mounted (DOM is ready)
 onMounted(() => {
-    console.log('Mounted - DOM is ready');
-    // Fetch data, setup event listeners, etc.
+  console.log('Mounted - DOM is ready');
+  // Fetch data, setup event listeners, etc.
 });
 
 // Before component updates
 onBeforeUpdate(() => {
-    console.log('Before update');
+  console.log('Before update');
 });
 
 // After component updates
 onUpdated(() => {
-    console.log('Updated');
+  console.log('Updated');
 });
 
 // Before component is unmounted
 onBeforeUnmount(() => {
-    console.log('Before unmount - cleanup here');
+  console.log('Before unmount - cleanup here');
 });
 
 // After component is unmounted
 onUnmounted(() => {
-    console.log('Unmounted');
-    // Cleanup: remove event listeners, cancel timers, etc.
+  console.log('Unmounted');
+  // Cleanup: remove event listeners, cancel timers, etc.
 });
 
 // Error handling
 onErrorCaptured((err, instance, info) => {
-    console.error('Error captured:', err, info);
-    return false; // Prevent error from propagating
+  console.error('Error captured:', err, info);
+  return false; // Prevent error from propagating
 });
 ```
 

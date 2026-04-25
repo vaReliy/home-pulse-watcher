@@ -14,8 +14,7 @@ describe('TelegramController', () => {
   const createMockRequest = (
     body: unknown = {},
     headers: Record<string, string> = {},
-  ): Request =>
-    ({ body, headers }) as unknown as Request;
+  ): Request => ({ body, headers }) as unknown as Request;
 
   const createMockBot = (): jest.Mocked<Telegraf<TelegramContext>> =>
     ({

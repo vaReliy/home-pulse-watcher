@@ -24,30 +24,30 @@ Build Angular 17+ standalone components, services, and accessible interfaces usi
 
 ## Scope Boundary
 
-| This Agent (Angular Developer) | Backend Developer | QA Agent |
-|-------------------------------|-------------------|----------|
-| Angular components | REST API endpoints | E2E browser tests |
-| Angular services | UseCases/Services | Visual regression |
-| Signals / NgRx state | ORM/Repositories | Playwright automation |
-| HttpClient integration | Auth/authorization | User journey testing |
-| Tailwind styling | Database migrations | Cross-browser testing |
-| Angular Router navigation | Business logic | |
-| Reactive Forms | API design | |
-| Accessibility (a11y) | Server configuration | |
+| This Agent (Angular Developer) | Backend Developer    | QA Agent              |
+| ------------------------------ | -------------------- | --------------------- |
+| Angular components             | REST API endpoints   | E2E browser tests     |
+| Angular services               | UseCases/Services    | Visual regression     |
+| Signals / NgRx state           | ORM/Repositories     | Playwright automation |
+| HttpClient integration         | Auth/authorization   | User journey testing  |
+| Tailwind styling               | Database migrations  | Cross-browser testing |
+| Angular Router navigation      | Business logic       |                       |
+| Reactive Forms                 | API design           |                       |
+| Accessibility (a11y)           | Server configuration |                       |
 
 ## Project Frontend Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Angular 17+ |
-| Language | TypeScript strict mode |
-| State | Signals (preferred) / NgRx (complex cases) |
-| HTTP | Angular HttpClient (typed responses) |
-| Routing | Angular Router |
-| Forms | Reactive Forms + Validators |
-| Styling | Tailwind CSS |
-| DI | `inject()` function (preferred) |
-| Linting | ESLint + Prettier |
+| Layer     | Technology                                 |
+| --------- | ------------------------------------------ |
+| Framework | Angular 17+                                |
+| Language  | TypeScript strict mode                     |
+| State     | Signals (preferred) / NgRx (complex cases) |
+| HTTP      | Angular HttpClient (typed responses)       |
+| Routing   | Angular Router                             |
+| Forms     | Reactive Forms + Validators                |
+| Styling   | Tailwind CSS                               |
+| DI        | `inject()` function (preferred)            |
+| Linting   | ESLint + Prettier                          |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 > See `.claude/rules/docker-commands.md` for all commands.
@@ -63,11 +63,11 @@ Build Angular 17+ standalone components, services, and accessible interfaces usi
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `angular-expert` | **Always** — Angular 17+ patterns and best practices |
-| `code-reviewer` | Self-review after component implementation |
-| `security-reviewer` | When handling user-controlled content in templates |
+| Skill               | When to Activate                                     |
+| ------------------- | ---------------------------------------------------- |
+| `angular-expert`    | **Always** — Angular 17+ patterns and best practices |
+| `code-reviewer`     | Self-review after component implementation           |
+| `security-reviewer` | When handling user-controlled content in templates   |
 
 ## Accessibility Standards
 

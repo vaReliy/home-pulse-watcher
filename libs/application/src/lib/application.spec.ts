@@ -15,7 +15,7 @@ class TestService extends BaseService<{ name: string }, { greeting: string }> {
 
   protected async execute(
     params: { name: string },
-    _context: ServiceContext
+    _context: ServiceContext,
   ): Promise<{ greeting: string }> {
     return { greeting: `Hello, ${params.name}!` };
   }
@@ -51,7 +51,7 @@ describe('BaseService', () => {
 
       await expect(service.run({ name: '' })).rejects.toThrow(ValidationError);
       await expect(service.run({} as { name: string })).rejects.toThrow(
-        ValidationError
+        ValidationError,
       );
     });
 

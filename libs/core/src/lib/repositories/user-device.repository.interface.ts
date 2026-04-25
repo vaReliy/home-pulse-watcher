@@ -10,7 +10,7 @@ export interface IUserDeviceRepository {
    */
   findByUserAndDevice(
     userId: string,
-    deviceId: string
+    deviceId: string,
   ): Promise<UserDevice | null>;
 
   /**
@@ -42,7 +42,7 @@ export interface IUserDeviceRepository {
     data: {
       customName?: string | null;
       role?: DeviceRole;
-    }
+    },
   ): Promise<UserDevice>;
 
   /**

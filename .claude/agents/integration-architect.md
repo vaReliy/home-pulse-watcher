@@ -23,35 +23,35 @@ Design and implement OAuth flows, payment gateways, webhook handlers, and third-
 
 ## Scope Boundary
 
-| This Agent (Integration) | Backend Developer | DevOps Agent |
-|--------------------------|-------------------|--------------|
-| OAuth flow design | UseCase implementation | Env var management |
-| API client wrappers | Frontend components | Server configuration |
-| Webhook handlers | Business logic | Service containers |
-| External service config | Route handling | Docker setup |
-| Integration testing strategy | Frontend integration | Secrets management |
+| This Agent (Integration)     | Backend Developer      | DevOps Agent         |
+| ---------------------------- | ---------------------- | -------------------- |
+| OAuth flow design            | UseCase implementation | Env var management   |
+| API client wrappers          | Frontend components    | Server configuration |
+| Webhook handlers             | Business logic         | Service containers   |
+| External service config      | Route handling         | Docker setup         |
+| Integration testing strategy | Frontend integration   | Secrets management   |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `typescript-pro` | Strict TypeScript in integration code |
+| Skill               | When to Activate                               |
+| ------------------- | ---------------------------------------------- |
+| `typescript-pro`    | Strict TypeScript in integration code          |
 | `security-reviewer` | OAuth security, webhook signature verification |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
 ## Common Integration Patterns
 
-| Service | Library | Purpose |
-|---------|---------|---------|
-| **OAuth (Google/GitHub)** | `passport-google-oauth20`, `passport-github2` | Social login |
-| **JWT** | `jsonwebtoken` / `jose` | Token auth |
-| **Redis** | `ioredis` | Cache, sessions, queue |
-| **PostgreSQL** | Prisma / `pg` | Primary database |
-| **Email** | `nodemailer` / Resend SDK | Transactional email |
-| **Payment** | Stripe SDK | Payment processing |
-| **File uploads** | `multer` + S3 SDK | Object storage |
-| **HTTP client** | Axios | External API calls |
+| Service                   | Library                                       | Purpose                |
+| ------------------------- | --------------------------------------------- | ---------------------- |
+| **OAuth (Google/GitHub)** | `passport-google-oauth20`, `passport-github2` | Social login           |
+| **JWT**                   | `jsonwebtoken` / `jose`                       | Token auth             |
+| **Redis**                 | `ioredis`                                     | Cache, sessions, queue |
+| **PostgreSQL**            | Prisma / `pg`                                 | Primary database       |
+| **Email**                 | `nodemailer` / Resend SDK                     | Transactional email    |
+| **Payment**               | Stripe SDK                                    | Payment processing     |
+| **File uploads**          | `multer` + S3 SDK                             | Object storage         |
+| **HTTP client**           | Axios                                         | External API calls     |
 
 ## Integration Patterns
 

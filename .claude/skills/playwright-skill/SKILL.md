@@ -1,6 +1,6 @@
 ---
 name: playwright-skill
-description: "Complete browser automation with Playwright. Auto-detects dev servers, writes clean test scripts to /tmp. Test pages, fill forms, take screenshots, check responsive design, validate UX, test login ... Українською: Playwright, автоматизація браузера, тестовий скрипт, навігація сторінками, кліки, заповнення форм, зробити скріншот, перевірка UX, адаптивний дизайн, тест логіну, перевірити сторінку."
+description: 'Complete browser automation with Playwright. Auto-detects dev servers, writes clean test scripts to /tmp. Test pages, fill forms, take screenshots, check responsive design, validate UX, test login ... Українською: Playwright, автоматизація браузера, тестовий скрипт, навігація сторінками, кліки, заповнення форм, зробити скріншот, перевірка UX, адаптивний дизайн, тест логіну, перевірити сторінку.'
 risk: unknown
 source: community
 ---
@@ -255,9 +255,7 @@ const TARGET_URL = 'http://localhost:3001'; // Auto-detected
   ];
 
   for (const viewport of viewports) {
-    console.log(
-      `Testing ${viewport.name} (${viewport.width}x${viewport.height})`,
-    );
+    console.log(`Testing ${viewport.name} (${viewport.width}x${viewport.height})`);
 
     await page.setViewportSize({
       width: viewport.width,
@@ -365,9 +363,7 @@ const page = await context.newPage();
 For scripts using raw Playwright API, use the injected `getContextOptionsWithHeaders()`:
 
 ```javascript
-const context = await browser.newContext(
-  getContextOptionsWithHeaders({ viewport: { width: 1920, height: 1080 } }),
-);
+const context = await browser.newContext(getContextOptionsWithHeaders({ viewport: { width: 1920, height: 1080 } }));
 ```
 
 ## Advanced Usage
@@ -455,4 +451,5 @@ User: "Use 3001"
 - Progressive disclosure - API_REFERENCE.md loaded only when advanced features needed
 
 ## When to Use
+
 This skill is applicable to execute the workflow or actions described in the overview.

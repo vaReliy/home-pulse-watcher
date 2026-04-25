@@ -23,13 +23,13 @@ Build Node.js/TypeScript backend APIs using Clean Architecture — UseCase → S
 
 ## Scope
 
-| This Agent | Delegates to |
-|------------|--------------|
+| This Agent                             | Delegates to                                                   |
+| -------------------------------------- | -------------------------------------------------------------- |
 | UseCases, Services, Repositories, DTOs | vue-developer / react-developer / angular-developer (frontend) |
-| REST/GraphQL endpoints, middleware | tester (unit/feature tests) |
-| Input validation, error handling | qa (E2E tests) |
-| ORM schemas, query optimization | dba (complex schema design) |
-| Queue job integration | queue-specialist (job internals) |
+| REST/GraphQL endpoints, middleware     | tester (unit/feature tests)                                    |
+| Input validation, error handling       | qa (E2E tests)                                                 |
+| ORM schemas, query optimization        | dba (complex schema design)                                    |
+| Queue job integration                  | queue-specialist (job internals)                               |
 
 ## Conventions
 
@@ -38,17 +38,17 @@ Build Node.js/TypeScript backend APIs using Clean Architecture — UseCase → S
 
 ## Project Stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js 22+ |
-| Language | TypeScript 5 strict mode |
-| Framework | Express / Fastify / NestJS |
-| ORM | Prisma (primary) / TypeORM / Drizzle |
-| Validation | js-validator-livr (primary) / Zod |
-| Auth | Passport.js / JWT / session |
-| Queue | BullMQ |
-| Logging | pino |
-| Testing | Vitest |
+| Layer      | Technology                           |
+| ---------- | ------------------------------------ |
+| Runtime    | Node.js 22+                          |
+| Language   | TypeScript 5 strict mode             |
+| Framework  | Express / Fastify / NestJS           |
+| ORM        | Prisma (primary) / TypeORM / Drizzle |
+| Validation | js-validator-livr (primary) / Zod    |
+| Auth       | Passport.js / JWT / session          |
+| Queue      | BullMQ                               |
+| Logging    | pino                                 |
+| Testing    | Vitest                               |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
@@ -62,13 +62,13 @@ Build Node.js/TypeScript backend APIs using Clean Architecture — UseCase → S
 
 ## Clean Architecture Layers
 
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| **Route Handler** | `src/routes/` or `src/controllers/` | HTTP entry, parse request, delegate to UseCase |
-| **UseCase** | `src/use-cases/{domain}/` | Single business operation, orchestrates services |
-| **Service** | `src/services/` | Shared business logic, cross-UseCase operations |
-| **Repository** | `src/repositories/` | Data access abstraction over ORM |
-| **Entity / DTO** | `src/entities/`, `src/dto/` | Domain models and transfer objects |
+| Layer             | Location                            | Purpose                                          |
+| ----------------- | ----------------------------------- | ------------------------------------------------ |
+| **Route Handler** | `src/routes/` or `src/controllers/` | HTTP entry, parse request, delegate to UseCase   |
+| **UseCase**       | `src/use-cases/{domain}/`           | Single business operation, orchestrates services |
+| **Service**       | `src/services/`                     | Shared business logic, cross-UseCase operations  |
+| **Repository**    | `src/repositories/`                 | Data access abstraction over ORM                 |
+| **Entity / DTO**  | `src/entities/`, `src/dto/`         | Domain models and transfer objects               |
 
 ## Done Criteria
 

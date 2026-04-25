@@ -5,23 +5,25 @@
 
 ## Pattern Recognition
 
-| Pattern | Symptom | Likely Cause |
-|---------|---------|--------------|
-| Race condition | Intermittent failures | Missing await, async timing |
-| Off-by-one | Missing first/last item | `<` vs `<=`, array bounds |
-| Null reference | "undefined is not..." | Missing null check |
-| Memory leak | Growing memory | Uncleaned listeners/intervals |
-| N+1 queries | Slow with more data | Fetching in loop |
-| Type coercion | Unexpected behavior | `==` instead of `===` |
-| Closure issue | Wrong variable value | Loop variable capture |
-| Stale state | Old value used | React state closure |
+| Pattern        | Symptom                 | Likely Cause                  |
+| -------------- | ----------------------- | ----------------------------- |
+| Race condition | Intermittent failures   | Missing await, async timing   |
+| Off-by-one     | Missing first/last item | `<` vs `<=`, array bounds     |
+| Null reference | "undefined is not..."   | Missing null check            |
+| Memory leak    | Growing memory          | Uncleaned listeners/intervals |
+| N+1 queries    | Slow with more data     | Fetching in loop              |
+| Type coercion  | Unexpected behavior     | `==` instead of `===`         |
+| Closure issue  | Wrong variable value    | Loop variable capture         |
+| Stale state    | Old value used          | React state closure           |
 
 ## Race Condition
 
 ```typescript
 // BUG: Race condition
 let data;
-fetchData().then(result => { data = result; });
+fetchData().then((result) => {
+  data = result;
+});
 console.log(data); // undefined!
 
 // FIX: Await the result
@@ -33,10 +35,10 @@ console.log(data);
 
 ```typescript
 // BUG: Skips last element
-for (let i = 0; i < array.length - 1; i++) { }
+for (let i = 0; i < array.length - 1; i++) {}
 
 // FIX: Include last element
-for (let i = 0; i < array.length; i++) { }
+for (let i = 0; i < array.length; i++) {}
 
 // BUG: Array index out of bounds
 const last = array[array.length]; // undefined
@@ -92,10 +94,10 @@ for (let i = 0; i < 5; i++) {
 
 ## Quick Reference
 
-| Symptom | First Check |
-|---------|-------------|
-| "undefined is not..." | Null check missing |
-| Works sometimes | Race condition |
-| Wrong value in callback | Closure/stale state |
-| Gets slower over time | Memory leak, N+1 |
-| Off by one item | Loop bounds, array index |
+| Symptom                 | First Check              |
+| ----------------------- | ------------------------ |
+| "undefined is not..."   | Null check missing       |
+| Works sometimes         | Race condition           |
+| Wrong value in callback | Closure/stale state      |
+| Gets slower over time   | Memory leak, N+1         |
+| Off by one item         | Loop bounds, array index |

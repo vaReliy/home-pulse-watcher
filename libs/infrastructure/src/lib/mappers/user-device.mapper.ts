@@ -5,7 +5,7 @@ import { UserDevice, DeviceRole } from '@home-pulse-watcher/core';
  * Maps Prisma UserDevice model to Domain UserDevice entity.
  */
 export function mapPrismaUserDeviceToEntity(
-  prismaUserDevice: PrismaUserDevice
+  prismaUserDevice: PrismaUserDevice,
 ): UserDevice {
   return new UserDevice({
     userId: prismaUserDevice.userId,

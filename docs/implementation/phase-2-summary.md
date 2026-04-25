@@ -93,8 +93,8 @@ new PrismaClient({ adapter });
 
 ### Interceptors (`apps/api/src/interceptors/`)
 
-| File                              | Purpose                                      |
-| --------------------------------- | -------------------------------------------- |
+| File                               | Purpose                                     |
+| ---------------------------------- | ------------------------------------------- |
 | `bigint-serializer.interceptor.ts` | Converts BigInt to string in HTTP responses |
 
 ### CLI (`apps/api/src/cli/`)
@@ -192,7 +192,7 @@ export interface ServiceContext {
 
 // CLI/Controller passes config in context
 await service.run(params, {
-  config: { appGlobalSalt: process.env['APP_GLOBAL_SALT']! }
+  config: { appGlobalSalt: process.env['APP_GLOBAL_SALT']! },
 });
 ```
 
@@ -265,7 +265,7 @@ describe('RegisterDeviceService', () => {
     const service = new RegisterDeviceService(mockRepo);
     const result = await service.run(
       { macAddress: 'AA:BB:CC:DD:EE:FF' },
-      validContext  // Config passed via context
+      validContext, // Config passed via context
     );
 
     expect(result.data.device).toBeDefined();
@@ -275,9 +275,7 @@ describe('RegisterDeviceService', () => {
   it('should throw when config missing', async () => {
     const service = new RegisterDeviceService(mockRepo);
 
-    await expect(
-      service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, {})
-    ).rejects.toThrow('appGlobalSalt not provided in service context');
+    await expect(service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, {})).rejects.toThrow('appGlobalSalt not provided in service context');
   });
 });
 ```

@@ -11,10 +11,7 @@ import { app } from '../app';
 
 describe('POST /api/users', () => {
   it('creates user with valid data', async () => {
-    const response = await request(app)
-      .post('/api/users')
-      .send({ email: 'test@test.com', name: 'Test' })
-      .expect(201);
+    const response = await request(app).post('/api/users').send({ email: 'test@test.com', name: 'Test' }).expect(201);
 
     expect(response.body).toMatchObject({
       email: 'test@test.com',
@@ -24,18 +21,13 @@ describe('POST /api/users', () => {
   });
 
   it('returns 400 for invalid email', async () => {
-    const response = await request(app)
-      .post('/api/users')
-      .send({ email: 'invalid', name: 'Test' })
-      .expect(400);
+    const response = await request(app).post('/api/users').send({ email: 'invalid', name: 'Test' }).expect(400);
 
     expect(response.body.error).toContain('email');
   });
 
   it('returns 401 without auth token', async () => {
-    await request(app)
-      .get('/api/users/me')
-      .expect(401);
+    await request(app).get('/api/users/me').expect(401);
   });
 });
 ```
@@ -47,17 +39,12 @@ describe('Protected endpoints', () => {
   let authToken: string;
 
   beforeAll(async () => {
-    const response = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'test@test.com', password: 'password' });
+    const response = await request(app).post('/api/auth/login').send({ email: 'test@test.com', password: 'password' });
     authToken = response.body.token;
   });
 
   it('accesses protected route', async () => {
-    await request(app)
-      .get('/api/users/me')
-      .set('Authorization', `Bearer ${authToken}`)
-      .expect(200);
+    await request(app).get('/api/users/me').set('Authorization', `Bearer ${authToken}`).expect(200);
   });
 });
 ```
@@ -90,10 +77,10 @@ describe('UserRepository', () => {
 
 ## Quick Reference
 
-| Method | Purpose |
-|--------|---------|
-| `.send(body)` | Send request body |
-| `.set(header, value)` | Set header |
-| `.expect(status)` | Assert status code |
-| `.expect('Content-Type', /json/)` | Assert header |
-| `response.body` | Parsed JSON body |
+| Method                            | Purpose            |
+| --------------------------------- | ------------------ |
+| `.send(body)`                     | Send request body  |
+| `.set(header, value)`             | Set header         |
+| `.expect(status)`                 | Assert status code |
+| `.expect('Content-Type', /json/)` | Assert header      |
+| `response.body`                   | Parsed JSON body   |

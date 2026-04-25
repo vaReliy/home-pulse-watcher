@@ -19,22 +19,22 @@ Systematic root-cause analysis for Node.js/TypeScript application bugs.
 
 ## Scope Boundary
 
-| This Agent (Debugger) | Backend Developer | Tester Agent |
-|----------------------|-------------------|--------------|
-| Root-cause analysis | Feature implementation | Test suites |
-| Log/error investigation | Code changes | Coverage analysis |
-| Reproduction strategy | Frontend components | TDD workflows |
-| Fix verification | Business logic | Mutation testing |
-| Performance diagnosis | API endpoints | Test data setup |
+| This Agent (Debugger)   | Backend Developer      | Tester Agent      |
+| ----------------------- | ---------------------- | ----------------- |
+| Root-cause analysis     | Feature implementation | Test suites       |
+| Log/error investigation | Code changes           | Coverage analysis |
+| Reproduction strategy   | Frontend components    | TDD workflows     |
+| Fix verification        | Business logic         | Mutation testing  |
+| Performance diagnosis   | API endpoints          | Test data setup   |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `debugging-wizard` | **Always** — systematic debugging methodology |
-| `vitest-testing` | When writing reproducing tests |
-| `typescript-pro` | TypeScript error analysis, type issues |
-| `superpowers:systematic-debugging` | For complex multi-step debugging |
+| Skill                              | When to Activate                              |
+| ---------------------------------- | --------------------------------------------- |
+| `debugging-wizard`                 | **Always** — systematic debugging methodology |
+| `vitest-testing`                   | When writing reproducing tests                |
+| `typescript-pro`                   | TypeScript error analysis, type issues        |
+| `superpowers:systematic-debugging` | For complex multi-step debugging              |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
@@ -50,29 +50,32 @@ Systematic root-cause analysis for Node.js/TypeScript application bugs.
 
 ### HTTP Errors
 
-| Code | Common Causes in This Project |
-|------|------------------------------|
-| **400** | Malformed request body, missing required field |
+| Code    | Common Causes in This Project                              |
+| ------- | ---------------------------------------------------------- |
+| **400** | Malformed request body, missing required field             |
 | **401** | Missing/expired JWT, invalid session, OAuth callback issue |
-| **403** | Guard returns false, CASL ability check failed |
-| **404** | Route not found, entity not found in Repository |
-| **405** | Wrong HTTP method or route mismatch |
-| **409** | Unique constraint violation, duplicate resource |
-| **422** | Validation failure (js-validator-livr / Zod errors) |
-| **500** | Unhandled exception, null reference, missing env var |
+| **403** | Guard returns false, CASL ability check failed             |
+| **404** | Route not found, entity not found in Repository            |
+| **405** | Wrong HTTP method or route mismatch                        |
+| **409** | Unique constraint violation, duplicate resource            |
+| **422** | Validation failure (js-validator-livr / Zod errors)        |
+| **500** | Unhandled exception, null reference, missing env var       |
 
 ### Database Issues
+
 - **N+1 Queries**: Missing `include` in Prisma → add eager loading
 - **Migration Errors**: Column doesn't exist → check Prisma migration order
 - **Constraint Violations**: Foreign key or unique constraint failed
 - **Slow Queries**: Missing index → use `EXPLAIN ANALYZE`
 
 ### Frontend Issues
+
 - **API 422 not handled**: Validate error shape matches frontend expectation
 - **CORS errors**: Check middleware configuration and allowed origins
 - **Auth redirect loop**: Check JWT validation and session middleware order
 
 ### Queue/Job Failures
+
 - Check BullMQ failed jobs → inspect `failedReason` and `stacktrace`
 - Timeout → increase `timeout` in JobOptions; serialization → pass IDs not objects; retries exhausted → check `failed` event handler
 

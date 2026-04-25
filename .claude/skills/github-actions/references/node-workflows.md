@@ -57,7 +57,7 @@ lint:
 ### Prettier
 
 ```yaml
-    - run: npx prettier --check .
+- run: npx prettier --check .
 ```
 
 ### TypeScript Type Check
@@ -99,7 +99,7 @@ test:
 ### Jest
 
 ```yaml
-    - run: npx jest --ci --coverage --forceExit
+- run: npx jest --ci --coverage --forceExit
 ```
 
 ### Playwright E2E
@@ -187,8 +187,8 @@ steps:
 ## Monorepo with Turborepo
 
 ```yaml
-    - run: npm ci
-    - run: npx turbo run lint test build --filter=...[HEAD~1]
+- run: npm ci
+- run: npx turbo run lint test build --filter=...[HEAD~1]
 ```
 
 ## Recommended Job Pipeline (fail fast)

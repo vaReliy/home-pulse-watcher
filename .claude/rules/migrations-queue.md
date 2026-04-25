@@ -22,11 +22,14 @@ import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
 export class AddSlugToPosts1234567890 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.addColumn('posts', new TableColumn({
-      name: 'slug',
-      type: 'varchar',
-      isUnique: true,
-    }));
+    await queryRunner.addColumn(
+      'posts',
+      new TableColumn({
+        name: 'slug',
+        type: 'varchar',
+        isUnique: true,
+      }),
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -50,16 +53,13 @@ export const postAnalyticsWorker = new Worker<ProcessPostAnalyticsData>(
   'post-analytics',
   async (job) => {
     // must be idempotent
-    await postAnalyticsRepository.upsert(
-      { postId: job.data.postId },
-      { processedAt: new Date() },
-    );
+    await postAnalyticsRepository.upsert({ postId: job.data.postId }, { processedAt: new Date() });
   },
   {
     connection: redisConnection,
     attempts: 3,
     backoff: { type: 'exponential', delay: 30_000 }, // 30s, 60s, 120s
-  }
+  },
 );
 
 // dispatch (from a Service or UseCase — never from a route handler)
@@ -73,10 +73,7 @@ await postAnalyticsQueue.add('process', { postId: post.id }, { delay: 5 * 60 * 1
 Workers must produce the same result when run multiple times. Use upsert operations:
 
 ```typescript
-await repository.upsert(
-  { postId: job.data.postId },
-  { processedAt: new Date() },
-);
+await repository.upsert({ postId: job.data.postId }, { processedAt: new Date() });
 ```
 
 ## Unique Jobs
@@ -84,9 +81,13 @@ await repository.upsert(
 Prevent duplicate jobs for the same resource:
 
 ```typescript
-await queue.add('process', { postId: post.id }, {
-  jobId: `post-analytics:${post.id}`, // deduplication key
-});
+await queue.add(
+  'process',
+  { postId: post.id },
+  {
+    jobId: `post-analytics:${post.id}`, // deduplication key
+  },
+);
 ```
 
 ## Dispatching Rules

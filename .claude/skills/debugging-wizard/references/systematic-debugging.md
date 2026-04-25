@@ -52,6 +52,7 @@ TypeError: Cannot read property 'map' of undefined
 ```
 
 **Key questions:**
+
 - What exact operation failed?
 - Where in the code (file, line)?
 - What was the call stack?
@@ -103,6 +104,7 @@ grep -r "useQuery" src/components/ --include="*.tsx"
 
 ```markdown
 ## Hypothesis #1
+
 **Statement:** The crash occurs because `users` is undefined when the
 query is complete but returns no data.
 
@@ -144,6 +146,7 @@ npm run test:integration
 Three failures in different locations signals architectural problems, not isolated bugs.
 
 At the threshold:
+
 1. Stop fixing symptoms
 2. Document the pattern of failures
 3. Identify architectural assumptions being violated
@@ -154,14 +157,14 @@ At the threshold:
 
 ## Red Flags Requiring Process Reset
 
-| Red Flag | Why It's Wrong |
-|----------|----------------|
-| Proposing solutions before tracing data flow | Guessing, not debugging |
-| Making multiple simultaneous changes | Can't identify which change worked |
-| Skipping test creation | Bug will recur |
-| "Let's try this and see if it works" | Shotgun debugging |
-| Fixing without understanding the cause | Band-aid, not cure |
+| Red Flag                                     | Why It's Wrong                     |
+| -------------------------------------------- | ---------------------------------- |
+| Proposing solutions before tracing data flow | Guessing, not debugging            |
+| Making multiple simultaneous changes         | Can't identify which change worked |
+| Skipping test creation                       | Bug will recur                     |
+| "Let's try this and see if it works"         | Shotgun debugging                  |
+| Fixing without understanding the cause       | Band-aid, not cure                 |
 
 ---
 
-*Adapted from [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (@obra), MIT License.*
+_Adapted from [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent (@obra), MIT License._

@@ -28,39 +28,39 @@ Manage Docker environments, CI/CD pipelines, and Node.js application infrastruct
 
 ## Scope Boundary
 
-| This Agent (DevOps) | Backend Developer | DBA Agent |
-|---------------------|-------------------|-----------|
-| Docker configuration | Application code | Schema design |
-| CI/CD pipelines | UseCases/Services | Query optimization |
+| This Agent (DevOps)  | Backend Developer   | DBA Agent          |
+| -------------------- | ------------------- | ------------------ |
+| Docker configuration | Application code    | Schema design      |
+| CI/CD pipelines      | UseCases/Services   | Query optimization |
 | Deployment workflows | Frontend components | Migrations content |
-| Environment setup | Business logic | Index strategy |
-| Server tuning | API endpoints | Database tuning |
-| Queue infrastructure | Auth/authorization | Data modeling |
+| Environment setup    | Business logic      | Index strategy     |
+| Server tuning        | API endpoints       | Database tuning    |
+| Queue infrastructure | Auth/authorization  | Data modeling      |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `devops` | **Always** — infrastructure patterns |
-| `docker-expert` | Docker/Compose file changes |
-| `github-actions` | CI/CD workflows |
-| `security-reviewer` | Secrets, env vars, SSL, access control |
-| `debugging-wizard` | Infrastructure issues and troubleshooting |
+| Skill               | When to Activate                          |
+| ------------------- | ----------------------------------------- |
+| `devops`            | **Always** — infrastructure patterns      |
+| `docker-expert`     | Docker/Compose file changes               |
+| `github-actions`    | CI/CD workflows                           |
+| `security-reviewer` | Secrets, env vars, SSL, access control    |
+| `debugging-wizard`  | Infrastructure issues and troubleshooting |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
 ## Project Infrastructure Stack
 
-| Component | Technology |
-|-----------|------------|
-| Application Server | Node.js 22+ |
-| Process Manager | PM2 (cluster mode) |
-| Database | PostgreSQL 17 |
-| Cache/Sessions/Queue | Redis 7+ |
-| Frontend Build | Vite / Next.js |
-| Containerization | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
-| Package Manager | npm (`npm ci` — never `npm install`) |
+| Component            | Technology                           |
+| -------------------- | ------------------------------------ |
+| Application Server   | Node.js 22+                          |
+| Process Manager      | PM2 (cluster mode)                   |
+| Database             | PostgreSQL 17                        |
+| Cache/Sessions/Queue | Redis 7+                             |
+| Frontend Build       | Vite / Next.js                       |
+| Containerization     | Docker + Docker Compose              |
+| CI/CD                | GitHub Actions                       |
+| Package Manager      | npm (`npm ci` — never `npm install`) |
 
 ## Project File Locations
 

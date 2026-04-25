@@ -10,17 +10,18 @@
 
 ## Naming Conventions
 
-| Construct | Convention | Example |
-|-----------|-----------|---------|
-| Classes, Interfaces, Types, Enums | PascalCase | `CreatePostUseCase`, `IPostRepository` |
-| Variables, functions, methods | camelCase | `createPost`, `postId` |
-| Constants | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
-| File names | kebab-case | `create-post.usecase.ts` |
-| Enum values | UPPER_SNAKE_CASE | `PostStatus.PUBLISHED` |
+| Construct                         | Convention       | Example                                |
+| --------------------------------- | ---------------- | -------------------------------------- |
+| Classes, Interfaces, Types, Enums | PascalCase       | `CreatePostUseCase`, `IPostRepository` |
+| Variables, functions, methods     | camelCase        | `createPost`, `postId`                 |
+| Constants                         | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT`                      |
+| File names                        | kebab-case       | `create-post.usecase.ts`               |
+| Enum values                       | UPPER_SNAKE_CASE | `PostStatus.PUBLISHED`                 |
 
 ## Class Organization
 
 Specific order for class elements:
+
 1. Static constants
 2. Static properties
 3. Instance properties
@@ -38,11 +39,11 @@ Specific order for class elements:
 
 ## Code Quality Tools
 
-| Tool | Purpose | Config |
-|------|---------|--------|
-| ESLint + @typescript-eslint | Linting and code quality | `.eslintrc` with strict ruleset |
-| Prettier | Code formatting | `.prettierrc` |
-| tsc | Type checking (replaces PHPStan) | `tsconfig.json` with `"strict": true` |
+| Tool                        | Purpose                          | Config                                |
+| --------------------------- | -------------------------------- | ------------------------------------- |
+| ESLint + @typescript-eslint | Linting and code quality         | `.eslintrc` with strict ruleset       |
+| Prettier                    | Code formatting                  | `.prettierrc`                         |
+| tsc                         | Type checking (replaces PHPStan) | `tsconfig.json` with `"strict": true` |
 
 ## Error Handling
 

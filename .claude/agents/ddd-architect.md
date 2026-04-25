@@ -19,22 +19,22 @@ Design domain models, bounded contexts, Clean Architecture layers, and business 
 
 ## Scope Boundary
 
-| This Agent (DDD Architect) | Backend Developer | DBA Agent |
-|---------------------------|-------------------|-----------|
-| Domain modeling | Implementation code | Schema design |
-| Architecture decisions | Route handlers | Migration content |
-| Logic placement | Frontend components | Index strategy |
-| Pattern selection | API endpoints | Query optimization |
-| Event design | ORM queries | Relationship modeling |
+| This Agent (DDD Architect) | Backend Developer   | DBA Agent             |
+| -------------------------- | ------------------- | --------------------- |
+| Domain modeling            | Implementation code | Schema design         |
+| Architecture decisions     | Route handlers      | Migration content     |
+| Logic placement            | Frontend components | Index strategy        |
+| Pattern selection          | API endpoints       | Query optimization    |
+| Event design               | ORM queries         | Relationship modeling |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `ddd-strategic-design` | **Always** — context mapping, bounded contexts |
-| `architecture-designer` | **Always** — architectural decisions and patterns |
+| Skill                     | When to Activate                                            |
+| ------------------------- | ----------------------------------------------------------- |
+| `ddd-strategic-design`    | **Always** — context mapping, bounded contexts              |
+| `architecture-designer`   | **Always** — architectural decisions and patterns           |
 | `typescript-architecture` | **Always** — Node.js/TypeScript Clean Architecture patterns |
-| `typescript-pro` | TypeScript strict typing, interfaces, generics |
+| `typescript-pro`          | TypeScript strict typing, interfaces, generics              |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
@@ -57,31 +57,31 @@ Design domain models, bounded contexts, Clean Architecture layers, and business 
 
 ### Patterns In Use
 
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| **UseCase** | `src/use-cases/{domain}/` | Single business operation, atomic |
-| **Service** | `src/services/` | Cross-domain / shared business logic |
-| **Repository** | `src/repositories/` | ORM abstraction, data access |
-| **DTO** | `src/dto/` | Input/output transfer objects |
-| **Entity** | `src/entities/` | Domain model with business rules |
-| **Guard** | `src/guards/` | Route-level authorization |
-| **Middleware** | `src/middleware/` | Cross-cutting HTTP concerns |
-| **Enum** | `src/enums/` | Value objects, fixed sets |
-| **Event** | `src/events/` | Cross-cutting domain events |
+| Pattern        | Location                  | Purpose                              |
+| -------------- | ------------------------- | ------------------------------------ |
+| **UseCase**    | `src/use-cases/{domain}/` | Single business operation, atomic    |
+| **Service**    | `src/services/`           | Cross-domain / shared business logic |
+| **Repository** | `src/repositories/`       | ORM abstraction, data access         |
+| **DTO**        | `src/dto/`                | Input/output transfer objects        |
+| **Entity**     | `src/entities/`           | Domain model with business rules     |
+| **Guard**      | `src/guards/`             | Route-level authorization            |
+| **Middleware** | `src/middleware/`         | Cross-cutting HTTP concerns          |
+| **Enum**       | `src/enums/`              | Value objects, fixed sets            |
+| **Event**      | `src/events/`             | Cross-cutting domain events          |
 
 ## Logic Placement Decision
 
-| Logic Type | Place It In |
-|------------|-------------|
-| HTTP input parsing | **Route handler / Controller** |
-| Single business operation | **UseCase** |
-| Shared business logic | **Service** |
-| Data access | **Repository** |
-| Domain state + rules | **Entity** |
-| Authorization | **Guard / Middleware** |
-| Fixed value sets | **Enum** |
-| Async processing | **BullMQ Worker** |
-| Cross-cutting concerns | **Event + Handler** |
+| Logic Type                | Place It In                    |
+| ------------------------- | ------------------------------ |
+| HTTP input parsing        | **Route handler / Controller** |
+| Single business operation | **UseCase**                    |
+| Shared business logic     | **Service**                    |
+| Data access               | **Repository**                 |
+| Domain state + rules      | **Entity**                     |
+| Authorization             | **Guard / Middleware**         |
+| Fixed value sets          | **Enum**                       |
+| Async processing          | **BullMQ Worker**              |
+| Cross-cutting concerns    | **Event + Handler**            |
 
 > Code patterns and canonical examples: see skill `typescript-architecture`.
 > Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.

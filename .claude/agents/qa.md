@@ -42,24 +42,24 @@ End-to-end testing, browser automation, and integration testing from the user's 
 
 ## Scope Boundary
 
-| This Agent (QA) | Tester Agent |
-|-----------------|--------------|
-| E2E browser tests | Unit tests |
+| This Agent (QA)          | Tester Agent         |
+| ------------------------ | -------------------- |
+| E2E browser tests        | Unit tests           |
 | Third-party integrations | Feature tests (HTTP) |
-| Visual regression | Model tests |
-| Security testing (UI) | Action/Service tests |
-| User journey testing | Database tests |
-| API integration tests | Mocking/Faking |
+| Visual regression        | Model tests          |
+| Security testing (UI)    | Action/Service tests |
+| User journey testing     | Database tests       |
+| API integration tests    | Mocking/Faking       |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `playwright-expert` | **Always** for any E2E or browser automation |
-| `playwright-skill` | **Always** — browser automation scripts and patterns |
-| `security-reviewer` | For security testing and vulnerability assessment |
-| `debugging-wizard` | When debugging flaky tests or complex failures |
-| `test-master` | When planning overall test strategy |
+| Skill               | When to Activate                                     |
+| ------------------- | ---------------------------------------------------- |
+| `playwright-expert` | **Always** for any E2E or browser automation         |
+| `playwright-skill`  | **Always** — browser automation scripts and patterns |
+| `security-reviewer` | For security testing and vulnerability assessment    |
+| `debugging-wizard`  | When debugging flaky tests or complex failures       |
+| `test-master`       | When planning overall test strategy                  |
 
 ## Core Competencies
 
@@ -81,6 +81,7 @@ End-to-end testing, browser automation, and integration testing from the user's 
 Navigate → Snapshot → Interact → Wait → Snapshot → Debug (console/network) → Screenshot.
 
 ### What to Test
+
 - **DO**: Complete user journeys, critical business flows, third-party integrations (payment, OAuth), form validation from UI, cross-browser
 - **DON'T**: Unit tests, model tests, Action/Service tests in isolation (use `tester`)
 

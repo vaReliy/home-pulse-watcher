@@ -19,23 +19,23 @@ Surgical, high-impact refactoring that improves code quality while maintaining b
 
 ## Scope Boundary
 
-| This Agent (Refactoring) | Backend Developer | DBA Agent |
-|-------------------------|-------------------|-----------|
-| Code smell elimination | New features | Schema optimization |
-| Complexity reduction | Frontend components | Index strategy |
-| N+1 query fixes | API endpoints | Migration design |
-| Extract method/class | Route handling | Query performance |
-| Pattern alignment | Business logic | Database tuning |
+| This Agent (Refactoring) | Backend Developer   | DBA Agent           |
+| ------------------------ | ------------------- | ------------------- |
+| Code smell elimination   | New features        | Schema optimization |
+| Complexity reduction     | Frontend components | Index strategy      |
+| N+1 query fixes          | API endpoints       | Migration design    |
+| Extract method/class     | Route handling      | Query performance   |
+| Pattern alignment        | Business logic      | Database tuning     |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
+| Skill                     | When to Activate                                                    |
+| ------------------------- | ------------------------------------------------------------------- |
 | `typescript-architecture` | **Always** — Clean Architecture patterns and layer responsibilities |
-| `typescript-pro` | **Always** — TypeScript coding standards and conventions |
-| `code-reviewer` | **Always** — self-review methodology after refactoring |
-| `vitest-testing` | When refactoring affects test code |
-| `security-reviewer` | When refactoring auth or input handling |
+| `typescript-pro`          | **Always** — TypeScript coding standards and conventions            |
+| `code-reviewer`           | **Always** — self-review methodology after refactoring              |
+| `vitest-testing`          | When refactoring affects test code                                  |
+| `security-reviewer`       | When refactoring auth or input handling                             |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
@@ -50,16 +50,16 @@ Surgical, high-impact refactoring that improves code quality while maintaining b
 
 ### Layer Stack: Clean Architecture
 
-| Layer | Location | Responsibility |
-|-------|----------|---------------|
-| **Route Handler** | `src/routes/` | Parse HTTP, validate, delegate to UseCase |
-| **UseCase** | `src/use-cases/{domain}/` | Single business operation |
-| **Service** | `src/services/` | Cross-domain business logic |
-| **Repository** | `src/repositories/` | ORM abstraction, data access |
-| **Entity / DTO** | `src/entities/`, `src/dto/` | Domain models and transfer objects |
-| **Guard** | `src/guards/` | Authorization rules |
-| **Middleware** | `src/middleware/` | Cross-cutting HTTP concerns |
-| **Enum** | `src/enums/` | Value objects, fixed sets |
+| Layer             | Location                    | Responsibility                            |
+| ----------------- | --------------------------- | ----------------------------------------- |
+| **Route Handler** | `src/routes/`               | Parse HTTP, validate, delegate to UseCase |
+| **UseCase**       | `src/use-cases/{domain}/`   | Single business operation                 |
+| **Service**       | `src/services/`             | Cross-domain business logic               |
+| **Repository**    | `src/repositories/`         | ORM abstraction, data access              |
+| **Entity / DTO**  | `src/entities/`, `src/dto/` | Domain models and transfer objects        |
+| **Guard**         | `src/guards/`               | Authorization rules                       |
+| **Middleware**    | `src/middleware/`           | Cross-cutting HTTP concerns               |
+| **Enum**          | `src/enums/`                | Value objects, fixed sets                 |
 
 > **No business logic in route handlers. No raw ORM calls in UseCases.**
 

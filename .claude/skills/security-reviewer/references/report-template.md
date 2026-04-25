@@ -103,12 +103,7 @@ const isValid = password.length >= 6;
 **Remediation** Implement stronger requirements:
 
 ```typescript
-const isValid =
-    password.length >= 12
-    && /[A-Z]/.test(password)
-    && /[a-z]/.test(password)
-    && /[0-9]/.test(password)
-    && /[^A-Za-z0-9]/.test(password);
+const isValid = password.length >= 12 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 ```
 
 **Effort**: 30 minutes **Priority**: Before deployment

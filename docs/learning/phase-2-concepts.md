@@ -101,7 +101,7 @@ run(params, context)
 export class RegisterDeviceCommand extends CommandRunner {
   constructor(
     @Inject(SERVICE_TOKENS.REGISTER_DEVICE)
-    private readonly service: RegisterDeviceService
+    private readonly service: RegisterDeviceService,
   ) {
     super();
   }
@@ -199,14 +199,14 @@ export class RepositoriesModule {}
 
 ### Comparison: NestJS @Global() vs Angular providedIn: 'root'
 
-| Aspect              | NestJS `@Global()`                    | Angular `providedIn: 'root'`       |
-| ------------------- | ------------------------------------- | ---------------------------------- |
-| **Scope**           | Module-level decorator                | Service-level decorator            |
-| **Where defined**   | On the module class                   | In `@Injectable()` metadata        |
-| **Registration**    | Must import module in root once       | Auto-registered, no import needed  |
-| **Tree-shaking**    | No (always included)                  | Yes (removed if unused)            |
-| **Singleton scope** | Yes, within module boundary           | Yes, app-wide                      |
-| **Use case**        | Cross-cutting concerns (DB, logging)  | App-wide services                  |
+| Aspect              | NestJS `@Global()`                   | Angular `providedIn: 'root'`      |
+| ------------------- | ------------------------------------ | --------------------------------- |
+| **Scope**           | Module-level decorator               | Service-level decorator           |
+| **Where defined**   | On the module class                  | In `@Injectable()` metadata       |
+| **Registration**    | Must import module in root once      | Auto-registered, no import needed |
+| **Tree-shaking**    | No (always included)                 | Yes (removed if unused)           |
+| **Singleton scope** | Yes, within module boundary          | Yes, app-wide                     |
+| **Use case**        | Cross-cutting concerns (DB, logging) | App-wide services                 |
 
 **Key difference:** Angular's `providedIn: 'root'` is self-registering - the service declares where it belongs. NestJS `@Global()` requires explicit module import in the root module.
 
@@ -280,9 +280,7 @@ export class BigIntSerializerInterceptor implements NestInterceptor {
     if (Array.isArray(obj)) return obj.map((item) => this.transformBigInt(item));
     if (obj !== null && typeof obj === 'object') {
       if (obj instanceof Date) return obj; // Preserve Date objects
-      return Object.fromEntries(
-        Object.entries(obj).map(([k, v]) => [k, this.transformBigInt(v)])
-      );
+      return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, this.transformBigInt(v)]));
     }
     return obj;
   }
@@ -336,14 +334,14 @@ Controller throws DomainError
 
 ## Quick Reference: File → Purpose
 
-| Layer          | File                              | What it does                        |
-| -------------- | --------------------------------- | ----------------------------------- |
-| Shared         | `service-context.type.ts`         | ServiceContext with AppConfig type  |
-| Core           | `IDeviceRepository`               | Contract (interface)                |
-| Infrastructure | `PrismaDeviceRepository`          | Implementation                      |
-| Application    | `RegisterDeviceService`           | Business logic                      |
-| API            | `repository.tokens.ts`            | DI identifiers                      |
-| API            | `repository.providers.ts`         | Wiring (interface → implementation) |
-| API            | `service.providers.ts`            | Wiring (service → repositories)     |
-| API            | `bigint-serializer.interceptor.ts`| BigInt → string transformation      |
-| API            | `register-device.command.ts`      | CLI interface                       |
+| Layer          | File                               | What it does                        |
+| -------------- | ---------------------------------- | ----------------------------------- |
+| Shared         | `service-context.type.ts`          | ServiceContext with AppConfig type  |
+| Core           | `IDeviceRepository`                | Contract (interface)                |
+| Infrastructure | `PrismaDeviceRepository`           | Implementation                      |
+| Application    | `RegisterDeviceService`            | Business logic                      |
+| API            | `repository.tokens.ts`             | DI identifiers                      |
+| API            | `repository.providers.ts`          | Wiring (interface → implementation) |
+| API            | `service.providers.ts`             | Wiring (service → repositories)     |
+| API            | `bigint-serializer.interceptor.ts` | BigInt → string transformation      |
+| API            | `register-device.command.ts`       | CLI interface                       |

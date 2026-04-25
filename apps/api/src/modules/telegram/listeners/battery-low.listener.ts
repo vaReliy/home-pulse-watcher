@@ -1,7 +1,10 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import type { Telegraf } from 'telegraf';
-import type { IUserRepository, IUserDeviceRepository } from '@home-pulse-watcher/core';
+import type {
+  IUserRepository,
+  IUserDeviceRepository,
+} from '@home-pulse-watcher/core';
 import {
   BatteryLowEvent,
   BATTERY_LOW_EVENT,

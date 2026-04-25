@@ -26,7 +26,10 @@ export class LinkDeviceToUserCommand extends CommandRunner {
     super();
   }
 
-  async run(_inputs: string[], options: LinkDeviceToUserOptions): Promise<void> {
+  async run(
+    _inputs: string[],
+    options: LinkDeviceToUserOptions,
+  ): Promise<void> {
     try {
       if (!options.telegramId && !options.userId) {
         throw new Error(
@@ -53,7 +56,9 @@ export class LinkDeviceToUserCommand extends CommandRunner {
       console.log('\n=== Device Linked Successfully ===');
       console.log(`Device:      ${device.label ?? device.macAddress}`);
       console.log(`MAC Address: ${device.macAddress}`);
-      console.log(`User:        ${user.username ?? user.telegramId.toString()}`);
+      console.log(
+        `User:        ${user.username ?? user.telegramId.toString()}`,
+      );
       console.log(`User ID:     ${user.id}`);
       console.log(`Role:        ${userDevice.role}\n`);
     } catch (error) {
@@ -106,7 +111,9 @@ export class LinkDeviceToUserCommand extends CommandRunner {
     const role = val.toUpperCase();
     const validRoles = ['OWNER', 'EDITOR', 'VIEWER'];
     if (!validRoles.includes(role)) {
-      throw new Error(`Invalid role "${val}". Must be one of: ${validRoles.join(', ')}`);
+      throw new Error(
+        `Invalid role "${val}". Must be one of: ${validRoles.join(', ')}`,
+      );
     }
     return role;
   }

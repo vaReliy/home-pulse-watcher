@@ -75,7 +75,7 @@ sonar-scanner -Dsonar.projectKey=myproject
 - name: Run Semgrep
   uses: returntocorp/semgrep-action@v1
   with:
-      config: p/security-audit
+    config: p/security-audit
 
 - name: Run npm audit
   run: npm audit --audit-level=high
@@ -83,20 +83,20 @@ sonar-scanner -Dsonar.projectKey=myproject
 - name: Run Trivy
   uses: aquasecurity/trivy-action@master
   with:
-      scan-type: 'fs'
-      severity: 'CRITICAL,HIGH'
+    scan-type: 'fs'
+    severity: 'CRITICAL,HIGH'
 ```
 
 ### GitLab CI
 
 ```yaml
 security-scan:
-    image: returntocorp/semgrep
-    script:
-        - semgrep --config=auto --json -o semgrep.json .
-    artifacts:
-        reports:
-            sast: semgrep.json
+  image: returntocorp/semgrep
+  script:
+    - semgrep --config=auto --json -o semgrep.json .
+  artifacts:
+    reports:
+      sast: semgrep.json
 ```
 
 ## Quick Reference

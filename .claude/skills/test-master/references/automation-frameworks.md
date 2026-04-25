@@ -6,16 +6,20 @@
 ## Advanced Framework Patterns
 
 ### Screenplay Pattern
+
 ```typescript
 export class Actor {
   constructor(private page: Page) {}
   attemptsTo(...tasks: Task[]) {
-    return Promise.all(tasks.map(t => t.performAs(this)));
+    return Promise.all(tasks.map((t) => t.performAs(this)));
   }
 }
 
 class Login implements Task {
-  constructor(private email: string, private password: string) {}
+  constructor(
+    private email: string,
+    private password: string,
+  ) {}
   async performAs(actor: Actor) {
     await actor.page.getByLabel('Email').fill(this.email);
     await actor.page.getByLabel('Password').fill(this.password);
@@ -25,11 +29,12 @@ class Login implements Task {
 ```
 
 ### Self-Healing Locators
+
 ```typescript
 async function findElement(page: Page, strategies: string[]): Promise<Locator> {
   for (const selector of strategies) {
     const el = page.locator(selector);
-    if (await el.count() > 0) return el;
+    if ((await el.count()) > 0) return el;
   }
   throw new Error(`Not found: ${strategies.join(', ')}`);
 }
@@ -53,8 +58,8 @@ jobs:
 
 ## Quick Reference
 
-| Pattern | Best For | Complexity |
-|---------|----------|-----------|
-| Page Object | Reusable components | Medium |
-| Screenplay | Complex workflows | High |
-| Keyword-Driven | Non-tech testers | Low |
+| Pattern        | Best For            | Complexity |
+| -------------- | ------------------- | ---------- |
+| Page Object    | Reusable components | Medium     |
+| Screenplay     | Complex workflows   | High       |
+| Keyword-Driven | Non-tech testers    | Low        |

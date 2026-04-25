@@ -7,12 +7,14 @@
 Rationale: ORM libraries (Prisma, TypeORM, Drizzle) are extensively tested by their maintainers. Testing basic CRUD provides no value.
 
 What NOT to test:
+
 - Basic ORM relations
 - Simple CRUD via repository
 - Standard ORM casting/transformations
 - Factory/seed creation without custom logic
 
 What TO test:
+
 - Custom business logic in UseCases/Services
 - Complex validators with business rules
 - Guards and authorization logic
@@ -70,8 +72,7 @@ describe('CreatePostUseCase', () => {
 
   it('throws ConflictError if slug exists', async () => {
     mockRepository.existsBySlug.mockResolvedValue(true);
-    await expect(useCase.execute({ title: 'Test', body: 'Content' }))
-      .rejects.toThrow(ConflictError);
+    await expect(useCase.execute({ title: 'Test', body: 'Content' })).rejects.toThrow(ConflictError);
   });
 });
 ```
@@ -82,10 +83,7 @@ describe('CreatePostUseCase', () => {
 import supertest from 'supertest';
 
 it('POST /posts returns 201', async () => {
-  const response = await supertest(app)
-    .post('/posts')
-    .set('Authorization', `Bearer ${testToken}`)
-    .send({ title: 'Test Post', body: 'Content' });
+  const response = await supertest(app).post('/posts').set('Authorization', `Bearer ${testToken}`).send({ title: 'Test Post', body: 'Content' });
 
   expect(response.status).toBe(201);
   expect(response.body.title).toBe('Test Post');

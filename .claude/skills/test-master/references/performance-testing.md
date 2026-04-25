@@ -33,9 +33,9 @@ export default function () {
 
 ## Quick Reference
 
-| Test Type | Purpose |
-|-----------|---------|
-| Load | Normal expected load |
-| Stress | Find breaking point |
-| Spike | Sudden traffic surge |
-| Soak | Long duration stability |
+| Test Type | Purpose                 |
+| --------- | ----------------------- |
+| Load      | Normal expected load    |
+| Stress    | Find breaking point     |
+| Spike     | Sudden traffic surge    |
+| Soak      | Long duration stability |

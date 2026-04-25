@@ -62,12 +62,12 @@ page.getByRole('listitem').filter({ hasText: 'Product A' });
 
 // Filter by child locator
 page.getByRole('listitem').filter({
-    has: page.getByRole('button', { name: 'Delete' }),
+  has: page.getByRole('button', { name: 'Delete' }),
 });
 
 // Filter by NOT having
 page.getByRole('listitem').filter({
-    hasNot: page.getByText('Sold out'),
+  hasNot: page.getByText('Sold out'),
 });
 
 // Chain locators
@@ -87,7 +87,7 @@ const count = await page.getByRole('listitem').count();
 
 // Iterate
 for (const item of await page.getByRole('listitem').all()) {
-    console.log(await item.textContent());
+  console.log(await item.textContent());
 }
 ```
 
@@ -102,7 +102,7 @@ for (const item of await page.getByRole('listitem').all()) {
 // Configure custom attribute
 // playwright.config.ts
 use: {
-    testIdAttribute: 'data-test-id';
+  testIdAttribute: 'data-test-id';
 }
 
 // Use in tests

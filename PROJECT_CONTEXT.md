@@ -20,17 +20,17 @@
 
 ## Core Tech Stack
 
-| Layer      | Technology                                        |
-| ---------- | ------------------------------------------------- |
-| Monorepo   | Nx 22.4 (`@home-pulse-watcher/*` prefix)          |
-| Backend    | NestJS 11, TypeScript (NodeNext modules)          |
-| ORM        | Prisma 7.3 + PostgreSQL (`pg` adapter)            |
-| Validation | LIVR (custom rules: `macAddress`, `hmacFormat`)   |
-| Bot        | Telegraf (manual NestJS integration)              |
-| Testing    | Jest 30 + SWC compiler                            |
-| CLI        | nest-commander                                    |
-| Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6       |
-| Bundler    | Webpack (all deps bundled; Prisma externals only) |
+| Layer      | Technology                                                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Monorepo   | Nx 22.4 (`@home-pulse-watcher/*` prefix)                                                                                                         |
+| Backend    | NestJS 11, TypeScript (NodeNext modules)                                                                                                         |
+| ORM        | Prisma 7.3 + PostgreSQL (`pg` adapter)                                                                                                           |
+| Validation | LIVR (custom rules: `macAddress`, `hmacFormat`)                                                                                                  |
+| Bot        | Telegraf (manual NestJS integration)                                                                                                             |
+| Testing    | Jest 30 + SWC compiler                                                                                                                           |
+| CLI        | nest-commander                                                                                                                                   |
+| Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6                                                                                                      |
+| Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                |
 | AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher |
 
 ---
@@ -156,6 +156,7 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No hardcoded secrets.
 
 **First-boot / factory-reset flow:**
+
 - Device starts as AP: `HomePulse-Setup-XXXX` (last 4 hex chars of MAC, open network)
 - Captive portal at `http://192.168.4.1/` — user enters WiFi SSID/password, device secret, backend URL
 - On save: credentials written to NVS → device reboots → connects as normal STA
@@ -163,10 +164,12 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 **Development shortcut:** If `include/secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty). Subsequent builds do not need `secrets.h`; credentials persist.
 
 **WiFi retry (transient failures):**
+
 - If credentials exist but WiFi is unreachable (router down, ISP issue), the device retries every 5 s for 5 minutes, then reboots to retry again
 - The captive portal is **never** opened automatically when credentials exist — only via explicit factory reset
 
 **Factory reset:**
+
 - Hold BOOT button (GPIO9) for 10 s
 - LED: orange blink with accelerating frequency → solid purple (1 s) = confirmed
 - Action: wipe NVS + reboot into captive portal

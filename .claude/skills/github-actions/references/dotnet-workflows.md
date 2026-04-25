@@ -39,10 +39,10 @@ jobs:
 ### With Code Coverage
 
 ```yaml
-      - run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage"
-      - uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+- run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage"
+- uses: codecov/codecov-action@v4
+  with:
+    token: ${{ secrets.CODECOV_TOKEN }}
 ```
 
 ## Format and Lint
@@ -79,11 +79,11 @@ publish:
 ### Self-Contained Publish
 
 ```yaml
-    - run: dotnet publish -c Release -r linux-x64 --self-contained -o ./publish
-    - uses: actions/upload-artifact@v4
-      with:
-        name: app-linux-x64
-        path: ./publish/
+- run: dotnet publish -c Release -r linux-x64 --self-contained -o ./publish
+- uses: actions/upload-artifact@v4
+  with:
+    name: app-linux-x64
+    path: ./publish/
 ```
 
 ### Multi-Platform Build
@@ -107,22 +107,22 @@ steps:
 ## Docker Build for .NET
 
 ```yaml
-    - uses: docker/build-push-action@v6
-      with:
-        context: .
-        push: true
-        tags: ghcr.io/${{ github.repository }}:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+- uses: docker/build-push-action@v6
+  with:
+    context: .
+    push: true
+    tags: ghcr.io/${{ github.repository }}:latest
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
 ```
 
 ## Entity Framework Migrations
 
 ```yaml
-    - run: dotnet tool restore
-    - run: dotnet ef database update
-      env:
-        ConnectionStrings__DefaultConnection: "Host=127.0.0.1;Database=testing;Username=postgres;Password=password"
+- run: dotnet tool restore
+- run: dotnet ef database update
+  env:
+    ConnectionStrings__DefaultConnection: 'Host=127.0.0.1;Database=testing;Username=postgres;Password=password'
 ```
 
 ## Matrix Testing

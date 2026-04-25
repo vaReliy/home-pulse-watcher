@@ -5,13 +5,13 @@
 
 ## Debuggers by Language
 
-| Language | Debugger | Start Command |
-|----------|----------|---------------|
-| TypeScript/JS | Node Inspector | `node --inspect` |
-| Python | pdb/ipdb | `python -m pdb` |
-| Go | Delve | `dlv debug` |
-| PHP | Xdebug | `XDEBUG_MODE=debug` |
-| Rust | rust-gdb/lldb | `rust-gdb ./target/debug/app` |
+| Language      | Debugger       | Start Command                 |
+| ------------- | -------------- | ----------------------------- |
+| TypeScript/JS | Node Inspector | `node --inspect`              |
+| Python        | pdb/ipdb       | `python -m pdb`               |
+| Go            | Delve          | `dlv debug`                   |
+| PHP           | Xdebug         | `XDEBUG_MODE=debug`           |
+| Rust          | rust-gdb/lldb  | `rust-gdb ./target/debug/app` |
 
 ## Node.js / TypeScript
 
@@ -57,15 +57,15 @@ print(f"{variable=}")  # Python 3.8+ shows name and value
 
 ### pdb Commands
 
-| Command | Action |
-|---------|--------|
-| `n` | Next line |
-| `s` | Step into |
-| `c` | Continue |
-| `l` | List code |
+| Command  | Action           |
+| -------- | ---------------- |
+| `n`      | Next line        |
+| `s`      | Step into        |
+| `c`      | Continue         |
+| `l`      | List code        |
 | `p expr` | Print expression |
-| `w` | Where (stack) |
-| `q` | Quit |
+| `w`      | Where (stack)    |
+| `q`      | Quit             |
 
 ## PHP / Laravel
 
@@ -107,9 +107,9 @@ ray($variable);      // Ray debugger
 
 ## Quick Reference
 
-| Need | Tool |
-|------|------|
-| Breakpoint in code | `debugger;` / `breakpoint()` |
-| Print with name | `console.log({x})` / `print(f"{x=}")` |
-| Stack trace | `console.trace()` / `traceback.print_stack()` |
-| Inspect object | `console.dir(obj)` / `dir(obj)` |
+| Need               | Tool                                          |
+| ------------------ | --------------------------------------------- |
+| Breakpoint in code | `debugger;` / `breakpoint()`                  |
+| Print with name    | `console.log({x})` / `print(f"{x=}")`         |
+| Stack trace        | `console.trace()` / `traceback.print_stack()` |
+| Inspect object     | `console.dir(obj)` / `dir(obj)`               |

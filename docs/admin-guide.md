@@ -98,13 +98,13 @@ See [CLI Reference](./cli-reference.md#deviceregister) for full options.
 
    On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). Connect to it and open `http://192.168.4.1`. Fill in:
 
-   | Field | Value |
-   |---|---|
-   | Wi-Fi SSID | Your network name |
-   | Wi-Fi Password | Your network password |
-   | Device MAC | `AA:BB:CC:DD:EE:FF` (from Step 1) |
-   | Device Secret | 64-char hex string (from Step 1) |
-   | Backend URL | `https://your-server.com/api/device/status` |
+   | Field          | Value                                       |
+   | -------------- | ------------------------------------------- |
+   | Wi-Fi SSID     | Your network name                           |
+   | Wi-Fi Password | Your network password                       |
+   | Device MAC     | `AA:BB:CC:DD:EE:FF` (from Step 1)           |
+   | Device Secret  | 64-char hex string (from Step 1)            |
+   | Backend URL    | `https://your-server.com/api/device/status` |
 
    After saving, the device reboots and connects automatically. Credentials are stored in NVS (non-volatile flash) and persist across reboots and reflashes.
 

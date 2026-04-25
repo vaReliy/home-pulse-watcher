@@ -19,21 +19,21 @@ Systematically identify and explain security vulnerabilities with precision and 
 
 ## Scope Boundary
 
-| This Agent (Security) | Backend Developer | DevOps Agent |
-|----------------------|-------------------|--------------|
-| Vulnerability scanning | Fix implementation | Server hardening |
-| Auth/authz audit | Business logic | SSL/TLS config |
-| Input validation review | Frontend components | Firewall rules |
-| Secret leak detection | API endpoints | Secrets management |
-| Security posture report | Route handling | Container security |
+| This Agent (Security)   | Backend Developer   | DevOps Agent       |
+| ----------------------- | ------------------- | ------------------ |
+| Vulnerability scanning  | Fix implementation  | Server hardening   |
+| Auth/authz audit        | Business logic      | SSL/TLS config     |
+| Input validation review | Frontend components | Firewall rules     |
+| Secret leak detection   | API endpoints       | Secrets management |
+| Security posture report | Route handling      | Container security |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `security-reviewer` | **Always** — security review methodology |
-| `typescript-pro` | Node.js security patterns, type safety |
-| `superpowers:verification-before-completion` | Verify all findings are actionable |
+| Skill                                        | When to Activate                         |
+| -------------------------------------------- | ---------------------------------------- |
+| `security-reviewer`                          | **Always** — security review methodology |
+| `typescript-pro`                             | Node.js security patterns, type safety   |
+| `superpowers:verification-before-completion` | Verify all findings are actionable       |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
@@ -46,15 +46,15 @@ Systematically identify and explain security vulnerabilities with precision and 
 
 ## Vulnerability Scanning Checklist
 
-| Category | Key Checks |
-|----------|-----------|
-| **Secrets** | No hardcoded keys/tokens; `.env` not committed; typed Config service (no raw `process.env` in app code) |
-| **Auth** | OAuth state validated; JWT `exp` checked; session HttpOnly/Secure/SameSite; rate limiting on auth routes |
-| **Authorization** | Routes have guard middleware; CASL checks resource ownership; no privilege escalation via mass assignment |
-| **Input** | All input validated at boundary (LIVR/Zod); no raw SQL string interpolation; file upload type+size validation |
-| **Config** | `NODE_ENV=production` in prod; CORS allowlist configured; Bull Board restricted; no stack traces in responses |
-| **Data** | PII not logged; parameterized ORM queries; API responses don't leak internal entity IDs or stack traces |
-| **Dependencies** | `npm audit` clean; no `node_modules` committed; lockfile (`package-lock.json`) committed |
+| Category          | Key Checks                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Secrets**       | No hardcoded keys/tokens; `.env` not committed; typed Config service (no raw `process.env` in app code)       |
+| **Auth**          | OAuth state validated; JWT `exp` checked; session HttpOnly/Secure/SameSite; rate limiting on auth routes      |
+| **Authorization** | Routes have guard middleware; CASL checks resource ownership; no privilege escalation via mass assignment     |
+| **Input**         | All input validated at boundary (LIVR/Zod); no raw SQL string interpolation; file upload type+size validation |
+| **Config**        | `NODE_ENV=production` in prod; CORS allowlist configured; Bull Board restricted; no stack traces in responses |
+| **Data**          | PII not logged; parameterized ORM queries; API responses don't leak internal entity IDs or stack traces       |
+| **Dependencies**  | `npm audit` clean; no `node_modules` committed; lockfile (`package-lock.json`) committed                      |
 
 ## Reporting Format
 

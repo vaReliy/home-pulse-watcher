@@ -95,15 +95,15 @@ See `secrets.h.example` for the full template.
 
 ### config.h (Hardware-specific)
 
-| Setting                  | Default       | Description                                   |
-| ------------------------ | ------------- | --------------------------------------------- |
-| `FIRMWARE_VERSION`       | `"3.4.0"`     | Reported to backend on every status ping      |
-| `POWER_SENSE_PIN`        | 2             | GPIO for power detection                      |
-| `STATUS_LED_PIN`         | 8             | Onboard WS2812B RGB LED                       |
-| `LED_BRIGHTNESS`         | 10            | WS2812 LED brightness (0-255)                 |
-| `CHECK_INTERVAL_MS`      | 200           | Power check interval (ms)                     |
-| `NTP_SERVER`             | pool.ntp.org  | Time sync server                              |
-| `WIFI_RETRY_DURATION_MS` | 300000 (5 min)| WiFi retry window before rebooting (setup)   |
+| Setting                  | Default        | Description                                |
+| ------------------------ | -------------- | ------------------------------------------ |
+| `FIRMWARE_VERSION`       | `"3.4.0"`      | Reported to backend on every status ping   |
+| `POWER_SENSE_PIN`        | 2              | GPIO for power detection                   |
+| `STATUS_LED_PIN`         | 8              | Onboard WS2812B RGB LED                    |
+| `LED_BRIGHTNESS`         | 10             | WS2812 LED brightness (0-255)              |
+| `CHECK_INTERVAL_MS`      | 200            | Power check interval (ms)                  |
+| `NTP_SERVER`             | pool.ntp.org   | Time sync server                           |
+| `WIFI_RETRY_DURATION_MS` | 300000 (5 min) | WiFi retry window before rebooting (setup) |
 
 ## Device Setup
 
@@ -121,15 +121,15 @@ To register a device, obtain credentials, and configure `secrets.h`, follow the 
 
 The onboard WS2812B RGB LED shows device status:
 
-| Color                      | Meaning                                  |
-| -------------------------- | ---------------------------------------- |
-| Yellow blink               | WiFi connecting                          |
-| Orange breathing (slow)    | Captive portal active (awaiting config)  |
-| Orange blink (accelerating)| Factory reset hold in progress (0–10 s) |
-| Purple (1 s solid)         | Factory reset confirmed                  |
-| Green                      | 220V power present (normal)              |
-| Red                        | 220V power lost (outage)                 |
-| Blue flash                 | HTTP request in progress                 |
+| Color                       | Meaning                                 |
+| --------------------------- | --------------------------------------- |
+| Yellow blink                | WiFi connecting                         |
+| Orange breathing (slow)     | Captive portal active (awaiting config) |
+| Orange blink (accelerating) | Factory reset hold in progress (0–10 s) |
+| Purple (1 s solid)          | Factory reset confirmed                 |
+| Green                       | 220V power present (normal)             |
+| Red                         | 220V power lost (outage)                |
+| Blue flash                  | HTTP request in progress                |
 
 ### Initial Configuration (Captive Portal)
 
@@ -141,12 +141,12 @@ On first boot (or after a factory reset), the device starts a WiFi access point 
 
 **UI fields:**
 
-| Field           | Description                                                |
-| --------------- | ---------------------------------------------------------- |
-| WiFi Network    | Select from scanned networks or type manually              |
-| WiFi Password   | Your router password (leave blank for open networks)       |
-| Device Secret   | 64-character hex secret from `device:register` CLI command |
-| Backend URL     | `https://your-server.com/api/device/status`                |
+| Field         | Description                                                |
+| ------------- | ---------------------------------------------------------- |
+| WiFi Network  | Select from scanned networks or type manually              |
+| WiFi Password | Your router password (leave blank for open networks)       |
+| Device Secret | 64-character hex secret from `device:register` CLI command |
+| Backend URL   | `https://your-server.com/api/device/status`                |
 
 After saving, credentials are written to NVS (flash) and the device reboots to connect. Credentials persist across power cycles.
 

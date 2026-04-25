@@ -1,6 +1,6 @@
 ---
 name: ddd-strategic-design
-description: "Design DDD strategic artifacts including subdomains, bounded contexts, and ubiquitous language for complex business domains. Українською: DDD стратегія, стратегічне проектування, піддомени, обмежені контексти, ubiquitous language, єдина мова, доменна модель, бізнес-домен, розбиття монолiту, карта контекстів, ядро домену, доменні межі."
+description: 'Design DDD strategic artifacts including subdomains, bounded contexts, and ubiquitous language for complex business domains. Українською: DDD стратегія, стратегічне проектування, піддомени, обмежені контексти, ubiquitous language, єдина мова, доменна модель, бізнес-домен, розбиття монолiту, карта контекстів, ядро домену, доменні межі.'
 risk: safe
 source: self
 tags: [ddd, strategic-design, bounded-context, ubiquitous-language]

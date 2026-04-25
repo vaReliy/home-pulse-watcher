@@ -31,8 +31,8 @@ Create clear, accurate, maintainable documentation for Node.js/TypeScript applic
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
+| Skill            | When to Activate                 |
+| ---------------- | -------------------------------- |
 | `typescript-pro` | TypeScript/Node.js code examples |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.

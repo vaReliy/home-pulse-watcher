@@ -69,15 +69,17 @@ export class DeleteDeviceService extends BaseService<
     }
 
     // Remove user-device links
-    const userDevices =
-      await this.userDeviceRepository.findByDeviceId(device.id);
+    const userDevices = await this.userDeviceRepository.findByDeviceId(
+      device.id,
+    );
     for (const ud of userDevices) {
       await this.userDeviceRepository.delete(ud.userId, ud.deviceId);
     }
 
     // Remove power events
-    const deletedEventsCount =
-      await this.powerEventRepository.deleteByDeviceId(device.id);
+    const deletedEventsCount = await this.powerEventRepository.deleteByDeviceId(
+      device.id,
+    );
 
     // Delete device
     await this.deviceRepository.delete(device.id);

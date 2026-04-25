@@ -48,7 +48,7 @@ export abstract class BaseService<TInput, TOutput> {
    */
   protected abstract execute(
     params: TInput,
-    context: ServiceContext
+    context: ServiceContext,
   ): Promise<TOutput>;
 
   /**
@@ -64,7 +64,7 @@ export abstract class BaseService<TInput, TOutput> {
    */
   async run(
     params: TInput,
-    context: ServiceContext = {}
+    context: ServiceContext = {},
   ): Promise<ServiceResponse<TOutput>> {
     // Step 1: Validate input
     const validatedParams = this.validate(params);

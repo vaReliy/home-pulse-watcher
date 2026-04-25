@@ -73,15 +73,15 @@ await expect(page.getByTestId('user-name')).toHaveText('John');
 ```typescript
 // ❌ Bad: Tests share state
 test('test 1', async () => {
-    /* creates user */
+  /* creates user */
 });
 test('test 2', async () => {
-    /* assumes user exists */
+  /* assumes user exists */
 });
 
 // ✅ Good: Each test is independent
 test.beforeEach(async ({ page }) => {
-    await page.request.post('/api/test/reset');
+  await page.request.post('/api/test/reset');
 });
 ```
 
@@ -111,18 +111,18 @@ await page.waitForTimeout(3000); // ❌ BAD
 ```typescript
 // playwright.config.ts
 export default defineConfig({
-    retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 0,
 
-    // Retry only specific tests
-    expect: {
-        timeout: 10000, // Increase assertion timeout
-    },
+  // Retry only specific tests
+  expect: {
+    timeout: 10000, // Increase assertion timeout
+  },
 });
 
 // Per-test retry
 test('flaky test', async ({ page }) => {
-    test.info().annotations.push({ type: 'issue', description: 'Known flaky' });
-    // ...
+  test.info().annotations.push({ type: 'issue', description: 'Known flaky' });
+  // ...
 });
 ```
 
@@ -131,8 +131,8 @@ test('flaky test', async ({ page }) => {
 ```typescript
 // Console output
 test('debug test', async ({ page }) => {
-    page.on('console', (msg) => console.log(msg.text()));
-    page.on('pageerror', (err) => console.log(err.message));
+  page.on('console', (msg) => console.log(msg.text()));
+  page.on('pageerror', (err) => console.log(err.message));
 });
 
 // Screenshot on step

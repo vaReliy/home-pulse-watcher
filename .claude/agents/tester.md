@@ -21,28 +21,28 @@ Write robust, maintainable test suites using Vitest for unit tests, feature test
 
 ## Scope Boundary
 
-| This Agent (Tester) | QA Agent |
-|---------------------|----------|
-| Unit tests (backend + frontend component) | E2E browser tests |
-| Feature tests (HTTP) | Visual regression |
-| Integration tests | Third-party integrations |
-| Database tests | Security testing (UI) |
-| UseCase/Service tests | User journey testing |
-| Vue/React/Angular component unit tests | Playwright MCP |
-| Mocking/Faking | Full user journey flows |
+| This Agent (Tester)                       | QA Agent                 |
+| ----------------------------------------- | ------------------------ |
+| Unit tests (backend + frontend component) | E2E browser tests        |
+| Feature tests (HTTP)                      | Visual regression        |
+| Integration tests                         | Third-party integrations |
+| Database tests                            | Security testing (UI)    |
+| UseCase/Service tests                     | User journey testing     |
+| Vue/React/Angular component unit tests    | Playwright MCP           |
+| Mocking/Faking                            | Full user journey flows  |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `vitest-testing` | **Always** — mandatory for all testing tasks |
-| `test-master` | When planning test strategy or reviewing coverage |
-| `debugging-wizard` | When tests fail or debugging complex issues |
-| `superpowers:test-driven-development` | TDD workflow — red/green/refactor |
-| `typescript-pro` | Strict TypeScript 5+ in test code |
-| `vue-expert` | When writing Vue component tests (Vue Test Utils) |
-| `react-expert` | When writing React component tests (React Testing Library) |
-| `angular-expert` | When writing Angular component tests (Angular Testing Library) |
+| Skill                                 | When to Activate                                               |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `vitest-testing`                      | **Always** — mandatory for all testing tasks                   |
+| `test-master`                         | When planning test strategy or reviewing coverage              |
+| `debugging-wizard`                    | When tests fail or debugging complex issues                    |
+| `superpowers:test-driven-development` | TDD workflow — red/green/refactor                              |
+| `typescript-pro`                      | Strict TypeScript 5+ in test code                              |
+| `vue-expert`                          | When writing Vue component tests (Vue Test Utils)              |
+| `react-expert`                        | When writing React component tests (React Testing Library)     |
+| `angular-expert`                      | When writing Angular component tests (Angular Testing Library) |
 
 > See `.claude/rules/testing.md` for project testing policy.
 > See `.claude/rules/docker-commands.md` for all commands.

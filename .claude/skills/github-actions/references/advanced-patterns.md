@@ -20,20 +20,20 @@ steps:
 ### Azure
 
 ```yaml
-  - uses: azure/login@v2
-    with:
-      client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+- uses: azure/login@v2
+  with:
+    client-id: ${{ secrets.AZURE_CLIENT_ID }}
+    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 ```
 
 ### Google Cloud
 
 ```yaml
-  - uses: google-github-actions/auth@v2
-    with:
-      workload_identity_provider: projects/123/locations/global/workloadIdentityPools/pool/providers/github
-      service_account: deploy@project.iam.gserviceaccount.com
+- uses: google-github-actions/auth@v2
+  with:
+    workload_identity_provider: projects/123/locations/global/workloadIdentityPools/pool/providers/github
+    service_account: deploy@project.iam.gserviceaccount.com
 ```
 
 ## Docker Multi-Stage Build and Push
@@ -75,13 +75,13 @@ deploy:
 ### Multi-Platform Docker Build
 
 ```yaml
-    - uses: docker/setup-qemu-action@v3
-    - uses: docker/setup-buildx-action@v3
-    - uses: docker/build-push-action@v6
-      with:
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ghcr.io/${{ github.repository }}:latest
+- uses: docker/setup-qemu-action@v3
+- uses: docker/setup-buildx-action@v3
+- uses: docker/build-push-action@v6
+  with:
+    platforms: linux/amd64,linux/arm64
+    push: true
+    tags: ghcr.io/${{ github.repository }}:latest
 ```
 
 ## Environment Promotion
@@ -107,9 +107,9 @@ deploy-production:
 ### Environment-Specific Variables
 
 ```yaml
-    env:
-      APP_URL: ${{ vars.APP_URL }}
-      DB_HOST: ${{ secrets.DB_HOST }}
+env:
+  APP_URL: ${{ vars.APP_URL }}
+  DB_HOST: ${{ secrets.DB_HOST }}
 ```
 
 ## Monorepo Strategies
@@ -128,16 +128,16 @@ on:
 ### Detect Changed Packages
 
 ```yaml
-    - uses: dorny/paths-filter@v3
-      id: changes
-      with:
-        filters: |
-          api:
-            - 'packages/api/**'
-          web:
-            - 'packages/web/**'
-    - run: echo "API changed"
-      if: steps.changes.outputs.api == 'true'
+- uses: dorny/paths-filter@v3
+  id: changes
+  with:
+    filters: |
+      api:
+        - 'packages/api/**'
+      web:
+        - 'packages/web/**'
+- run: echo "API changed"
+  if: steps.changes.outputs.api == 'true'
 ```
 
 ## Release Automation
@@ -163,12 +163,12 @@ jobs:
 ### Changelog Generation
 
 ```yaml
-      - uses: mikepenz/release-changelog-builder-action@v5
-        id: changelog
-        with:
-          configuration: .github/changelog-config.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+- uses: mikepenz/release-changelog-builder-action@v5
+  id: changelog
+  with:
+    configuration: .github/changelog-config.json
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## Scheduled Workflows
@@ -227,12 +227,12 @@ jobs:
 ### PR Size Check
 
 ```yaml
-      - uses: codelytv/pr-size-labeler@v1
-        with:
-          xs_max_size: 10
-          s_max_size: 50
-          m_max_size: 200
-          l_max_size: 500
+- uses: codelytv/pr-size-labeler@v1
+  with:
+    xs_max_size: 10
+    s_max_size: 50
+    m_max_size: 200
+    l_max_size: 500
 ```
 
 ## Notification Patterns
@@ -240,15 +240,15 @@ jobs:
 ### Slack Notification on Failure
 
 ```yaml
-    - uses: slackapi/slack-github-action@v2
-      if: failure()
-      with:
-        webhook: ${{ secrets.SLACK_WEBHOOK }}
-        webhook-type: incoming-webhook
-        payload: |
-          {
-            "text": "CI failed on ${{ github.repository }}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }
+- uses: slackapi/slack-github-action@v2
+  if: failure()
+  with:
+    webhook: ${{ secrets.SLACK_WEBHOOK }}
+    webhook-type: incoming-webhook
+    payload: |
+      {
+        "text": "CI failed on ${{ github.repository }}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      }
 ```
 
 ## Workflow Debugging
@@ -260,9 +260,9 @@ Set repository secret `ACTIONS_STEP_DEBUG` to `true` for verbose step output.
 ### SSH Debug Session
 
 ```yaml
-    - uses: mxschmitt/action-tmate@v3
-      if: failure()
-      timeout-minutes: 15
+- uses: mxschmitt/action-tmate@v3
+  if: failure()
+  timeout-minutes: 15
 ```
 
 ## Artifact Management
@@ -270,28 +270,28 @@ Set repository secret `ACTIONS_STEP_DEBUG` to `true` for verbose step output.
 ### Upload on Failure
 
 ```yaml
-    - uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: debug-logs
-        path: |
-          storage/logs/
-          tests/reports/
-        retention-days: 7
+- uses: actions/upload-artifact@v4
+  if: failure()
+  with:
+    name: debug-logs
+    path: |
+      storage/logs/
+      tests/reports/
+    retention-days: 7
 ```
 
 ### Cross-Job Artifacts
 
 ```yaml
 # Job 1: Build
-    - uses: actions/upload-artifact@v4
-      with:
-        name: build-output
-        path: dist/
+- uses: actions/upload-artifact@v4
+  with:
+    name: build-output
+    path: dist/
 
 # Job 2: Deploy (needs build)
-    - uses: actions/download-artifact@v4
-      with:
-        name: build-output
-        path: dist/
+- uses: actions/download-artifact@v4
+  with:
+    name: build-output
+    path: dist/
 ```

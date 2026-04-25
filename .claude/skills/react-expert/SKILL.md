@@ -1,28 +1,28 @@
 ---
 name: react-expert
 description: >-
-    React specialist for building modern React applications. Use when working
-    with React components, hooks, state management (Zustand/Redux), React Router,
-    Next.js, TanStack Query, or TypeScript+React patterns.
+  React specialist for building modern React applications. Use when working
+  with React components, hooks, state management (Zustand/Redux), React Router,
+  Next.js, TanStack Query, or TypeScript+React patterns.
 
-    Українською: React, компонент, хуки, стан, useState, useEffect, Next.js,
-    Zustand, Redux, TanStack Query, React Router, JSX, TSX, React компонент.
+  Українською: React, компонент, хуки, стан, useState, useEffect, Next.js,
+  Zustand, Redux, TanStack Query, React Router, JSX, TSX, React компонент.
 triggers:
-    - React
-    - JSX
-    - TSX
-    - hooks
-    - useState
-    - useEffect
-    - useCallback
-    - useMemo
-    - useRef
-    - Next.js
-    - Zustand
-    - Redux Toolkit
-    - TanStack Query
-    - React Query
-    - React Router
+  - React
+  - JSX
+  - TSX
+  - hooks
+  - useState
+  - useEffect
+  - useCallback
+  - useMemo
+  - useRef
+  - Next.js
+  - Zustand
+  - Redux Toolkit
+  - TanStack Query
+  - React Query
+  - React Router
 role: specialist
 scope: implementation
 output-format: code
@@ -56,11 +56,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
     <article className="rounded-lg border p-4">
       <h2 className="text-xl font-semibold">{post.title}</h2>
       {onDelete && (
-        <button
-          type="button"
-          onClick={() => onDelete(post.id)}
-          className="text-red-500"
-        >
+        <button type="button" onClick={() => onDelete(post.id)} className="text-red-500">
           Delete
         </button>
       )}
@@ -70,6 +66,7 @@ export function PostCard({ post, onDelete }: PostCardProps) {
 ```
 
 Rules:
+
 - Named exports (not default) for components
 - Props interface always typed — no `any`
 - Use `className` not `class`
@@ -99,7 +96,11 @@ export const usePostStore = create<PostStore>((set) => ({
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function PostList() {
-  const { data: posts, isLoading, error } = useQuery({
+  const {
+    data: posts,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['posts'],
     queryFn: () => api.get<Post[]>('/posts'),
   });
@@ -107,7 +108,13 @@ export function PostList() {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage error={error} />;
 
-  return <ul>{posts?.map(post => <PostCard key={post.id} post={post} />)}</ul>;
+  return (
+    <ul>
+      {posts?.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </ul>
+  );
 }
 ```
 
@@ -122,7 +129,11 @@ interface CreatePostFormData {
 }
 
 export function CreatePostForm() {
-  const { register, handleSubmit, formState: { errors } } = useForm<CreatePostFormData>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreatePostFormData>();
 
   const onSubmit = (data: CreatePostFormData) => {
     // validate with LIVR or Zod, then call API

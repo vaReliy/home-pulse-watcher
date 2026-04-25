@@ -74,10 +74,10 @@ grep -rn "eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\." .
 ```yaml
 # .pre-commit-config.yaml
 repos:
-    - repo: https://github.com/gitleaks/gitleaks
-      rev: v8.18.0
-      hooks:
-          - id: gitleaks
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
 ```
 
 ## CI/CD Integration

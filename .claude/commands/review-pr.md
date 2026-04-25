@@ -5,6 +5,7 @@ model: sonnet
 You are performing a comprehensive code review of a Pull Request in your project's GitHub repository.
 
 CRITICAL RULES:
+
 - NEVER use emojis anywhere in comments or output
 - NEVER mention AI, Claude, LLM, or automation — write as a human engineer
 - Post comments as INLINE review comments on specific diff lines, NOT as a single summary comment
@@ -16,6 +17,7 @@ The user provided: `$ARGUMENTS`
 ## Step 1: Parse the PR reference
 
 Parse the input to determine the repository and PR number. Supported formats:
+
 - `123` or `#123` — PR in current repo (detect via `git remote`)
 - `repo#123` — PR in `{your_org}/repo`
 - `{your_org}/repo#123` — full org/repo path
@@ -28,17 +30,21 @@ If the input is empty or cannot be parsed, ask the user for the PR reference.
 **Primary — `github` MCP (run in parallel):**
 
 1. PR metadata via `mcp__github__pull_request_read`:
+
    ```json
    {"owner": "{your_org}", "repo": "<REPO>", "pullNumber": <NUMBER>}
    ```
+
    This returns title, body, author, labels, state, base/head refs, files, and commits.
 
 2. PR diff — MCP has no diff endpoint, use `gh` CLI:
+
    ```bash
    GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh pr diff <NUMBER> --repo {your_org}/<REPO>
    ```
 
 3. CI checks status:
+
    ```bash
    GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh pr checks <NUMBER> --repo {your_org}/<REPO>
    ```
@@ -51,6 +57,7 @@ If the input is empty or cannot be parsed, ask the user for the PR reference.
 ## Step 3: Dispatch the review
 
 Launch the `reviewer` agent with `subagent_type: "reviewer"` passing:
+
 1. Full PR metadata (title, author, description, labels)
 2. Complete diff content
 3. CI status
@@ -58,6 +65,7 @@ Launch the `reviewer` agent with `subagent_type: "reviewer"` passing:
 5. The list of changed files
 
 The agent prompt MUST include these rules:
+
 - NEVER use emojis in any output
 - NEVER mention AI, Claude, LLM, automation, or that this is an automated review
 - Write all comments in English, in natural human engineer tone
@@ -74,14 +82,17 @@ The agent prompt MUST include these rules:
 **Primary — `github` MCP (three-step workflow):**
 
 1. Create a pending review via `mcp__github__pull_request_review_write`:
+
    ```json
    {"method": "create", "owner": "{your_org}", "repo": "<REPO>", "pullNumber": <NUMBER>, "body": "<short summary — no emojis, no AI mention>"}
    ```
 
 2. Add each finding as an inline comment via `mcp__github__add_comment_to_pending_review`:
+
    ```json
    {"owner": "{your_org}", "repo": "<REPO>", "pullNumber": <NUMBER>, "path": "<file>", "line": <line>, "body": "<comment>", "side": "RIGHT"}
    ```
+
    Use `side: "LEFT"` for deleted lines, `side: "RIGHT"` for added lines.
 
 3. Submit the pending review via `mcp__github__pull_request_review_write`:
@@ -93,11 +104,13 @@ The agent prompt MUST include these rules:
 **Fallback — `gh` CLI (only if MCP fails):**
 
 Get the latest commit SHA:
+
 ```bash
 GH_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh api repos/{your_org}/<REPO>/pulls/<NUMBER> --jq '.head.sha'
 ```
 
 Create review with inline comments:
+
 ```bash
 GH_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh api repos/{your_org}/<REPO>/pulls/<NUMBER>/reviews \
   --method POST \
@@ -108,6 +121,7 @@ GH_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh api repos/{your_org}/<REPO>/pulls/<NUM
 ```
 
 Rules for posting:
+
 - Each comment must reference the exact file path and diff line number
 - Use `start_line` + `line` for multi-line comments
 - The review body should be a single concise sentence (e.g., "A few issues to address before merge" or "Looks good overall, minor suggestions inline")
@@ -117,6 +131,7 @@ Rules for posting:
 ## Step 5: Present summary to user
 
 After posting, show a brief local summary:
+
 - How many comments were posted (by severity: critical / important / suggestion)
 - The review event type (COMMENT or REQUEST_CHANGES)
 - Link to the PR: `https://github.com/{your_org}/<REPO>/pull/<NUMBER>`

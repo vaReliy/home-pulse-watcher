@@ -6,12 +6,7 @@
 ## E2E Test Strategy
 
 ```typescript
-const criticalPaths = [
-  'User registration and login',
-  'Core product/service workflow',
-  'Payment/checkout flow',
-  'Settings and profile management',
-];
+const criticalPaths = ['User registration and login', 'Core product/service workflow', 'Payment/checkout flow', 'Settings and profile management'];
 ```
 
 ## User Flow Testing
@@ -56,9 +51,9 @@ export default defineConfig({
 
 ## Quick Reference
 
-| Priority | Test Coverage |
-|----------|---------------|
-| **P0** | Registration, login, core feature |
-| **P1** | Payment, settings, common flows |
-| **P2** | Edge cases, admin features |
-| **P3** | Rare scenarios |
+| Priority | Test Coverage                     |
+| -------- | --------------------------------- |
+| **P0**   | Registration, login, core feature |
+| **P1**   | Payment, settings, common flows   |
+| **P2**   | Edge cases, admin features        |
+| **P3**   | Rare scenarios                    |

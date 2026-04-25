@@ -13,6 +13,7 @@ The user provided: `$ARGUMENTS`
 ## Step 1: Parse the PR reference
 
 Parse the input to determine the repository and PR number. Supported formats:
+
 - `123` or `#123` — PR in current repo (detect via `git remote`)
 - `repo#123` — PR in `{your_org}/repo`
 - `{your_org}/repo#123` — full org/repo path
@@ -24,11 +25,13 @@ If the input is empty or cannot be parsed, ask the user for the PR reference.
 
 **Primary — `github` MCP:**
 Use `mcp__github__pull_request_read` with:
+
 ```json
 {"owner": "{your_org}", "repo": "<REPO>", "pullNumber": <NUMBER>}
 ```
 
 **Fallback — `gh` CLI:**
+
 ```bash
 GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh pr view <NUMBER> --repo {your_org}/<REPO> --json title,body,headRefName,baseRefName,files,additions,deletions,commits
 ```
@@ -40,11 +43,13 @@ Extract `headRefName` (the PR branch name) — you will need it for CI run looku
 Run these commands in parallel:
 
 **3a. Quick CI status check:**
+
 ```bash
 GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh pr checks <NUMBER> --repo {your_org}/{your_repo}
 ```
 
 **3b. Find the latest CI run for the branch:**
+
 ```bash
 GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh run list \
   --branch <headRefName> \
@@ -57,6 +62,7 @@ GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh run list \
 If all checks are green (no failures), inform the user that CI is passing and stop.
 
 **3c. Get failed job details (once you have the run ID):**
+
 ```bash
 GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh run view <run-id> \
   --repo {your_org}/{your_repo} \
@@ -65,6 +71,7 @@ GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh run view <run-id> \
 ```
 
 **3d. Get failure logs:**
+
 ```bash
 GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh run view <run-id> \
   --repo {your_org}/{your_repo} \
@@ -78,11 +85,13 @@ IMPORTANT: `--log-failed` output can be very large. If it is truncated, note tha
 The CI has two job groups. Map the failed job name to one of these:
 
 **Lint matrix** (`🪄 Lints | ...`):
+
 - `🔍 TypeScript` — type check failure (`tsc --noEmit`)
 - `🔯 ESLint` — linting failure (often auto-fixable with `npx eslint . --fix`)
 - `🅿️ Prettier` — formatting failure (auto-fixable with `npx prettier --write .`)
 
 **Test matrix** (`♻️ Tests | ...`):
+
 - `🔬 Unit` — unit test failure (requires code investigation)
 - `🧬 Integration` — integration test failure (requires code investigation)
 - `☂️ Coverage` — test coverage failure (may indicate new code without tests)
@@ -102,6 +111,7 @@ If there are uncommitted local changes, stash them first and inform the user.
 ## Step 5: Dispatch the debugger agent
 
 Launch the `debugger` agent with `subagent_type: "debugger"` passing:
+
 1. The `gh run view --log-failed` output
 2. The failed job names and their step details from Step 3c
 3. The failure type (lint vs test, and which specific tool)
@@ -109,6 +119,7 @@ Launch the `debugger` agent with `subagent_type: "debugger"` passing:
 5. The PR branch name (already checked out locally)
 
 The agent prompt must instruct the debugger to:
+
 - Analyze the GitHub Actions failure logs to identify root cause
 - For **lint failures**: identify which files and lines caused the linter to fail; check if the issue is auto-fixable
 - For **test failures**: identify the failing `describe/it` block and the assertion that failed; read the failing test file and the code under test from the local codebase
@@ -125,11 +136,13 @@ The agent prompt must instruct the debugger to:
 ## Step 6: Dispatch the backend-developer agent (if fix needed)
 
 If the debugger determined that a code fix is needed, launch the `backend-developer` agent with `subagent_type: "backend-developer"` passing:
+
 1. The full root cause analysis from the debugger
 2. The specific files that need to be modified
 3. The failed job names and test/lint errors so developer can verify the fix
 
 The agent prompt must instruct the developer to:
+
 - Apply the minimal fix to resolve the CI failure
 - Follow project standards: `CLAUDE.md`, `.claude/rules/code-style.md`, `.claude/rules/architecture.md`
 - For **lint failures**, run the relevant linter to verify the fix:
@@ -152,6 +165,7 @@ The agent prompt must instruct the developer to:
 If the debugger determined it is a transient or environment issue (not a code problem), skip the developer agent and inform the user directly with the diagnosis and recommended action.
 
 For transient failures, offer to rerun the failed jobs:
+
 ```bash
 GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh run rerun <run-id> \
   --repo {your_org}/{your_repo} \
@@ -163,19 +177,23 @@ GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN gh run rerun <run-id> \
 After all agents complete, present:
 
 **Diagnosis:**
+
 - Which CI jobs failed and why (root cause)
 - Whether it is a code issue or a transient problem
 
 **Fix applied** (if applicable):
+
 - Which files were modified
 - What was changed and why
 - Local verification results (test output / linter output)
 
 **Next steps:**
+
 - Ask the user if they want to commit and push the fix
 - If committing: use a clear commit message like `fix: resolve CI failure in [JobName]`
 - Remind that pushing will trigger a new CI run
 
 If no fix was applied (transient/environment issue):
+
 - Offer to rerun the failed workflow via the `gh run rerun` command above
 - Or suggest investigating persistent failures manually

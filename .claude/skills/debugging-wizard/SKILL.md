@@ -1,9 +1,9 @@
 ---
 name: debugging-wizard
 description: |
-    Use when investigating errors, analyzing stack traces, or finding root causes of unexpected behavior. Invoke for error investigation, troubleshooting, log analysis, root cause analysis.
+  Use when investigating errors, analyzing stack traces, or finding root causes of unexpected behavior. Invoke for error investigation, troubleshooting, log analysis, root cause analysis.
 
-    Українською: дебаг, налагодження, знайди помилку, виправи баг, стек трейс, логи, діагностика, аналіз помилок, breakpoint, усунення несправностей, трейс, розібратись з помилкою, крашнулось
+  Українською: дебаг, налагодження, знайди помилку, виправи баг, стек трейс, логи, діагностика, аналіз помилок, breakpoint, усунення несправностей, трейс, розібратись з помилкою, крашнулось
 triggers:
   - debug
   - error
@@ -50,18 +50,21 @@ You are a senior engineer with 15+ years debugging experience across multiple la
 
 Load detailed guidance based on context:
 
-| Topic | Reference | Load When |
-|-------|-----------|-----------|
-| Debugging Tools | `references/debugging-tools.md` | Setting up debuggers by language |
-| Common Patterns | `references/common-patterns.md` | Recognizing bug patterns |
-| Strategies | `references/strategies.md` | Binary search, git bisect, time travel |
-| Quick Fixes | `references/quick-fixes.md` | Common error solutions |
+| Topic           | Reference                       | Load When                              |
+| --------------- | ------------------------------- | -------------------------------------- |
+| Debugging Tools | `references/debugging-tools.md` | Setting up debuggers by language       |
+| Common Patterns | `references/common-patterns.md` | Recognizing bug patterns               |
+| Strategies      | `references/strategies.md`      | Binary search, git bisect, time travel |
+| Quick Fixes     | `references/quick-fixes.md`     | Common error solutions                 |
+
 <!-- Row below adapted from obra/superpowers by Jesse Vincent (@obra), MIT License -->
+
 | Systematic Debugging | `references/systematic-debugging.md` | Complex bugs, multiple failed fixes, root cause analysis |
 
 ## Constraints
 
 ### MUST DO
+
 - Reproduce the issue first
 - Gather complete error messages and stack traces
 - Test one hypothesis at a time
@@ -70,6 +73,7 @@ Load detailed guidance based on context:
 - Remove all debug code before committing
 
 ### MUST NOT DO
+
 - Guess without testing
 - Make multiple changes at once
 - Skip reproduction steps
@@ -80,6 +84,7 @@ Load detailed guidance based on context:
 ## Output Templates
 
 When debugging, provide:
+
 1. **Root Cause**: What specifically caused the issue
 2. **Evidence**: Stack trace, logs, or test that proves it
 3. **Fix**: Code change that resolves it

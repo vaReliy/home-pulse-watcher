@@ -12,15 +12,15 @@
 name: Security Pipeline
 on: [push, pull_request]
 jobs:
-    security:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: returntocorp/semgrep-action@v1
-            - uses: gitleaks/gitleaks-action@v2
-            - uses: aquasecurity/trivy-action@master
-              with:
-                  scan-type: 'fs'
-                  severity: 'CRITICAL,HIGH'
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: returntocorp/semgrep-action@v1
+      - uses: gitleaks/gitleaks-action@v2
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          severity: 'CRITICAL,HIGH'
 ```
 
 ### Infrastructure as Code Security
@@ -99,37 +99,37 @@ CMD ["node", "server.js"]
 apiVersion: v1
 kind: Pod
 metadata:
-    name: secure-pod
+  name: secure-pod
 spec:
-    securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 2000
-        seccompProfile:
-            type: RuntimeDefault
-    containers:
-        - name: app
-          image: myapp:1.0
-          securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities:
-                  drop: [ALL]
-          resources:
-              limits:
-                  memory: '128Mi'
-                  cpu: '500m'
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: myapp:1.0
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      resources:
+        limits:
+          memory: '128Mi'
+          cpu: '500m'
 ---
 # Network Policy - Default deny
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-    name: default-deny-all
+  name: default-deny-all
 spec:
-    podSelector: {}
-    policyTypes:
-        - Ingress
-        - Egress
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
 ```
 
 ## Compliance Automation
@@ -206,31 +206,31 @@ vault write database/roles/app \
 apiVersion: external-secrets.io/v1beta1
 kind: SecretStore
 metadata:
-    name: vault-backend
+  name: vault-backend
 spec:
-    provider:
-        vault:
-            server: 'https://vault.example.com'
-            path: 'secret'
-            auth:
-                kubernetes:
-                    role: 'app-role'
+  provider:
+    vault:
+      server: 'https://vault.example.com'
+      path: 'secret'
+      auth:
+        kubernetes:
+          role: 'app-role'
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-    name: app-secrets
+  name: app-secrets
 spec:
-    refreshInterval: 1h
-    secretStoreRef:
-        name: vault-backend
-    target:
-        name: app-secrets
-    data:
-        - secretKey: api_key
-          remoteRef:
-              key: secret/app/config
-              property: api_key
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+  target:
+    name: app-secrets
+  data:
+    - secretKey: api_key
+      remoteRef:
+        key: secret/app/config
+        property: api_key
 ```
 
 ## Security Monitoring
@@ -239,16 +239,16 @@ spec:
 
 ```yaml
 filebeat.inputs:
-    - type: log
-      paths:
-          - /var/log/auth.log
-          - /var/log/nginx/*.log
-      fields:
-          environment: production
+  - type: log
+    paths:
+      - /var/log/auth.log
+      - /var/log/nginx/*.log
+    fields:
+      environment: production
 
 output.elasticsearch:
-    hosts: ['elasticsearch:9200']
-    index: 'security-logs-%{+yyyy.MM.dd}'
+  hosts: ['elasticsearch:9200']
+  index: 'security-logs-%{+yyyy.MM.dd}'
 ```
 
 ## Quick Reference

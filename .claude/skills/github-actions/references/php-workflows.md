@@ -105,12 +105,12 @@ test:
 ### Coverage Upload
 
 ```yaml
-    - run: php artisan test --compact --coverage-clover=coverage.xml
-    - uses: codecov/codecov-action@v4
-      with:
-        files: coverage.xml
-        token: ${{ secrets.CODECOV_TOKEN }}
-      if: always()
+- run: php artisan test --compact --coverage-clover=coverage.xml
+- uses: codecov/codecov-action@v4
+  with:
+    files: coverage.xml
+    token: ${{ secrets.CODECOV_TOKEN }}
+  if: always()
 ```
 
 ## Symfony CI
@@ -118,20 +118,20 @@ test:
 ### Symfony-Specific Steps
 
 ```yaml
-    - run: composer install --no-interaction --prefer-dist
-    - run: php bin/console lint:yaml config/
-    - run: php bin/console lint:twig templates/
-    - run: php bin/console doctrine:schema:validate --skip-sync
-    - run: vendor/bin/phpunit
+- run: composer install --no-interaction --prefer-dist
+- run: php bin/console lint:yaml config/
+- run: php bin/console lint:twig templates/
+- run: php bin/console doctrine:schema:validate --skip-sync
+- run: vendor/bin/phpunit
 ```
 
 ### Symfony with Database
 
 ```yaml
-    - name: Run migrations
-      run: php bin/console doctrine:migrations:migrate --no-interaction
-      env:
-        DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/testing
+- name: Run migrations
+  run: php bin/console doctrine:migrations:migrate --no-interaction
+  env:
+    DATABASE_URL: postgresql://postgres:password@127.0.0.1:5432/testing
 ```
 
 ## NativePHP
@@ -139,13 +139,13 @@ test:
 ### Build NativePHP Desktop App
 
 ```yaml
-    - uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.4'
-    - run: composer install --no-interaction --prefer-dist
-    - run: npm ci
-    - run: npm run build
-    - run: php artisan native:build
+- uses: shivammathur/setup-php@v2
+  with:
+    php-version: '8.4'
+- run: composer install --no-interaction --prefer-dist
+- run: npm ci
+- run: npm run build
+- run: php artisan native:build
 ```
 
 ### Multi-Platform NativePHP

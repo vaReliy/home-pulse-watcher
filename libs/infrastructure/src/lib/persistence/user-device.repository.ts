@@ -16,7 +16,7 @@ export class PrismaUserDeviceRepository implements IUserDeviceRepository {
 
   async findByUserAndDevice(
     userId: string,
-    deviceId: string
+    deviceId: string,
   ): Promise<UserDevice | null> {
     const userDevice = await withPrismaError('UserDevice', () =>
       this.prisma.userDevice.findUnique({
@@ -62,10 +62,11 @@ export class PrismaUserDeviceRepository implements IUserDeviceRepository {
   async update(
     userId: string,
     deviceId: string,
-    data: { customName?: string | null; role?: DeviceRole }
+    data: { customName?: string | null; role?: DeviceRole },
   ): Promise<UserDevice> {
     const updateData: Record<string, unknown> = {};
-    if (data.customName !== undefined) updateData['customName'] = data.customName;
+    if (data.customName !== undefined)
+      updateData['customName'] = data.customName;
     if (data.role !== undefined) updateData['role'] = data.role;
 
     const userDevice = await withPrismaError('UserDevice', () =>

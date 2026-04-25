@@ -18,7 +18,7 @@ export class CreateUserCommand extends CommandRunner {
 
   constructor(
     @Inject(SERVICE_TOKENS.CREATE_USER)
-    private readonly createUserService: CreateUserService
+    private readonly createUserService: CreateUserService,
   ) {
     super();
   }

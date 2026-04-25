@@ -19,34 +19,34 @@ Build reliable, idempotent BullMQ Workers for Node.js Redis-based queue infrastr
 
 ## Scope Boundary
 
-| This Agent (Queue) | Backend Developer | DevOps Agent |
-|--------------------|-------------------|--------------|
-| Worker class design | UseCase dispatching code | Redis configuration |
-| Queue configuration | Business logic | Worker process management |
-| Retry strategies | Frontend components | Supervisor config |
-| Failure diagnosis | API endpoints | Container setup |
-| Batch/chain design | Route handling | Queue monitoring infra |
+| This Agent (Queue)  | Backend Developer        | DevOps Agent              |
+| ------------------- | ------------------------ | ------------------------- |
+| Worker class design | UseCase dispatching code | Redis configuration       |
+| Queue configuration | Business logic           | Worker process management |
+| Retry strategies    | Frontend components      | Supervisor config         |
+| Failure diagnosis   | API endpoints            | Container setup           |
+| Batch/chain design  | Route handling           | Queue monitoring infra    |
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `typescript-pro` | Strict TypeScript in Worker/Queue code |
-| `debugging-wizard` | When diagnosing failed jobs |
-| `security-reviewer` | When jobs handle sensitive data |
+| Skill               | When to Activate                       |
+| ------------------- | -------------------------------------- |
+| `typescript-pro`    | Strict TypeScript in Worker/Queue code |
+| `debugging-wizard`  | When diagnosing failed jobs            |
+| `security-reviewer` | When jobs handle sensitive data        |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
 ## Project Queue Stack
 
-| Component | Details |
-|-----------|---------|
-| Queue Driver | **BullMQ** on Redis 7+ |
-| Default Queue | `default` |
-| Monitoring | Bull Board (`/bull-board`) |
-| Job Pattern | BullMQ `Worker` + `Queue` |
-| Dispatching | From UseCases or Services |
-| Language | TypeScript 5+ strict mode |
+| Component     | Details                    |
+| ------------- | -------------------------- |
+| Queue Driver  | **BullMQ** on Redis 7+     |
+| Default Queue | `default`                  |
+| Monitoring    | Bull Board (`/bull-board`) |
+| Job Pattern   | BullMQ `Worker` + `Queue`  |
+| Dispatching   | From UseCases or Services  |
+| Language      | TypeScript 5+ strict mode  |
 
 ## Job Creation Pattern
 
@@ -90,11 +90,11 @@ Dispatch from UseCases or Services — never from route handlers directly.
 
 ### Queue Assignment
 
-| Queue | Use For |
-|-------|---------|
-| `default` | Standard jobs (notifications, data processing) |
-| `critical` | High-priority jobs (payment processing) |
-| `scheduled` | Delayed/recurring jobs |
+| Queue       | Use For                                        |
+| ----------- | ---------------------------------------------- |
+| `default`   | Standard jobs (notifications, data processing) |
+| `critical`  | High-priority jobs (payment processing)        |
+| `scheduled` | Delayed/recurring jobs                         |
 
 ## Debugging Failed Jobs
 

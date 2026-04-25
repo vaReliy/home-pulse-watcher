@@ -3,7 +3,7 @@ import { DeviceRole } from '../types/device-role.enum.js';
 
 describe('UserDevice', () => {
   const createUserDevice = (
-    overrides?: Partial<ConstructorParameters<typeof UserDevice>[0]>
+    overrides?: Partial<ConstructorParameters<typeof UserDevice>[0]>,
   ) =>
     new UserDevice({
       userId: 'user-1',

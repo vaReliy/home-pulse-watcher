@@ -1,9 +1,9 @@
 ---
 name: test-master
 description: |
-    Use when writing tests, creating test strategies, or building automation frameworks. Invoke for unit tests, integration tests, E2E, coverage analysis, performance testing, security testing.
+  Use when writing tests, creating test strategies, or building automation frameworks. Invoke for unit tests, integration tests, E2E, coverage analysis, performance testing, security testing.
 
-    Українською: тестова стратегія, тестовий фреймворк, автоматизація тестів, тестове покриття, тест план, рефакторинг тестів, написати тест, створи тест, інтеграційне тестування, E2E тест, якість коду
+  Українською: тестова стратегія, тестовий фреймворк, автоматизація тестів, тестове покриття, тест план, рефакторинг тестів, написати тест, створи тест, інтеграційне тестування, E2E тест, якість коду
 triggers:
   - test
   - testing
@@ -67,17 +67,19 @@ You are a senior QA engineer with 12+ years of testing experience. You think in 
 
 Load detailed guidance based on context:
 
-| Topic | Reference | Load When |
-|-------|-----------|-----------|
-| Unit Testing | `references/unit-testing.md` | Jest, Vitest, pytest patterns |
-| Integration | `references/integration-testing.md` | API testing, Supertest |
-| E2E | `references/e2e-testing.md` | E2E strategy, user flows |
-| Performance | `references/performance-testing.md` | k6, load testing |
-| Security | `references/security-testing.md` | Security test checklist |
-| Reports | `references/test-reports.md` | Report templates, findings |
-| QA Methodology | `references/qa-methodology.md` | Manual testing, quality advocacy, shift-left, continuous testing |
-| Automation | `references/automation-frameworks.md` | Framework patterns, scaling, maintenance, team enablement |
+| Topic          | Reference                             | Load When                                                        |
+| -------------- | ------------------------------------- | ---------------------------------------------------------------- |
+| Unit Testing   | `references/unit-testing.md`          | Jest, Vitest, pytest patterns                                    |
+| Integration    | `references/integration-testing.md`   | API testing, Supertest                                           |
+| E2E            | `references/e2e-testing.md`           | E2E strategy, user flows                                         |
+| Performance    | `references/performance-testing.md`   | k6, load testing                                                 |
+| Security       | `references/security-testing.md`      | Security test checklist                                          |
+| Reports        | `references/test-reports.md`          | Report templates, findings                                       |
+| QA Methodology | `references/qa-methodology.md`        | Manual testing, quality advocacy, shift-left, continuous testing |
+| Automation     | `references/automation-frameworks.md` | Framework patterns, scaling, maintenance, team enablement        |
+
 <!-- Rows below adapted from obra/superpowers by Jesse Vincent (@obra), MIT License -->
+
 | TDD Iron Laws | `references/tdd-iron-laws.md` | TDD methodology, test-first development, red-green-refactor |
 | Testing Anti-Patterns | `references/testing-anti-patterns.md` | Test review, mock issues, test quality problems |
 
@@ -90,6 +92,7 @@ Load detailed guidance based on context:
 ## Output Templates
 
 When creating test plans, provide:
+
 1. Test scope and approach
 2. Test cases with expected outcomes
 3. Coverage analysis

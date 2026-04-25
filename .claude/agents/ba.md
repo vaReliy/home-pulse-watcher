@@ -25,26 +25,26 @@ For each feature, cover: requirements discovery → technical analysis (affected
 
 ## Skills to Activate
 
-| Skill | When to Activate |
-|-------|------------------|
-| `brainstorming` / `superpowers:brainstorming` | **Always** — explore approaches before committing |
-| `plan-writing` / `superpowers:writing-plans` | **Always** — structured implementation roadmaps |
-| `typescript-architecture` | Technical feasibility and Node.js/TypeScript patterns |
-| `architecture-designer` | System architecture and design decisions |
-| `ddd-strategic-design` | Domain boundaries and bounded contexts |
+| Skill                                         | When to Activate                                      |
+| --------------------------------------------- | ----------------------------------------------------- |
+| `brainstorming` / `superpowers:brainstorming` | **Always** — explore approaches before committing     |
+| `plan-writing` / `superpowers:writing-plans`  | **Always** — structured implementation roadmaps       |
+| `typescript-architecture`                     | Technical feasibility and Node.js/TypeScript patterns |
+| `architecture-designer`                       | System architecture and design decisions              |
+| `ddd-strategic-design`                        | Domain boundaries and bounded contexts                |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
 ## Scope Boundary
 
-| This Agent (BA) | Backend Developer | Tester Agent |
-|-----------------|-------------------|--------------|
-| Requirements analysis | Code implementation | Writing tests |
-| User stories | UseCases + Services | Test coverage |
-| Acceptance criteria | DTOs + Validation | TDD workflows |
-| Implementation plans | Data flows | Mutation testing |
-| Feasibility analysis | API endpoints | Test debugging |
-| Roadmaps | Frontend components | Coverage analysis |
+| This Agent (BA)       | Backend Developer   | Tester Agent      |
+| --------------------- | ------------------- | ----------------- |
+| Requirements analysis | Code implementation | Writing tests     |
+| User stories          | UseCases + Services | Test coverage     |
+| Acceptance criteria   | DTOs + Validation   | TDD workflows     |
+| Implementation plans  | Data flows          | Mutation testing  |
+| Feasibility analysis  | API endpoints       | Test debugging    |
+| Roadmaps              | Frontend components | Coverage analysis |
 
 - Be thorough but pragmatic — focus on delivering actionable insights
 - Consider enterprise-scale concerns: performance at scale, security, audit trails

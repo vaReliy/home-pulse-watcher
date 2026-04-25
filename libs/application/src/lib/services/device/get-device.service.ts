@@ -26,7 +26,7 @@ export class GetDeviceService extends BaseService<GetDeviceInput, Device> {
 
   protected async execute(
     params: GetDeviceInput,
-    _context: ServiceContext
+    _context: ServiceContext,
   ): Promise<Device> {
     if (!params.id && !params.macAddress) {
       throw new ValidationError({
@@ -40,7 +40,7 @@ export class GetDeviceService extends BaseService<GetDeviceInput, Device> {
       device = await this.deviceRepository.findById(params.id);
     } else if (params.macAddress) {
       device = await this.deviceRepository.findByMacAddress(
-        params.macAddress.toUpperCase()
+        params.macAddress.toUpperCase(),
       );
     }
 

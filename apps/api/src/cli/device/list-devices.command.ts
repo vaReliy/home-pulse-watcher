@@ -18,7 +18,7 @@ export class ListDevicesCommand extends CommandRunner {
 
   constructor(
     @Inject(SERVICE_TOKENS.LIST_DEVICES)
-    private readonly listDevicesService: ListDevicesService
+    private readonly listDevicesService: ListDevicesService,
   ) {
     super();
   }
@@ -51,7 +51,7 @@ export class ListDevicesCommand extends CommandRunner {
         'ID'.padEnd(40) +
           'MAC Address'.padEnd(20) +
           'Label'.padEnd(20) +
-          'Status'
+          'Status',
       );
       console.log('-'.repeat(100));
 
@@ -61,7 +61,7 @@ export class ListDevicesCommand extends CommandRunner {
           device.id.padEnd(40) +
             device.macAddress.padEnd(20) +
             (device.label ?? '-').padEnd(20) +
-            status
+            status,
         );
       }
 

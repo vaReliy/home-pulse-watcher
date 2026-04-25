@@ -31,10 +31,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
 **Why manual integration over nestjs-telegraf?**
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| Manual (Telegraf) | Full control, simpler DI, lighter | More boilerplate |
-| nestjs-telegraf | Decorators, scenes support | Extra dependency, opinionated |
+| Approach          | Pros                              | Cons                          |
+| ----------------- | --------------------------------- | ----------------------------- |
+| Manual (Telegraf) | Full control, simpler DI, lighter | More boilerplate              |
+| nestjs-telegraf   | Decorators, scenes support        | Extra dependency, opinionated |
 
 **Long Polling vs Webhooks:**
 
@@ -51,6 +51,7 @@ Webhooks (Production):
 ```
 
 **Configuration:**
+
 ```typescript
 if (config.useWebhook && config.webhookDomain) {
   await this.bot.telegram.setWebhook(`${config.webhookDomain}/api/telegram/webhook`);
@@ -165,12 +166,12 @@ private async withAuth(
 
 ```typescript
 // Public (no auth)
-this.bot.command('start', ctx => this.startHandler.handle(ctx));
-this.bot.command('help', ctx => this.helpHandler.handle(ctx));
+this.bot.command('start', (ctx) => this.startHandler.handle(ctx));
+this.bot.command('help', (ctx) => this.helpHandler.handle(ctx));
 
 // Protected (requires auth)
-this.bot.command('status', ctx => this.withAuth(ctx, () => this.statusHandler.handle(ctx)));
-this.bot.command('devices', ctx => this.withAuth(ctx, () => this.devicesHandler.handle(ctx)));
+this.bot.command('status', (ctx) => this.withAuth(ctx, () => this.statusHandler.handle(ctx)));
+this.bot.command('devices', (ctx) => this.withAuth(ctx, () => this.devicesHandler.handle(ctx)));
 ```
 
 **BigInt conversion flow:**
@@ -196,9 +197,7 @@ export class PowerStatusListener {
     const userDevices = await this.userDeviceRepository.findByDeviceId(event.deviceId);
 
     // 2. Format message
-    const message = event.isPowerLost
-      ? this.messageFormatter.formatPowerLost(label, event.timestamp)
-      : this.messageFormatter.formatPowerRestored(label, event.timestamp, duration);
+    const message = event.isPowerLost ? this.messageFormatter.formatPowerLost(label, event.timestamp) : this.messageFormatter.formatPowerRestored(label, event.timestamp, duration);
 
     // 3. Send to all subscribers
     await this.sendWithRateLimit(bot, message, recipients);
@@ -304,11 +303,11 @@ With escaping:
 
 **Characters to escape:**
 
-| Character | Escaped | Reason |
-|-----------|---------|--------|
-| `&` | `&amp;` | Entity prefix |
-| `<` | `&lt;` | Tag start |
-| `>` | `&gt;` | Tag end |
+| Character | Escaped | Reason        |
+| --------- | ------- | ------------- |
+| `&`       | `&amp;` | Entity prefix |
+| `<`       | `&lt;`  | Tag start     |
+| `>`       | `&gt;`  | Tag end       |
 
 ---
 
@@ -324,11 +323,9 @@ Your account has been created.`,
   NOT_REGISTERED: `You are not registered. Use /start to create an account.`,
 
   // Dynamic messages (functions)
-  DEVICE_STATUS: (label: string, status: 'ON' | 'OFF', lastSeen: string): string =>
-    `<b>${label}</b>: ${status === 'ON' ? '🟢' : '🔴'} ${status}\nLast seen: ${lastSeen}`,
+  DEVICE_STATUS: (label: string, status: 'ON' | 'OFF', lastSeen: string): string => `<b>${label}</b>: ${status === 'ON' ? '🟢' : '🔴'} ${status}\nLast seen: ${lastSeen}`,
 
-  POWER_LOST: (label: string, time: string): string =>
-    `⚡️ <b>Power Lost</b>\n\nDevice: <b>${label}</b>\nTime: ${time}`,
+  POWER_LOST: (label: string, time: string): string => `⚡️ <b>Power Lost</b>\n\nDevice: <b>${label}</b>\nTime: ${time}`,
 
   // Error messages
   ERROR_GENERIC: `Something went wrong. Please try again later.`,
@@ -409,20 +406,20 @@ async onModuleInit(): Promise<void> {
 
 ## Quick Reference: Phase 4 Files
 
-| Layer | File | Purpose |
-|-------|------|---------|
-| API | `telegram.module.ts` | NestJS module wiring |
-| API | `telegram.service.ts` | Bot lifecycle, command registration |
-| API | `telegram.config.ts` | Environment validation |
-| API | `telegram.tokens.ts` | DI tokens (BOT, CONFIG) |
-| API | `types/telegram-context.type.ts` | Extended Telegraf context |
-| API | `handlers/start.handler.ts` | `/start` - user registration |
-| API | `handlers/status.handler.ts` | `/status` - device status |
-| API | `handlers/devices.handler.ts` | `/devices` - device list |
-| API | `handlers/help.handler.ts` | `/help` - command list |
-| API | `listeners/power-status.listener.ts` | Event-driven notifications |
-| API | `formatters/message.formatter.ts` | HTML formatting with escaping |
-| API | `constants/messages.constants.ts` | i18n-ready message templates |
+| Layer | File                                 | Purpose                             |
+| ----- | ------------------------------------ | ----------------------------------- |
+| API   | `telegram.module.ts`                 | NestJS module wiring                |
+| API   | `telegram.service.ts`                | Bot lifecycle, command registration |
+| API   | `telegram.config.ts`                 | Environment validation              |
+| API   | `telegram.tokens.ts`                 | DI tokens (BOT, CONFIG)             |
+| API   | `types/telegram-context.type.ts`     | Extended Telegraf context           |
+| API   | `handlers/start.handler.ts`          | `/start` - user registration        |
+| API   | `handlers/status.handler.ts`         | `/status` - device status           |
+| API   | `handlers/devices.handler.ts`        | `/devices` - device list            |
+| API   | `handlers/help.handler.ts`           | `/help` - command list              |
+| API   | `listeners/power-status.listener.ts` | Event-driven notifications          |
+| API   | `formatters/message.formatter.ts`    | HTML formatting with escaping       |
+| API   | `constants/messages.constants.ts`    | i18n-ready message templates        |
 
 ---
 

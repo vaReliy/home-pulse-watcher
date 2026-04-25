@@ -27,8 +27,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const message =
       exception instanceof Error ? exception.message : String(exception);
-    const stack =
-      exception instanceof Error ? exception.stack : undefined;
+    const stack = exception instanceof Error ? exception.stack : undefined;
 
     this.logger.error(`Unhandled exception: ${message}`, stack);
 
