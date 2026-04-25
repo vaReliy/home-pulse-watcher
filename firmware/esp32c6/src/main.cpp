@@ -275,14 +275,20 @@ void setup() {
     // Load credentials from NVS
     if (!loadCredentials(&creds)) {
 #ifdef HAS_COMPILE_TIME_SECRETS
-        // First boot with secrets.h present — auto-provision NVS from compile-time values
-        Serial.println("NVS empty, provisioning from compile-time secrets...");
-        strncpy(creds.wifi_ssid,      WIFI_SSID,      CRED_SSID_MAX - 1);
-        strncpy(creds.wifi_password,  WIFI_PASSWORD,  CRED_PASSWORD_MAX - 1);
-        strncpy(creds.device_secret,  DEVICE_SECRET,  CRED_SECRET_MAX - 1);
-        strncpy(creds.backend_url,    BACKEND_URL,    CRED_URL_MAX - 1);
-        saveCredentials(&creds);
-        Serial.println("Credentials saved to NVS.");
+        // First boot with secrets.h present — auto-provision NVS from compile-time values.
+        // Guard: only write if all required fields are non-empty; an empty secrets.h stub
+        // would otherwise poison NVS and cause an infinite retry loop on every subsequent boot.
+        if (strlen(WIFI_SSID) > 0 && strlen(DEVICE_SECRET) > 0 && strlen(BACKEND_URL) > 0) {
+            Serial.println("NVS empty, provisioning from compile-time secrets...");
+            strncpy(creds.wifi_ssid,      WIFI_SSID,      CRED_SSID_MAX - 1);
+            strncpy(creds.wifi_password,  WIFI_PASSWORD,  CRED_PASSWORD_MAX - 1);
+            strncpy(creds.device_secret,  DEVICE_SECRET,  CRED_SECRET_MAX - 1);
+            strncpy(creds.backend_url,    BACKEND_URL,    CRED_URL_MAX - 1);
+            saveCredentials(&creds);
+            Serial.println("Credentials saved to NVS.");
+        } else {
+            Serial.println("Compile-time secrets are empty — skipping NVS write.");
+        }
 #else
         // No credentials configured — start captive portal for provisioning
         Serial.println("No credentials found. Starting captive portal...");
@@ -291,14 +297,23 @@ void setup() {
 #endif
     }
 
+    // Pre-flight: if any required field is blank (empty stub, partial NVS, or factory-reset
+    // path with a present-but-empty secrets.h), open the captive portal immediately.
+    // Avoids "SSID too long or missing!" spam and the unrecoverable 5-minute retry loop.
+    if (!credentialsAreUsable(creds)) {
+        Serial.println("Credentials incomplete — starting captive portal...");
+        startCaptivePortal(deviceMac, led);
+        // Never returns
+    }
+
     Serial.printf("WiFi SSID: %s\n", creds.wifi_ssid);
     Serial.printf("Backend URL: %s\n", creds.backend_url);
     Serial.printf("Device secret: [%d chars]\n", (int)strlen(creds.device_secret));
 
     if (!connectWiFi()) {
-        // WiFi unavailable — retry for 5 minutes before giving up.
-        // Credentials are preserved: this may be a temporary outage (router reboot, ISP hiccup).
-        // The captive portal ONLY opens when NVS is truly empty; never on a transient WiFi failure.
+        // WiFi unavailable — retry for 5 minutes. Credentials are preserved: this may be a
+        // temporary outage (router reboot, ISP hiccup). After 5 minutes, open the captive
+        // portal so the user can update credentials without requiring a USB cable.
         Serial.println("WiFi connection failed. Retrying for 5 minutes...");
         bool connected = false;
         unsigned long retryStart = millis();
@@ -308,9 +323,9 @@ void setup() {
             if (connectWiFi()) { connected = true; break; }
         }
         if (!connected) {
-            Serial.println("WiFi unavailable after 5 minutes. Restarting to retry...");
-            delay(RESTART_DELAY_MS);
-            ESP.restart();
+            Serial.println("WiFi unavailable after 5 minutes. Starting captive portal for re-provisioning...");
+            startCaptivePortal(deviceMac, led);
+            // Never returns
         }
     }
 

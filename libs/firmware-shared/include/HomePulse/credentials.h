@@ -87,4 +87,16 @@ inline void wipeCredentials() {
     prefs.end();
 }
 
+/**
+ * Returns true when the minimum required fields are present.
+ * Use as a pre-flight check before connectWiFi() — catches empty compile-time stubs
+ * and partial NVS states (e.g. after a factory reset that re-enters a broken provisioning path).
+ * password is intentionally excluded: open WiFi networks have no password.
+ */
+inline bool credentialsAreUsable(const DeviceCredentials& creds) {
+    return creds.wifi_ssid[0] != '\0'
+        && creds.device_secret[0] != '\0'
+        && creds.backend_url[0] != '\0';
+}
+
 #endif  // HOMEPULSE_CREDENTIALS_H

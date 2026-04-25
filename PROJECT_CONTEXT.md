@@ -164,10 +164,18 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 **Development shortcut:** If `include/secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty). Subsequent builds do not need `secrets.h`; credentials persist.
 
+**Boot invariant — portal opens when:**
+
+- NVS is empty AND `secrets.h` is absent (`!HAS_COMPILE_TIME_SECRETS`)
+- NVS is empty AND `secrets.h` is present but any required field (`WIFI_SSID`, `DEVICE_SECRET`, `BACKEND_URL`) is an empty string — blank stubs are detected and skipped at write time, then `credentialsAreUsable()` catches the blank struct and opens the portal immediately
+- Any required credential is missing after NVS load (partial write, NVS corruption)
+- WiFi fails to connect for 5 minutes (stale SSID/password; field-recoverable without USB)
+- Factory reset (BOOT button 10 s) → wipe NVS → reboot → portal via empty-credentials path
+
 **WiFi retry (transient failures):**
 
-- If credentials exist but WiFi is unreachable (router down, ISP issue), the device retries every 5 s for 5 minutes, then reboots to retry again
-- The captive portal is **never** opened automatically when credentials exist — only via explicit factory reset
+- If credentials exist but WiFi is unreachable (router down, ISP issue), the device retries every 5 s for 5 minutes
+- After 5 minutes, opens captive portal for re-provisioning (instead of rebooting into the same loop)
 
 **Factory reset:**
 
