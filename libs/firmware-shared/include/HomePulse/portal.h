@@ -65,24 +65,52 @@ static void handleCaptiveRedirect() {
 
 /**
  * Scan WiFi networks and return JSON array.
- * Format: [{"ssid":"Name","rssi":-60,"secure":true}, ...]
- * Sorted by signal strength (strongest first).
+ * Format: [{"ssid":"Name"}, ...] — sorted by signal strength (strongest first),
+ * de-duplicated (keeps strongest entry per SSID), hidden networks omitted.
  */
 static void handleScan() {
     int n = WiFi.scanNetworks();
-    String json = "[";
-    if (n > 0) {
-        for (int i = 0; i < n; i++) {
-            if (i > 0) json += ",";
-            String ssid = WiFi.SSID(i);
-            // Escape quotes and backslashes in SSID to produce valid JSON
-            ssid.replace("\\", "\\\\");
-            ssid.replace("\"", "\\\"");
-            bool secure = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-            json += "{\"ssid\":\"" + ssid + "\",\"rssi\":" +
-                    String(WiFi.RSSI(i)) + ",\"secure\":" +
-                    (secure ? "true" : "false") + "}";
+
+    // Max scan results we'll process (typical AP scan returns ≤20)
+    const int MAX_SCAN = 32;
+    int count = (n < MAX_SCAN) ? n : MAX_SCAN;
+
+    // Build index array sorted by RSSI descending (insertion sort — small n, already partially ordered)
+    int indices[MAX_SCAN];
+    for (int i = 0; i < count; i++) indices[i] = i;
+    for (int i = 1; i < count; i++) {
+        int key = indices[i];
+        int j = i - 1;
+        while (j >= 0 && WiFi.RSSI(indices[j]) < WiFi.RSSI(key)) {
+            indices[j + 1] = indices[j];
+            j--;
         }
+        indices[j + 1] = key;
+    }
+
+    // Iterate sorted, skip hidden and duplicate SSIDs
+    String seen[MAX_SCAN];
+    int seenCount = 0;
+    String json = "[";
+    bool first = true;
+
+    for (int ii = 0; ii < count; ii++) {
+        int i = indices[ii];
+        String ssid = WiFi.SSID(i);
+        if (ssid.length() == 0) continue;  // hidden network
+
+        bool duplicate = false;
+        for (int s = 0; s < seenCount; s++) {
+            if (seen[s] == ssid) { duplicate = true; break; }
+        }
+        if (duplicate) continue;
+        seen[seenCount++] = ssid;
+
+        ssid.replace("\\", "\\\\");
+        ssid.replace("\"", "\\\"");
+        if (!first) json += ",";
+        json += "{\"ssid\":\"" + ssid + "\"}";
+        first = false;
     }
     json += "]";
     _webServer.sendHeader("Cache-Control", "no-cache");
@@ -90,37 +118,70 @@ static void handleScan() {
 }
 
 /**
+ * Return stored credential metadata for portal pre-fill.
+ * Format: {"ssid":"...","url":"...","hasSecret":true|false}
+ * The device secret is never included — only its presence is advertised.
+ */
+static void handleConfig() {
+    DeviceCredentials creds;
+    loadCredentials(&creds);
+    Serial.printf("[Portal] /config: ssid=%u url=%u hasSecret=%d\n",
+        (unsigned)strlen(creds.wifi_ssid),
+        (unsigned)strlen(creds.backend_url),
+        creds.device_secret[0] != '\0');
+    String json = buildConfigJson(creds);
+    _webServer.sendHeader("Cache-Control", "no-cache");
+    _webServer.send(200, "application/json", json);
+}
+
+/**
  * Handle POST /save — persist credentials to NVS and reboot.
- * Expected form fields: ssid, password, secret, url
+ * Expected form fields: ssid, password, secret (optional if stored), url (optional if stored)
+ *
+ * If secret or url are omitted/blank and a value already exists in NVS,
+ * the existing value is kept — enabling re-provisioning without re-entering them.
  */
 static void handleSave() {
     if (!_webServer.hasArg("ssid") || _webServer.arg("ssid").isEmpty()) {
         _webServer.send(400, "text/plain", "Missing ssid");
         return;
     }
-    if (!_webServer.hasArg("secret") || _webServer.arg("secret").isEmpty()) {
+
+    // Load existing NVS values first so we can carry forward unchanged fields
+    DeviceCredentials existing;
+    loadCredentials(&existing);
+
+    DeviceCredentials submitted;
+    memset(&submitted, 0, sizeof(submitted));
+
+    _webServer.arg("ssid").toCharArray(submitted.wifi_ssid,      CRED_SSID_MAX);
+    _webServer.arg("password").toCharArray(submitted.wifi_password, CRED_PASSWORD_MAX);
+
+    bool secretProvided = _webServer.hasArg("secret") && !_webServer.arg("secret").isEmpty();
+    bool urlProvided    = _webServer.hasArg("url")    && !_webServer.arg("url").isEmpty();
+
+    if (secretProvided)
+        _webServer.arg("secret").toCharArray(submitted.device_secret, CRED_SECRET_MAX);
+    if (urlProvided)
+        _webServer.arg("url").toCharArray(submitted.backend_url, CRED_URL_MAX);
+
+    DeviceCredentials merged = mergeSubmittedCredentials(existing, submitted, secretProvided, urlProvided);
+
+    if (merged.device_secret[0] == '\0') {
         _webServer.send(400, "text/plain", "Missing secret");
         return;
     }
-    if (!_webServer.hasArg("url") || _webServer.arg("url").isEmpty()) {
+    if (merged.backend_url[0] == '\0') {
         _webServer.send(400, "text/plain", "Missing url");
         return;
     }
 
-    DeviceCredentials creds;
-    memset(&creds, 0, sizeof(creds));
-
-    _webServer.arg("ssid").toCharArray(creds.wifi_ssid,      CRED_SSID_MAX);
-    _webServer.arg("password").toCharArray(creds.wifi_password, CRED_PASSWORD_MAX);
-    _webServer.arg("secret").toCharArray(creds.device_secret, CRED_SECRET_MAX);
-    _webServer.arg("url").toCharArray(creds.backend_url,      CRED_URL_MAX);
-
-    if (!saveCredentials(&creds)) {
+    if (!saveCredentials(&merged)) {
         _webServer.send(500, "text/plain", "Failed to save credentials");
         return;
     }
 
-    Serial.printf("[Portal] Credentials saved for SSID: %s\n", creds.wifi_ssid);
+    Serial.printf("[Portal] Credentials saved for SSID: %s\n", merged.wifi_ssid);
     _webServer.send(200, "text/plain",
         "Credentials saved! Device is rebooting and will connect to " +
         _webServer.arg("ssid") + ".");
@@ -165,6 +226,7 @@ inline void startCaptivePortal(const String& deviceMac, Adafruit_NeoPixel& led) 
     // Register HTTP routes
     _webServer.on("/",          HTTP_GET,  handleRoot);
     _webServer.on("/scan",      HTTP_GET,  handleScan);
+    _webServer.on("/config",    HTTP_GET,  handleConfig);
     _webServer.on("/save",      HTTP_POST, handleSave);
 
     // Captive portal detection endpoints used by various OSes

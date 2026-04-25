@@ -9,6 +9,13 @@
 - Fixed boot resilience: device now immediately starts captive portal AP when any required credential (SSID, secret, URL) is blank, instead of looping with "SSID too long or missing!" until a 5-minute timeout and reboot (which reproduced the same broken state). Added compile-time empty-stub guard to prevent blank `secrets.h` values from being written to NVS.
 - After 5 minutes of failed WiFi retries, device now opens captive portal instead of rebooting (field-recoverable without a USB cable).
 - Added `credentialsAreUsable()` helper to `credentials.h` and 6 Unity tests in `test/test_credentials/` covering all missing-field combinations.
+- Captive portal UX improvements: network list now shows SSID name only (no RSSI/secured), sorted by signal strength with hidden and duplicate networks filtered out.
+- Portal pre-fills backend URL and current SSID from NVS on page load via new `GET /config` endpoint; device secret presence is indicated with a masked placeholder so users can re-provision without re-entering unchanged values.
+- Added `× Clear` buttons on secret and URL fields for explicit rotation; submitting the unchanged masked placeholder keeps the existing NVS secret.
+- Added `mergeSubmittedCredentials()` and `buildConfigJson()` pure helpers to `credentials.h`; upgraded `Preferences` test mock to an in-memory map; extended test suite to 46 Unity tests covering merge, JSON encoding, and NVS round-trip.
+- Fixed autofill regression: compile-time `secrets.h` provisioning now writes each non-empty field individually (`applyCompileTimeSecrets()` helper). Previously, an empty `WIFI_SSID` blocked the entire NVS write even when `DEVICE_SECRET` and `BACKEND_URL` were defined, leaving the captive portal with blank fields. Added 3 Unity tests for the new helper.
+- Added diagnostic `Serial.printf` in `GET /config` handler reporting NVS field lengths and `hasSecret` — enables on-device confirmation without logging the secret value.
+- Added show/hide password eye toggle (👁/🔒) on the WiFi password field for easier provisioning.
 
 ### v3.4.0 — Wi-Fi Provisioning (Phase 5.4)
 

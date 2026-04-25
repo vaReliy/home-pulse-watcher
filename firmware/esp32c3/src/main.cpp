@@ -278,16 +278,12 @@ void setup() {
         // First boot with secrets.h present — auto-provision NVS from compile-time values.
         // Guard: only write if all required fields are non-empty; an empty secrets.h stub
         // would otherwise poison NVS and cause an infinite retry loop on every subsequent boot.
-        if (strlen(WIFI_SSID) > 0 && strlen(DEVICE_SECRET) > 0 && strlen(BACKEND_URL) > 0) {
-            Serial.println("NVS empty, provisioning from compile-time secrets...");
-            strncpy(creds.wifi_ssid,      WIFI_SSID,      CRED_SSID_MAX - 1);
-            strncpy(creds.wifi_password,  WIFI_PASSWORD,  CRED_PASSWORD_MAX - 1);
-            strncpy(creds.device_secret,  DEVICE_SECRET,  CRED_SECRET_MAX - 1);
-            strncpy(creds.backend_url,    BACKEND_URL,    CRED_URL_MAX - 1);
+        if (applyCompileTimeSecrets(creds, WIFI_SSID, WIFI_PASSWORD, DEVICE_SECRET, BACKEND_URL)) {
+            Serial.println("Provisioning NVS from compile-time secrets (partial fields allowed)...");
             saveCredentials(&creds);
             Serial.println("Credentials saved to NVS.");
         } else {
-            Serial.println("Compile-time secrets are empty — skipping NVS write.");
+            Serial.println("secrets.h fully empty — skipping NVS write.");
         }
 #else
         // No credentials configured — start captive portal for provisioning

@@ -162,12 +162,20 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Captive portal at `http://192.168.4.1/` — user enters WiFi SSID/password, device secret, backend URL
 - On save: credentials written to NVS → device reboots → connects as normal STA
 
-**Development shortcut:** If `include/secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty). Subsequent builds do not need `secrets.h`; credentials persist.
+**Portal UX (re-provisioning):**
+
+- `GET /config` returns `{"ssid":"...","url":"...","hasSecret":true|false}` — SSID and URL pre-fill the form; secret presence is advertised but the secret value is never sent to the browser.
+- Network list (`GET /scan`) shows SSID names only, sorted by signal strength, de-duplicated.
+- Submitting blank secret keeps the existing NVS secret (rotation: type a new value to overwrite). Same fallback applies to URL.
+
+**Development shortcut:** If `include/secrets.h` exists at compile time, its non-empty fields are written to NVS on the first boot (per-field via `applyCompileTimeSecrets()`). Leaving `WIFI_SSID` blank while setting `DEVICE_SECRET` + `BACKEND_URL` is valid: the captive portal autofills those two and the user only needs to enter WiFi creds. Fully empty stubs are ignored. Subsequent builds do not need `secrets.h`; credentials persist.
+
+**`GET /config` diagnostic:** Handler logs `ssid=<len> url=<len> hasSecret=<0|1>` to serial — use this to confirm NVS state without exposing secret values.
 
 **Boot invariant — portal opens when:**
 
 - NVS is empty AND `secrets.h` is absent (`!HAS_COMPILE_TIME_SECRETS`)
-- NVS is empty AND `secrets.h` is present but any required field (`WIFI_SSID`, `DEVICE_SECRET`, `BACKEND_URL`) is an empty string — blank stubs are detected and skipped at write time, then `credentialsAreUsable()` catches the blank struct and opens the portal immediately
+- NVS is empty AND `secrets.h` is present but fully empty — blank stubs produce no NVS write; `credentialsAreUsable()` then catches the blank struct and opens the portal immediately
 - Any required credential is missing after NVS load (partial write, NVS corruption)
 - WiFi fails to connect for 5 minutes (stale SSID/password; field-recoverable without USB)
 - Factory reset (BOOT button 10 s) → wipe NVS → reboot → portal via empty-credentials path

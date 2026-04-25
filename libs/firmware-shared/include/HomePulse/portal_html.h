@@ -40,6 +40,9 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
   .btn-sm:active{background:#3a3a3a}
   .toggle{font-size:12px;color:#2a7aff;margin-top:6px;cursor:pointer;
           display:inline-block;text-decoration:underline}
+  .field-header{display:flex;justify-content:space-between;align-items:baseline;margin-top:16px}
+  .field-header label{margin-top:0}
+  .clear-btn{font-size:12px;color:#2a7aff;cursor:pointer;text-decoration:underline}
   button[type=submit]{width:100%;margin-top:28px;padding:15px;
     border-radius:10px;border:none;background:#2a7aff;color:#fff;
     font-size:17px;font-weight:600;cursor:pointer;letter-spacing:.3px}
@@ -52,6 +55,12 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
   .status-ok{background:#1a3a1a;border:1px solid #2a6a2a;color:#80f780}
   .divider{border:none;border-top:1px solid #222;margin:24px 0}
   .hint{font-size:11px;color:#555;margin-top:5px}
+  .pw-wrap{position:relative}
+  .pw-wrap input{padding-right:42px}
+  .pw-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+             background:none;border:none;color:#555;cursor:pointer;
+             font-size:18px;padding:4px;line-height:1}
+  .pw-toggle:hover{color:#aaa}
 </style>
 </head>
 <body>
@@ -76,22 +85,32 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
          maxlength="32" autocorrect="off" autocapitalize="none">
 
   <label for="password">WiFi Password</label>
-  <input type="password" id="password" name="password"
-         placeholder="Leave blank for open networks" maxlength="64">
+  <div class="pw-wrap">
+    <input type="password" id="password" name="password"
+           placeholder="Leave blank for open networks" maxlength="64">
+    <button type="button" class="pw-toggle" onclick="togglePw(this,'password')" title="Show password">&#128065;</button>
+  </div>
 
   <hr class="divider">
 
-  <label for="secret">Device Secret</label>
+  <div class="field-header">
+    <label for="secret">Device Secret</label>
+    <span id="secret-clear" class="clear-btn" onclick="clearField('secret')" style="display:none">&#x2715; Clear</span>
+  </div>
   <input type="text" id="secret" name="secret" required
          placeholder="64-char HMAC key from backend" maxlength="64"
          autocomplete="off" autocorrect="off" autocapitalize="none"
          spellcheck="false">
-  <p class="hint">Obtain from the HomePulse admin CLI: list-devices</p>
+  <p id="secret-hint" class="hint">Obtain from the HomePulse admin CLI: list-devices</p>
 
-  <label for="url">Backend URL</label>
+  <div class="field-header">
+    <label for="url">Backend URL</label>
+    <span id="url-clear" class="clear-btn" onclick="clearField('url')" style="display:none">&#x2715; Clear</span>
+  </div>
   <input type="url" id="url" name="url" required
          placeholder="http://your-server/api/device-status"
          maxlength="128">
+  <p class="hint" id="url-hint" style="display:none">Edit to point the device at a different backend.</p>
 
   <div id="status"></div>
   <button type="submit" id="save-btn">Save &amp; Connect</button>
@@ -99,6 +118,16 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
 
 <script>
 var manualMode = false;
+var storedSsid = '';
+var SECRET_PLACEHOLDER = '••••••••';
+
+function togglePw(btn, id) {
+  var inp = document.getElementById(id);
+  var nowVisible = inp.type === 'text';
+  inp.type = nowVisible ? 'password' : 'text';
+  btn.textContent = nowVisible ? '👁' : '🔒';
+  btn.title = nowVisible ? 'Show password' : 'Hide password';
+}
 
 function showStatus(msg, cls) {
   var el = document.getElementById('status');
@@ -118,11 +147,21 @@ function addOption(sel, value, text) {
   sel.appendChild(opt);
 }
 
+function selectStoredSsid(sel) {
+  if (!storedSsid) return;
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === storedSsid) {
+      sel.selectedIndex = i;
+      return;
+    }
+  }
+}
+
 function doScan() {
   var sel = document.getElementById('ssid-select');
   clearSelect(sel);
-  addOption(sel, '', 'Scanning\u2026');
-  showStatus('Scanning for networks\u2026', 'status-info');
+  addOption(sel, '', 'Scanning…');
+  showStatus('Scanning for networks…', 'status-info');
   fetch('/scan')
     .then(function(r){ return r.json(); })
     .then(function(nets) {
@@ -133,9 +172,9 @@ function doScan() {
         return;
       }
       nets.forEach(function(n) {
-        var label = n.ssid + ' (' + n.rssi + ' dBm)' + (n.secure ? ' [secured]' : '');
-        addOption(sel, n.ssid, label);
+        addOption(sel, n.ssid, n.ssid);
       });
+      selectStoredSsid(sel);
       document.getElementById('status').style.display = 'none';
     })
     .catch(function() {
@@ -143,6 +182,41 @@ function doScan() {
       addOption(sel, '', 'Scan failed');
       showStatus('Scan failed. Check connection to HomePulse-Setup AP.', 'status-error');
     });
+}
+
+function loadConfig() {
+  fetch('/config')
+    .then(function(r){ return r.json(); })
+    .then(function(c) {
+      if (c.url) {
+        document.getElementById('url').value = c.url;
+        document.getElementById('url-clear').style.display = '';
+        document.getElementById('url-hint').style.display = '';
+      }
+      if (c.ssid) {
+        storedSsid = c.ssid;
+        selectStoredSsid(document.getElementById('ssid-select'));
+      }
+      if (c.hasSecret) {
+        var secretEl = document.getElementById('secret');
+        secretEl.value = SECRET_PLACEHOLDER;
+        secretEl.removeAttribute('required');
+        secretEl.addEventListener('focus', function onFirstFocus() {
+          if (secretEl.value === SECRET_PLACEHOLDER) secretEl.value = '';
+          secretEl.removeEventListener('focus', onFirstFocus);
+        });
+        document.getElementById('secret-clear').style.display = '';
+        document.getElementById('secret-hint').textContent =
+          'Leave unchanged to keep current secret, or type a new one to rotate.';
+      }
+    })
+    .catch(function() {});
+}
+
+function clearField(id) {
+  document.getElementById(id).value = '';
+  document.getElementById(id).focus();
+  document.getElementById(id + '-clear').style.display = 'none';
 }
 
 function toggleManual() {
@@ -165,14 +239,18 @@ function doSave(e) {
     return;
   }
 
+  var secretVal = document.getElementById('secret').value.trim();
+  // Bullet placeholder means "keep existing" — send empty so server falls back to NVS
+  if (secretVal === SECRET_PLACEHOLDER) secretVal = '';
+
   var btn = document.getElementById('save-btn');
   btn.disabled = true;
-  showStatus('Saving credentials\u2026', 'status-info');
+  showStatus('Saving credentials…', 'status-info');
 
   var data = new URLSearchParams();
   data.append('ssid',     ssid);
   data.append('password', document.getElementById('password').value);
-  data.append('secret',   document.getElementById('secret').value.trim());
+  data.append('secret',   secretVal);
   data.append('url',      document.getElementById('url').value.trim());
 
   fetch('/save', { method: 'POST', body: data,
@@ -192,8 +270,9 @@ function doSave(e) {
 window.onload = function() {
   var sel = document.getElementById('ssid-select');
   clearSelect(sel);
-  addOption(sel, '', 'Scanning\u2026');
+  addOption(sel, '', 'Scanning…');
   doScan();
+  loadConfig();
 };
 </script>
 </body>
