@@ -10,8 +10,8 @@
   "permissions": {
     "deny": [
       "Read(./.env)",
-      "Read(./firmware/esp32c3/include/secret.h)",
-      "Read(./firmware/esp32c6/include/secret.h)"
+      "Read(./firmware/esp32c3/include/secrets.h)",
+      "Read(./firmware/esp32c6/include/secrets.h)"
     ]
   },
   "model": "opusplan",
