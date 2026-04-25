@@ -29,7 +29,7 @@
 | Bot        | Telegraf (manual NestJS integration)                                                                                                             |
 | Testing    | Jest 30 + SWC compiler                                                                                                                           |
 | CLI        | nest-commander                                                                                                                                   |
-| Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6                                                                                                      |
+| Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6; shared headers in `libs/firmware-shared/` (8 modules); Unity/Native tests via `pio test -e native`  |
 | Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                |
 | AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher |
 
@@ -111,6 +111,7 @@ Implemented Feb 19, 2026 to eliminate "Grid Flapping" (see [Historical Context](
 - Check interval: 200 ms (`CHECK_INTERVAL_MS`)
 - No software spike tolerance — the 0.1 µF ceramic cap on the voltage divider filters high-frequency noise at the hardware level
 - Confirmation time: ~400 ms (was ~1 s in V2.1)
+- Logic extracted to `HomePulse::debounceTick()` in `libs/firmware-shared/include/HomePulse/debounce.h` (pure, host-testable)
 
 #### Layer 3 — Firmware Cooldown & Heartbeat (V3.1)
 
@@ -226,6 +227,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 | Admin Guide      | [`docs/admin-guide.md`](docs/admin-guide.md)                               | Device provisioning, hardware wiring, troubleshooting |
 | CLI Reference    | [`docs/cli-reference.md`](docs/cli-reference.md)                           | All nest-commander commands with flags and exit codes |
 | Flashing Guide   | [`firmware/docs/FLASHING_GUIDE.md`](firmware/docs/FLASHING_GUIDE.md)       | PlatformIO build, upload, serial monitor              |
+| Firmware Testing | [`firmware/docs/TESTING.md`](firmware/docs/TESTING.md)                     | Unity/native test setup and adding new test suites    |
 | HW: Standard     | [`docs/hardware/standard.md`](docs/hardware/standard.md)                   | V2.1 wiring, voltage divider, ADC calibration         |
 | HW: UPS Edition  | [`docs/hardware/ups.md`](docs/hardware/ups.md)                             | V2.3 battery backup, OR-gate, isolated sensor         |
 
@@ -268,7 +270,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 ## Firmware Version Tracking
 
-- Current firmware version: **3.4.0** (both ESP32-C3 and ESP32-C6)
+- Current firmware version: **3.5.0** (both ESP32-C3 and ESP32-C6)
 - Defined in `FIRMWARE_VERSION` constant in each `config.h`
 - Devices report `firmwareVersion` in the JSON body of every status ping
 - Devices with `HAS_UPS_MODULE true` also report `batteryVoltage` in the JSON body

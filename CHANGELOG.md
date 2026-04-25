@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.5.0 — Firmware Refactoring & Quality Assurance (Phase 5.5)
+
+- Extracted `sendPowerStatus` payload/signature building into `libs/firmware-shared/include/HomePulse/telemetry.h`.
+- Extracted debounce state machine into `libs/firmware-shared/include/HomePulse/debounce.h`.
+- Added Unity/Native unit tests under `libs/firmware-shared/test/` covering Battery, Power, Debounce, Security, Telemetry.
+- Both `main.cpp` files reduced from ~530 to ≤400 lines.
+
 ### v3.4.0 — Wi-Fi Provisioning (Phase 5.4)
 
 Removed hardcoded credentials from firmware. All credentials (WiFi SSID/password, device secret, backend URL) are now stored in NVS flash and configured at runtime via a captive portal. On first boot (or after factory reset), the device starts as an open AP named `HomePulse-Setup-XXXX` (last 4 hex chars of MAC) and serves a configuration UI at `http://192.168.4.1/`. After the user saves credentials, the device reboots and connects as a normal STA.

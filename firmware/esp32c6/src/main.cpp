@@ -44,6 +44,9 @@
 #include <HomePulse/reset.h>
 #include <HomePulse/SecurityUtils.h>
 #include <HomePulse/PowerUtils.h>
+#include <HomePulse/telemetry.h>
+#include <HomePulse/telemetry_http.h>
+#include <HomePulse/debounce.h>
 #if HAS_UPS_MODULE
 #include <HomePulse/BatteryUtils.h>
 #endif
@@ -72,8 +75,7 @@ static unsigned long lastSosTime = 0;      // Last SOS ping timestamp (for coold
 #endif
 
 // Confirmation state (2 consecutive reads to confirm)
-static int consecutiveNewState = 0;        // Consecutive reads of a new state
-static int pendingStatus = POWER_STATUS_UNKNOWN;  // What that new state is (UNKNOWN = none)
+static HomePulse::DebounceState debounceState{POWER_STATUS_ON, HomePulse::kDebounceIdle, 0};
 
 // Messaging state (decoupled from internal state)
 static unsigned long lastSendTime = 0;     // Last successful HTTP send
@@ -221,71 +223,44 @@ bool sendPowerStatus(int status, int adcValue) {
         return false;
     }
 
-    // Get current timestamp
     time_t timestamp;
     time(&timestamp);
-
     if (timestamp < MIN_VALID_EPOCH) {
         Serial.println("Invalid timestamp - NTP not synced");
         return false;
     }
 
-    // Build payload for HMAC: "MAC:TIMESTAMP:STATUS"
-    char payload[HMAC_PAYLOAD_BUFFER];
-    snprintf(payload, sizeof(payload), "%s:%lu:%d",
-             deviceMac.c_str(), (unsigned long)timestamp, status);
+    HomePulse::PowerStatusReport report{
+        deviceMac,
+        static_cast<uint8_t>(status),
+        adcValue,
+#if HAS_UPS_MODULE
+        lastBatteryAdcValue,
+        true,
+#else
+        -1,
+        false,
+#endif
+        timestamp
+    };
 
-    // Compute signature
-    String signature = HomePulse::calculateSignature(String(payload), creds.device_secret);
+    String sigInput  = HomePulse::buildSignatureInput(report);
+    String signature = HomePulse::calculateSignature(sigInput, creds.device_secret);
+    String body      = HomePulse::buildPowerStatusPayload(report);
 
     Serial.printf("Sending status: %d\n", status);
     Serial.printf("Timestamp: %lu\n", (unsigned long)timestamp);
-    Serial.printf("Payload: %s\n", payload);
+    Serial.printf("SigInput: %s\n", sigInput.c_str());
 
-    // Send HTTP POST request
-    HTTPClient http;
-    // DEV: HTTP (local development) — active by default
-    http.begin(client, creds.backend_url);
-    // PROD: HTTPS — uncomment below, comment above
-    // http.begin(secureClient, BACKEND_URL);
-    http.setTimeout(HTTP_TIMEOUT_MS);
-
-    // Set headers
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("X-Device-Mac", deviceMac.c_str());
-    http.addHeader("X-Timestamp", String((unsigned long)timestamp));
-    http.addHeader("X-Signature", signature);
-
-    // Build JSON body (voltage and firmwareVersion are informational, not part of HMAC payload)
-    char body[JSON_BODY_BUFFER];
-#if HAS_UPS_MODULE
-    snprintf(body, sizeof(body),
-        "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\",\"batteryVoltage\":%d}",
-        status, adcValue, FIRMWARE_VERSION, lastBatteryAdcValue);
-#else
-    snprintf(body, sizeof(body),
-        "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\"}",
-        status, adcValue, FIRMWARE_VERSION);
-#endif
-
-    // Send request
-    setLedColor(led, 0, 0, 255);  // Blue during request
-    int httpCode = http.POST(body);
+    // Blue during request
+    setLedColor(led, 0, 0, 255);
+    HomePulse::HttpResult result = HomePulse::postSignedPayload(
+        client, creds.backend_url, body, signature, deviceMac, timestamp, HTTP_TIMEOUT_MS);
     updateStatusLed(led, status);
 
-    if (httpCode > 0) {
-        String response = http.getString();
-        Serial.printf("HTTP %d: %s\n", httpCode, response.c_str());
-        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
-            http.end();
-            return true;
-        }
-    } else {
-        Serial.printf("HTTP Error: %s\n", http.errorToString(httpCode).c_str());
-    }
+    Serial.printf("HTTP %d: %s\n", result.statusCode, result.body.c_str());
 
-    http.end();
-    return false;
+    return result.statusCode == HTTP_CODE_OK || result.statusCode == HTTP_CODE_CREATED;
 }
 
 void setup() {
@@ -358,6 +333,7 @@ void setup() {
     // Read initial status and send
     lastAdcValue = readAdcAverage();
     lastPowerStatus = HomePulse::computePowerStatus(lastAdcValue, HomePulse::kPowerStatusUnknown);
+    debounceState.committed = lastPowerStatus;  // Sync debounce committed state with actual initial reading
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(led, lastPowerStatus);
 
@@ -434,51 +410,30 @@ void loop() {
         const char* adcBand = (lastAdcValue >= ADC_THRESHOLD_HIGH) ? ">HIGH" :
                               (lastAdcValue <= ADC_THRESHOLD_LOW)  ? "<LOW"  : "HYSTERESIS";
 
-        if (resolvedStatus != lastPowerStatus) {
-            // Status differs — start/continue confirmation
-            if (resolvedStatus == pendingStatus) {
-                consecutiveNewState++;
-            } else {
-                pendingStatus = resolvedStatus;
-                consecutiveNewState = 1;
-            }
+        HomePulse::DebounceDecision decision =
+            HomePulse::debounceTick(debounceState, resolvedStatus, CONFIRMATION_READS);
 
-            Serial.printf("Confirm %d->%d: %d/%d (ADC: %d [%s])\n",
-                lastPowerStatus, resolvedStatus, consecutiveNewState, CONFIRMATION_READS,
-                lastAdcValue, adcBand);
+        if (decision.transition) {
+            Serial.printf("State confirmed: %d -> %d (ADC: %d [%s])\n",
+                lastPowerStatus, decision.newCommitted, lastAdcValue, adcBand);
+            lastPowerStatus = decision.newCommitted;
+            updateStatusLed(led, lastPowerStatus);
 
-            if (consecutiveNewState >= CONFIRMATION_READS) {
-                // State confirmed — always update internal state and LED
-                Serial.printf("State confirmed: %d -> %d (ADC: %d [%s])\n",
-                    lastPowerStatus, pendingStatus, lastAdcValue, adcBand);
-                lastPowerStatus = pendingStatus;
-                updateStatusLed(led, lastPowerStatus);
-
-                // Reset confirmation
-                pendingStatus = POWER_STATUS_UNKNOWN;
-                consecutiveNewState = 0;
-
-                // Send HTTP only if cooldown elapsed
-                if (currentTime - lastSendTime >= MIN_STATE_CHANGE_MS) {
-                    if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
-                        lastSendTime = currentTime;
-                        Serial.println("Status update sent successfully");
-                    } else {
-                        Serial.println("Failed to send status update, heartbeat will resync");
-                    }
+            if (currentTime - lastSendTime >= MIN_STATE_CHANGE_MS) {
+                if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
+                    lastSendTime = currentTime;
+                    Serial.println("Status update sent successfully");
                 } else {
-                    Serial.printf("Cooldown active (%lums since last send), state updated locally\n",
-                        currentTime - lastSendTime);
+                    Serial.println("Failed to send status update, heartbeat will resync");
                 }
+            } else {
+                Serial.printf("Cooldown active (%lums since last send), state updated locally\n",
+                    currentTime - lastSendTime);
             }
-        } else {
-            // Status matches confirmed state — reset any pending confirmation
-            if (pendingStatus != POWER_STATUS_UNKNOWN) {
-                Serial.printf("Pending state %d cleared (ADC: %d [%s])\n",
-                    pendingStatus, lastAdcValue, adcBand);
-                pendingStatus = POWER_STATUS_UNKNOWN;
-                consecutiveNewState = 0;
-            }
+        } else if (debounceState.pending != HomePulse::kDebounceIdle) {
+            Serial.printf("Confirm %d->%d: %d/%d (ADC: %d [%s])\n",
+                lastPowerStatus, debounceState.pending, debounceState.consecutive, CONFIRMATION_READS,
+                lastAdcValue, adcBand);
         }
     }
 

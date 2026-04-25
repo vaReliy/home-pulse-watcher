@@ -264,10 +264,10 @@ This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 
   - [x] 5.2: Telegram UX/UI Upgrade — Interactive Reply/Inline keyboards and stateless Settings menu
   - [x] 5.3: Observability — Structured JSON logging (pino), health checks, and startup env validation
   - [x] 5.4: Wi-Fi Provisioning — Captive portal AP and NVS-based storage; 10s factory reset logic
-  - [ ] 5.5: Firmware Refactoring & Quality Assurance
+  - [x] 5.5: Firmware Refactoring & Quality Assurance
     - [x] Modularize `main.cpp`: HMAC, Battery, Voltage, Portal, Reset, LED extracted to `libs/firmware-shared/include/HomePulse/`
-    - [ ] Modularize remaining concerns: `sendPowerStatus` (HTTP/JSON) and debounce state machine
-    - [ ] Unit Testing: Implement Unity/Native tests for core logic (no-hardware required tests)
+    - [x] Modularize remaining concerns: `sendPowerStatus` (HTTP/JSON) and debounce state machine
+    - [x] Unit Testing: Implement Unity/Native tests for core logic (no-hardware required tests)
     - [x] Code Parity: Shared via PlatformIO `lib_extra_dirs = ../../libs/firmware-shared`
   - [ ] 5.6: OTA Updates (Secure Remote Delivery)
     - [ ] Binary Hosting: Setup Google Cloud Storage with local `firmware/bin` mirror for dev
