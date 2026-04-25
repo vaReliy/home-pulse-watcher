@@ -6,10 +6,7 @@
     "nx@nx-claude-plugins": true,
     "superpowers@superpowers-marketplace": true
   },
-  "enabledMcpjsonServers": [
-    "context7",
-    "github"
-  ],
+  "enabledMcpjsonServers": ["context7", "github"],
   "permissions": {
     "deny": [
       "Read(./.env)",
@@ -24,12 +21,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "docker compose exec app npx eslint . --fix --quiet",
+            "command": "npx eslint . --fix --quiet",
             "statusMessage": "Fixing ESLint issues..."
           },
           {
             "type": "command",
-            "command": "docker compose exec app npx prettier --write . --log-level warn",
+            "command": "npx prettier --write . --log-level warn",
             "statusMessage": "Formatting code with Prettier..."
           }
         ]
