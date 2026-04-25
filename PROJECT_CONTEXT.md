@@ -272,4 +272,4 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
 
-**Firmware hosting** (future Phase 5.5 OTA): Firmware binaries will be stored on Google Cloud Storage (Always Free tier).
+**Firmware hosting** (future Phase 5.6 OTA): Firmware binaries will be stored on Google Cloud Storage (Always Free tier). Release metadata (version, sha256, channel, board type) tracked in a Prisma `Release` model. See `docs/adr/0001-ota-update-architecture.md`.

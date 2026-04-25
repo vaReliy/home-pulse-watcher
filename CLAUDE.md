@@ -21,6 +21,7 @@ You DO:
 - Read agent reports and decide the next step.
 - Ask the user for clarification when requirements are ambiguous.
 - Synthesize final answers from agent outputs.
+- If request involves files in firmware/, always adopt the embedded-cpp-pro persona.
 
 See @.claude/rules/workflow.md → "Orchestrator Tool Policy" for the hard tool limits.
 
@@ -28,6 +29,7 @@ See @.claude/rules/workflow.md → "Orchestrator Tool Policy" for the hard tool 
 
 - Prefer Skills over repeating rules. TypeScript/Node: `typescript-pro`, `typescript-architecture`. Testing: `vitest-testing`, `test-master`. Frontend: `vue-expert`, `react-expert`, `angular-expert`. DevOps: `devops`, `docker-expert`, `github-actions`. Architecture: `architecture-designer`, `ddd-strategic-design`. Debugging/Security: `debugging-wizard`, `security-reviewer`.
 - On-demand rules (agents load as needed): @.claude/rules/architecture.md, @.claude/rules/validation-authorization.md, @.claude/rules/migrations-queue.md, @.claude/rules/mcp-stack.md, @.claude/rules/testing.md, @.claude/rules/docker-commands.md.
+- Embedded Expert: `embedded-cpp-pro`. Focus: PlatformIO environment, ESP32-C3/C6 architecture, non-blocking code, Arduino framework best practices, memory optimization (heap vs stack), and hardware abstraction layers.
 
 ## IMPORTANT
 
