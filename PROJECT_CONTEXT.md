@@ -324,9 +324,18 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Bucket: `home-pulse-ota-releases` (Always Free tier)
 - Metadata only — binary upload and device→release linking not yet implemented
 
+**Storage Layer (Task 2, Complete)**
+
+- `IFirmwareStorageService` interface (core port) + `GcsService` adapter (infrastructure) wired via NestJS DI
+- Authentication: `GCP_SERVICE_ACCOUNT_KEY` env var (JSON) or application default credentials fallback (Cloud Run Workload Identity)
+- Bucket: `GCS_BUCKET_NAME` env var (required)
+- Binary upload: buffer-based with `ifGenerationMatch: 0` (prevents silent overwrites)
+- Signed URLs: V4 format, 15-minute TTL
+- Error translation: GCS 404 → `NotFoundError`, 403 → permission denied, etc.
+
 **Still pending** _(ADR pending — will document OTA architecture decisions once additional OTA endpoint & device upgrade linking is complete)_:
 
-- GCS binary upload via admin CLI
+- `PrismaFirmwareReleaseRepository` DI wiring in `repository.providers.ts`
 - `/api/ota/check` endpoint (device queries current release for its board type + channel)
 - Device → Release linking for tracking upgrade status
 - Firmware rollback protection

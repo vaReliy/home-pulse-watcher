@@ -13,6 +13,7 @@ import { AllExceptionsFilter } from '../filters/all-exceptions.filter';
 import { ServiceExceptionFilter } from '../filters/service-exception.filter';
 import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.interceptor';
 import { HealthModule } from '../modules/health/health.module';
+import { StorageModule } from '../modules/storage/storage.module';
 
 const isProduction = process.env['NODE_ENV'] === 'production';
 
@@ -52,6 +53,7 @@ const isProduction = process.env['NODE_ENV'] === 'production';
     ServicesModule,
     DeviceStatusModule,
     TelegramModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [

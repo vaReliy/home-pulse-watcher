@@ -1,6 +1,8 @@
 # Changelog
 
-## Phase 5.6 — OTA Release Metadata Layer (in progress)
+## Phase 5.6 — OTA Release Metadata & Storage Layer (in progress)
+
+### Task 1 — Release Metadata
 
 - Added `FirmwareRelease` Prisma model with fields: `version`, `boardType`, `channel`, `checksum`, `gcsPath`, `isCritical`, `createdAt`.
 - Created `BoardType` enum in core lib: `ESP32_C3`, `ESP32_C6`.
@@ -8,7 +10,16 @@
 - Implemented `IFirmwareReleaseRepository` interface and `PrismaFirmwareReleaseRepository` with Prisma error translation.
 - Added `FirmwareReleaseMapper` for entity-to-ORM conversions.
 - Cloud Storage bucket: `home-pulse-ota-releases` (Always Free tier).
-- Pending: GCS binary upload, OTA check endpoint, device→release upgrade linking.
+
+### Task 2 — GCS Integration
+
+- Added `IFirmwareStorageService` interface in libs/core (port for binary upload and URL generation).
+- Implemented `GcsService` in libs/infrastructure: upload-by-buffer with `ifGenerationMatch: 0` (prevents overwrites), V4 signed URL generation (15-minute TTL).
+- Added `withGcsError` wrapper mapping GCS HTTP codes to domain errors (`404` → `NotFoundError`, `403` → permission error).
+- Wired `StorageModule` in apps/api via NestJS DI with application default credentials (ADC) or service account key JSON auth.
+- Added `GCS_BUCKET_NAME` to required env vars; optional `GCP_SERVICE_ACCOUNT_KEY` JSON validation at startup.
+
+**Pending**: `PrismaFirmwareReleaseRepository` DI wiring in `repository.providers.ts`, OTA check endpoint, device→release upgrade linking.
 
 ## v3.5.0 — Firmware Refactoring & Quality Assurance (Phase 5.5)
 

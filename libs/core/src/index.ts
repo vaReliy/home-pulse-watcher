@@ -11,6 +11,9 @@ export { UserDevice } from './lib/entities/user-device.entity.js';
 export { PowerEvent } from './lib/entities/power-event.entity.js';
 export { FirmwareRelease } from './lib/entities/firmware-release.entity.js';
 
+// Service Interfaces
+export type { IFirmwareStorageService } from './lib/services/index.js';
+
 // Repository Interfaces
 export type { IUserRepository } from './lib/repositories/user.repository.interface.js';
 export type { IDeviceRepository } from './lib/repositories/device.repository.interface.js';

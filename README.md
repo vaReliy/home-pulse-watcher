@@ -270,8 +270,8 @@ This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 
     - [x] Unit Testing: Implement Unity/Native tests for core logic (no-hardware required tests)
     - [x] Code Parity: Shared via PlatformIO `lib_extra_dirs = ../../libs/firmware-shared`
   - [ ] 5.6: OTA Updates (Secure Remote Delivery)
-    - [ ] Binary Hosting: Setup Google Cloud Storage with local `firmware/bin` mirror for dev
-    - [ ] Release Management: Prisma-based Release DB to track versions, checksums, and stability
+    - [x] Binary Hosting: GCS integration — `GcsService` (upload + V4 signed URLs), `StorageModule` DI wiring
+    - [x] Release Management: Prisma-based `FirmwareRelease` DB to track versions, checksums, and stability
     - [ ] Secure Service: Backend endpoint for update checks with HMAC-signed validation
     - [ ] Firmware Logic: `httpUpdate` integration with white LED status and auto-rollback protection
     - [ ] Admin Tools: Implementation of `device:upgrade` CLI command

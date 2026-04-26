@@ -10,6 +10,9 @@ export { PrismaUserDeviceRepository } from './lib/persistence/user-device.reposi
 export { PrismaPowerEventRepository } from './lib/persistence/power-event.repository.js';
 export { PrismaFirmwareReleaseRepository } from './lib/persistence/firmware-release.repository.js';
 
+// Storage
+export { GcsService } from './lib/storage/index.js';
+
 // Mappers
 export { mapPrismaUserToEntity } from './lib/mappers/user.mapper.js';
 export { mapPrismaDeviceToEntity } from './lib/mappers/device.mapper.js';

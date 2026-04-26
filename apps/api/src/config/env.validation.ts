@@ -3,6 +3,11 @@ interface RequiredVar {
   validate?: (value: string) => string | null;
 }
 
+interface OptionalVar {
+  name: string;
+  validate: (value: string) => string | null;
+}
+
 const REQUIRED_VARS: RequiredVar[] = [
   { name: 'DATABASE_URL' },
   {
@@ -11,6 +16,30 @@ const REQUIRED_VARS: RequiredVar[] = [
       /^[0-9a-f]{64}$/i.test(value)
         ? null
         : 'must be exactly 64 hex characters (32 bytes for AES-256-GCM)',
+  },
+  { name: 'GCS_BUCKET_NAME' },
+];
+
+const OPTIONAL_VARS: OptionalVar[] = [
+  {
+    name: 'GCP_SERVICE_ACCOUNT_KEY',
+    validate: (value) => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        return 'must be valid JSON';
+      }
+      if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        !('client_email' in parsed) ||
+        !('private_key' in parsed)
+      ) {
+        return 'must be a service account JSON containing client_email and private_key';
+      }
+      return null;
+    },
   },
 ];
 
@@ -29,6 +58,16 @@ export function validateEnv(): void {
       continue;
     }
     if (validate) {
+      const validationError = validate(value);
+      if (validationError) {
+        errors.push(`${name}: ${validationError}`);
+      }
+    }
+  }
+
+  for (const { name, validate } of OPTIONAL_VARS) {
+    const value = process.env[name];
+    if (value) {
       const validationError = validate(value);
       if (validationError) {
         errors.push(`${name}: ${validationError}`);
