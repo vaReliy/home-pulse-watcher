@@ -50,15 +50,14 @@ export class PrismaFirmwareReleaseRepository
 
   async findLatestForBoard(
     boardType: BoardType,
-    channel: ReleaseChannel,
-  ): Promise<FirmwareRelease | null> {
-    const row = await withPrismaError('FirmwareRelease', () =>
-      this.prisma.firmwareRelease.findFirst({
-        where: { boardType, channel },
-        orderBy: { createdAt: 'desc' },
+    channels: ReleaseChannel[],
+  ): Promise<FirmwareRelease[]> {
+    const rows = await withPrismaError('FirmwareRelease', () =>
+      this.prisma.firmwareRelease.findMany({
+        where: { boardType, channel: { in: channels } },
       }),
     );
-    return row ? mapPrismaFirmwareReleaseToEntity(row) : null;
+    return rows.map(mapPrismaFirmwareReleaseToEntity);
   }
 
   async markCritical(id: string): Promise<FirmwareRelease> {

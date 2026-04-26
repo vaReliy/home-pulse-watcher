@@ -19,7 +19,15 @@
 - Wired `StorageModule` in apps/api via NestJS DI with application default credentials (ADC) or service account key JSON auth.
 - Added `GCS_BUCKET_NAME` to required env vars; optional `GCP_SERVICE_ACCOUNT_KEY` JSON validation at startup.
 
-**Pending**: `PrismaFirmwareReleaseRepository` DI wiring in `repository.providers.ts`, OTA check endpoint, device→release upgrade linking.
+### Task 3 — OTA Discovery API
+
+- Implemented `POST /api/ota/check` endpoint — HMAC-SHA256 authenticated via `@HmacCanonical()` decorator (pluggable canonicalization: deviceId or MAC).
+- Channel waterfall logic: `STABLE` returns only stable releases, `BETA` returns beta + stable, `ALPHA` returns all channels.
+- Semantic version comparison using `semver` library — returns only releases newer than device's current version.
+- Response structure: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`.
+- Device firmware calls endpoint with deviceId/MAC, current version, channel, and HMAC signature; signed response includes GCS V4 download URL with 15-minute TTL.
+
+**Pending**: Device→release upgrade status linking, firmware rollback protection.
 
 ## v3.5.0 — Firmware Refactoring & Quality Assurance (Phase 5.5)
 

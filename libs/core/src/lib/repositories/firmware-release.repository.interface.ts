@@ -20,7 +20,7 @@ export interface IFirmwareReleaseRepository {
   ): Promise<FirmwareRelease | null>;
   findLatestForBoard(
     boardType: BoardType,
-    channel: ReleaseChannel,
-  ): Promise<FirmwareRelease | null>;
+    channels: ReleaseChannel[],
+  ): Promise<FirmwareRelease[]>;
   markCritical(id: string): Promise<FirmwareRelease>;
 }

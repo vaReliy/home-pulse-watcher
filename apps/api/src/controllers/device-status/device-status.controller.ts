@@ -8,10 +8,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import type { ProcessPowerStatusService } from '@home-pulse-watcher/application';
-import { HmacAuthGuard } from '../../guards/hmac-auth.guard';
-import { DeviceId } from '../../decorators/device-context.decorator';
-import { SERVICE_TOKENS } from '../../modules/services/service.tokens';
-import { ReportStatusDto } from './dto/report-status.dto';
+import { HmacAuthGuard } from '../../guards/hmac-auth.guard.js';
+import { DeviceId } from '../../decorators/device-context.decorator.js';
+import { HmacCanonical } from '../../decorators/hmac-canonical.decorator.js';
+import { SERVICE_TOKENS } from '../../modules/services/service.tokens.js';
+import { ReportStatusDto } from './dto/report-status.dto.js';
 
 /**
  * Controller for device power status reporting.
@@ -38,6 +39,7 @@ export class DeviceStatusController {
    */
   @Post('status')
   @HttpCode(HttpStatus.OK)
+  @HmacCanonical((b) => String(b['status'] ?? ''))
   async reportStatus(
     @Body() dto: ReportStatusDto,
     @DeviceId() deviceId: string,

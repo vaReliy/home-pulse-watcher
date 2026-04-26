@@ -4,9 +4,10 @@ import {
   PrismaDeviceRepository,
   PrismaUserDeviceRepository,
   PrismaPowerEventRepository,
+  PrismaFirmwareReleaseRepository,
 } from '@home-pulse-watcher/infrastructure';
-import { PrismaService } from '../prisma/prisma.service';
-import { REPOSITORY_TOKENS } from './repository.tokens';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { REPOSITORY_TOKENS } from './repository.tokens.js';
 
 export const repositoryProviders: Provider[] = [
   {
@@ -29,6 +30,12 @@ export const repositoryProviders: Provider[] = [
     provide: REPOSITORY_TOKENS.POWER_EVENT,
     useFactory: (prisma: PrismaService) =>
       new PrismaPowerEventRepository(prisma),
+    inject: [PrismaService],
+  },
+  {
+    provide: REPOSITORY_TOKENS.FIRMWARE_RELEASE,
+    useFactory: (prisma: PrismaService) =>
+      new PrismaFirmwareReleaseRepository(prisma),
     inject: [PrismaService],
   },
 ];

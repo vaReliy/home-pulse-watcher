@@ -1,5 +1,6 @@
 import * as crypto from 'node:crypto';
 import { ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
 import {
@@ -7,6 +8,7 @@ import {
   AuthenticationErrorCode,
   encryptDeviceSecret,
 } from '@home-pulse-watcher/shared';
+import type { CanonicalBuilder } from '../decorators/hmac-canonical.decorator.js';
 import { HmacAuthGuard } from './hmac-auth.guard';
 
 describe('HmacAuthGuard', () => {
@@ -39,10 +41,28 @@ describe('HmacAuthGuard', () => {
     existsByMacAddress: jest.fn(),
   });
 
+  /** Returns a Reflector with no @HmacCanonical metadata — guard will throw. Use only for tests that fail before the builder step. */
+  const createMissingReflector = (): Reflector => {
+    const reflector = new Reflector();
+    jest.spyOn(reflector, 'get').mockReturnValue(undefined);
+    return reflector;
+  };
+
+  /** Returns a Reflector that supplies a custom @HmacCanonical builder. */
+  const createCanonicalReflector = (builder: CanonicalBuilder): Reflector => {
+    const reflector = new Reflector();
+    jest.spyOn(reflector, 'get').mockReturnValue(builder);
+    return reflector;
+  };
+
+  /** Status-based builder matching the device-status route canonical: MAC:TS:status */
+  const statusBuilder: CanonicalBuilder = (b) => String(b['status'] ?? '');
+  const createStatusReflector = () => createCanonicalReflector(statusBuilder);
+
   const createMockRequest = (
     overrides: Partial<{
       headers: Record<string, string | undefined>;
-      body: { status?: number };
+      body: Record<string, unknown>;
     }> = {},
   ): Request => {
     const headers = overrides.headers ?? {};
@@ -57,6 +77,7 @@ describe('HmacAuthGuard', () => {
       switchToHttp: () => ({
         getRequest: () => request,
       }),
+      getHandler: () => ({}),
     }) as unknown as ExecutionContext;
 
   const generateValidSignature = (
@@ -81,7 +102,7 @@ describe('HmacAuthGuard', () => {
   describe('missing credentials', () => {
     it('should throw MISSING_CREDENTIALS if X-Device-Mac header missing', async () => {
       const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const request = createMockRequest({
         headers: {
@@ -101,7 +122,7 @@ describe('HmacAuthGuard', () => {
 
     it('should throw MISSING_CREDENTIALS if X-Timestamp header missing', async () => {
       const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const request = createMockRequest({
         headers: {
@@ -118,7 +139,7 @@ describe('HmacAuthGuard', () => {
 
     it('should throw MISSING_CREDENTIALS if X-Signature header missing', async () => {
       const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const request = createMockRequest({
         headers: {
@@ -135,7 +156,7 @@ describe('HmacAuthGuard', () => {
 
     it('should throw MISSING_CREDENTIALS if all headers missing', async () => {
       const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const request = createMockRequest({ headers: {} });
       const context = createMockContext(request);
@@ -149,7 +170,7 @@ describe('HmacAuthGuard', () => {
   describe('timestamp validation', () => {
     it('should throw EXPIRED_TIMESTAMP if timestamp is too old (>5 min)', async () => {
       const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       // Timestamp from 10 minutes ago
       const oldTimestamp = Math.floor(Date.now() / 1000) - 600;
@@ -169,7 +190,7 @@ describe('HmacAuthGuard', () => {
 
     it('should throw EXPIRED_TIMESTAMP if timestamp is in future (>5 min)', async () => {
       const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       // Timestamp 10 minutes in the future
       const futureTimestamp = Math.floor(Date.now() / 1000) + 600;
@@ -189,7 +210,7 @@ describe('HmacAuthGuard', () => {
 
     it('should throw INVALID_CREDENTIALS if timestamp is not a number', async () => {
       const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const request = createMockRequest({
         headers: {
@@ -208,7 +229,7 @@ describe('HmacAuthGuard', () => {
     it('should accept timestamp within 5 minute tolerance', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000) - 100); // 100 seconds ago (within tolerance)
       const signature = generateValidSignature(
@@ -236,7 +257,7 @@ describe('HmacAuthGuard', () => {
     it('should throw DEVICE_NOT_FOUND if device does not exist', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(null);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       const request = createMockRequest({
@@ -256,7 +277,7 @@ describe('HmacAuthGuard', () => {
     it('should normalize MAC address to uppercase for lookup', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(null);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       const request = createMockRequest({
@@ -282,7 +303,7 @@ describe('HmacAuthGuard', () => {
     it('should throw INVALID_SIGNATURE if signature is wrong', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       const request = createMockRequest({
@@ -303,7 +324,7 @@ describe('HmacAuthGuard', () => {
     it('should throw INVALID_SIGNATURE for different status value', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       // Sign with status=1 but send status=0
@@ -332,7 +353,7 @@ describe('HmacAuthGuard', () => {
     it('should throw INVALID_SIGNATURE for different MAC in payload', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       // Sign with different MAC
@@ -363,7 +384,7 @@ describe('HmacAuthGuard', () => {
     it('should return true on valid authentication', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       const signature = generateValidSignature(
@@ -390,7 +411,7 @@ describe('HmacAuthGuard', () => {
     it('should attach deviceId to request on success', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       const signature = generateValidSignature(
@@ -420,7 +441,7 @@ describe('HmacAuthGuard', () => {
     it('should handle lowercase MAC in header (normalize to uppercase)', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       // Signature is computed with uppercase MAC (normalized)
@@ -448,7 +469,7 @@ describe('HmacAuthGuard', () => {
     it('should handle missing body status (empty string in payload)', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       // Signature with empty status
@@ -474,13 +495,123 @@ describe('HmacAuthGuard', () => {
     });
   });
 
+  describe('@HmacCanonical missing decorator', () => {
+    it('should throw Error if route has no @HmacCanonical decorator', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(mockDevice);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'AA:BB:CC:DD:EE:FF',
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+        body: { status: 1 },
+      });
+      const context = createMockContext(request);
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        'Route missing @HmacCanonical decorator',
+      );
+    });
+  });
+
+  describe('@HmacCanonical custom builder', () => {
+    const otaBuilder: CanonicalBuilder = (body) =>
+      `${body['boardType']}:${body['currentVersion']}:${body['channel']}`;
+
+    const generateOtaSignature = (
+      mac: string,
+      timestamp: string,
+      bodyPart: string,
+      secret: string,
+    ): string => {
+      const payload = `${mac}:${timestamp}:${bodyPart}`;
+      return crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    };
+
+    it('should accept valid signature built by custom @HmacCanonical builder', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(mockDevice);
+      const guard = new HmacAuthGuard(
+        repo,
+        createCanonicalReflector(otaBuilder),
+      );
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const body = {
+        boardType: 'esp32c3',
+        currentVersion: '1.0.0',
+        channel: 'STABLE',
+      };
+      const bodyPart = otaBuilder(body);
+      const signature = generateOtaSignature(
+        'AA:BB:CC:DD:EE:FF',
+        timestamp,
+        bodyPart,
+        deviceSecret,
+      );
+
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'AA:BB:CC:DD:EE:FF',
+          'x-timestamp': timestamp,
+          'x-signature': signature,
+        },
+        body,
+      });
+      const context = createMockContext(request);
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+    });
+
+    it('should reject signature built with default status field when custom builder is active', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(mockDevice);
+      const guard = new HmacAuthGuard(
+        repo,
+        createCanonicalReflector(otaBuilder),
+      );
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const body = {
+        boardType: 'esp32c3',
+        currentVersion: '1.0.0',
+        channel: 'STABLE',
+      };
+      // Deliberately sign with the default path (body.status) instead of custom builder
+      const signature = generateValidSignature(
+        'AA:BB:CC:DD:EE:FF',
+        timestamp,
+        '',
+        deviceSecret,
+      );
+
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'AA:BB:CC:DD:EE:FF',
+          'x-timestamp': timestamp,
+          'x-signature': signature,
+        },
+        body,
+      });
+      const context = createMockContext(request);
+
+      await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code: AuthenticationErrorCode.INVALID_SIGNATURE,
+      });
+    });
+  });
+
   describe('encryption key issues', () => {
     it('should throw Error if DEVICE_SECRET_ENCRYPTION_KEY not configured', async () => {
       delete process.env['DEVICE_SECRET_ENCRYPTION_KEY'];
 
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       const request = createMockRequest({
@@ -505,7 +636,7 @@ describe('HmacAuthGuard', () => {
 
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
-      const guard = new HmacAuthGuard(repo);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
 
       const timestamp = String(Math.floor(Date.now() / 1000));
       const request = createMockRequest({

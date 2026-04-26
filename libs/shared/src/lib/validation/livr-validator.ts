@@ -4,6 +4,7 @@ import {
   hmacFormatRule,
   powerStatusRule,
   telegramIdRule,
+  semverVersionRule,
 } from './custom-rules/index.js';
 
 /** LIVR validation rules schema type */
@@ -40,6 +41,7 @@ class LivrValidatorFactory {
       hmacFormat: hmacFormatRule(),
       powerStatus: powerStatusRule(),
       telegramId: telegramIdRule(),
+      semverVersion: semverVersionRule(),
     });
 
     // Enable auto-trim for all string inputs

@@ -333,9 +333,15 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Signed URLs: V4 format, 15-minute TTL
 - Error translation: GCS 404 → `NotFoundError`, 403 → permission denied, etc.
 
+**OTA Discovery API (Task 3, Complete)**
+
+- `POST /api/ota/check` endpoint — HMAC-SHA256 authenticated, device queries latest release for its board type + channel
+  - Channel waterfall: `STABLE` → `[STABLE]`, `BETA` → `[BETA, STABLE]`, `ALPHA` → `[ALPHA, BETA, STABLE]`
+  - Semantic version comparison (returns only releases > current device version)
+  - Response: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`
+  - Guard decorator: `@HmacCanonical()` pluggable (supports both deviceId/MAC canonicalization)
+
 **Still pending** _(ADR pending — will document OTA architecture decisions once additional OTA endpoint & device upgrade linking is complete)_:
 
-- `PrismaFirmwareReleaseRepository` DI wiring in `repository.providers.ts`
-- `/api/ota/check` endpoint (device queries current release for its board type + channel)
 - Device → Release linking for tracking upgrade status
 - Firmware rollback protection

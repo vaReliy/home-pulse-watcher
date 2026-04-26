@@ -2,7 +2,10 @@
 export { PowerStatus } from './lib/types/power-status.enum.js';
 export { DeviceRole } from './lib/types/device-role.enum.js';
 export { BoardType } from './lib/types/board-type.enum.js';
-export { ReleaseChannel } from './lib/types/release-channel.enum.js';
+export {
+  ReleaseChannel,
+  channelsVisibleTo,
+} from './lib/types/release-channel.enum.js';
 
 // Entities
 export { User } from './lib/entities/user.entity.js';

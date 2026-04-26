@@ -14,6 +14,7 @@ import { ServiceExceptionFilter } from '../filters/service-exception.filter';
 import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.interceptor';
 import { HealthModule } from '../modules/health/health.module';
 import { StorageModule } from '../modules/storage/storage.module';
+import { OtaModule } from '../modules/ota/ota.module';
 
 const isProduction = process.env['NODE_ENV'] === 'production';
 
@@ -54,6 +55,7 @@ const isProduction = process.env['NODE_ENV'] === 'production';
     DeviceStatusModule,
     TelegramModule,
     StorageModule,
+    OtaModule,
   ],
   controllers: [AppController],
   providers: [

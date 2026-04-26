@@ -3,4 +3,5 @@ export const REPOSITORY_TOKENS = {
   DEVICE: Symbol('IDeviceRepository'),
   USER_DEVICE: Symbol('IUserDeviceRepository'),
   POWER_EVENT: Symbol('IPowerEventRepository'),
+  FIRMWARE_RELEASE: Symbol('IFirmwareReleaseRepository'),
 } as const;

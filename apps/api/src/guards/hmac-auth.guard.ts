@@ -6,6 +6,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { IDeviceRepository } from '@home-pulse-watcher/core';
 import {
@@ -13,7 +14,11 @@ import {
   AuthenticationErrorCode,
   decryptDeviceSecret,
 } from '@home-pulse-watcher/shared';
-import { REPOSITORY_TOKENS } from '../modules/repositories/repository.tokens';
+import { REPOSITORY_TOKENS } from '../modules/repositories/repository.tokens.js';
+import {
+  HMAC_CANONICAL_KEY,
+  type CanonicalBuilder,
+} from '../decorators/hmac-canonical.decorator.js';
 
 /** Timestamp tolerance in seconds (5 minutes) */
 const TIMESTAMP_TOLERANCE_SECONDS = 300;
@@ -26,7 +31,10 @@ const TIMESTAMP_TOLERANCE_SECONDS = 300;
  * - X-Timestamp: Unix timestamp in seconds
  * - X-Signature: HMAC-SHA256 signature (64-char hex)
  *
- * Signature is computed as: HMAC-SHA256(secret, MAC:TIMESTAMP:STATUS)
+ * Signature is computed as: HMAC-SHA256(secret, MAC:TIMESTAMP:<route-specific-body>)
+ * where the body portion is defined per-route via the {@link HmacCanonical} decorator.
+ * Every route protected by this guard MUST declare `@HmacCanonical(...)` — omitting it
+ * causes the guard to throw an error at request time to prevent silent signature weakening.
  */
 @Injectable()
 export class HmacAuthGuard implements CanActivate {
@@ -35,6 +43,7 @@ export class HmacAuthGuard implements CanActivate {
   constructor(
     @Inject(REPOSITORY_TOKENS.DEVICE)
     private readonly deviceRepository: IDeviceRepository,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -111,9 +120,18 @@ export class HmacAuthGuard implements CanActivate {
     }
 
     // 5. Compute expected signature
-    const body = request.body as { status?: number };
-    const status = body?.status ?? '';
-    const payload = `${normalizedMac}:${timestamp}:${status}`;
+    const body = request.body as Record<string, unknown>;
+    const builder = this.reflector.get<CanonicalBuilder | undefined>(
+      HMAC_CANONICAL_KEY,
+      context.getHandler(),
+    );
+    if (!builder) {
+      throw new Error(
+        'Route missing @HmacCanonical decorator — HMAC body canonical undefined',
+      );
+    }
+    const bodyPart = builder(body);
+    const payload = `${normalizedMac}:${timestamp}:${bodyPart}`;
 
     const expectedSignature = crypto
       .createHmac('sha256', deviceSecret)

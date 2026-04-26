@@ -11,4 +11,5 @@ export const SERVICE_TOKENS = {
   ROTATE_DEVICE_SECRET: Symbol('RotateDeviceSecretService'),
   UNLINK_DEVICE_FROM_USER: Symbol('UnlinkDeviceFromUserService'),
   LIST_USERS: Symbol('ListUsersService'),
+  CHECK_OTA_UPDATE: Symbol('CheckOtaUpdateService'),
 } as const;

@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { RepositoriesModule } from '../repositories/repositories.module';
+import { StorageModule } from '../storage/storage.module.js';
 import { serviceProviders } from './service.providers';
 import { SERVICE_TOKENS } from './service.tokens';
 
 @Module({
-  imports: [RepositoriesModule],
+  imports: [RepositoriesModule, StorageModule],
   providers: serviceProviders,
   exports: [...Object.values(SERVICE_TOKENS)],
 })

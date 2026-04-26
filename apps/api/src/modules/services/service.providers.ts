@@ -4,6 +4,8 @@ import type {
   IUserRepository,
   IUserDeviceRepository,
   IPowerEventRepository,
+  IFirmwareReleaseRepository,
+  IFirmwareStorageService,
 } from '@home-pulse-watcher/core';
 import {
   RegisterDeviceService,
@@ -18,11 +20,13 @@ import {
   UpdateDeviceService,
   DeleteDeviceService,
   RotateDeviceSecretService,
+  CheckOtaUpdateService,
 } from '@home-pulse-watcher/application';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { REPOSITORY_TOKENS } from '../repositories/repository.tokens';
-import { SERVICE_TOKENS } from './service.tokens';
-import { AsyncEventEmitterAdapter } from './async-event-emitter.adapter';
+import { REPOSITORY_TOKENS } from '../repositories/repository.tokens.js';
+import { STORAGE_TOKENS } from '../storage/storage.tokens.js';
+import { SERVICE_TOKENS } from './service.tokens.js';
+import { AsyncEventEmitterAdapter } from './async-event-emitter.adapter.js';
 
 export const serviceProviders: Provider[] = [
   {
@@ -127,5 +131,16 @@ export const serviceProviders: Provider[] = [
     provide: SERVICE_TOKENS.LIST_USERS,
     useFactory: (userRepo: IUserRepository) => new ListUsersService(userRepo),
     inject: [REPOSITORY_TOKENS.USER],
+  },
+  {
+    provide: SERVICE_TOKENS.CHECK_OTA_UPDATE,
+    useFactory: (
+      firmwareRepo: IFirmwareReleaseRepository,
+      storage: IFirmwareStorageService,
+    ) => new CheckOtaUpdateService(firmwareRepo, storage),
+    inject: [
+      REPOSITORY_TOKENS.FIRMWARE_RELEASE,
+      STORAGE_TOKENS.FIRMWARE_STORAGE,
+    ],
   },
 ];

@@ -58,6 +58,13 @@ export {
   type ListUsersOutput,
 } from './user/list-users.service.js';
 
+// OTA services
+export {
+  CheckOtaUpdateService,
+  type CheckOtaUpdateInput,
+  type CheckOtaUpdateOutput,
+} from './ota/index.js';
+
 // Power event services
 export {
   ProcessPowerStatusService,
