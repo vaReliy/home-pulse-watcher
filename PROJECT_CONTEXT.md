@@ -8,13 +8,13 @@
 
 **HomePulse Watcher** is a DIY, high-reliability IoT system that monitors household mains power and delivers instant Telegram alerts to users.
 
-| Field             | Value                                         |
-| ----------------- | --------------------------------------------- |
-| Current phase     | **Phase 5 — Production Hardening**            |
-| Active devices    | 2 (real users, live data)                     |
-| Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)     |
-| Codebase maturity | MVP — no legacy concerns; DB can be recreated |
-| Stack type        | Nx monorepo, NestJS, Prisma, ESP32 firmware   |
+| Field             | Value                                                |
+| ----------------- | ---------------------------------------------------- |
+| Current phase     | **Phase 5 — Production Hardening** (5.6 in progress) |
+| Active devices    | 2 (real users, live data)                            |
+| Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)            |
+| Codebase maturity | MVP — no legacy concerns; DB can be recreated        |
+| Stack type        | Nx monorepo, NestJS, Prisma, ESP32 firmware          |
 
 ---
 
@@ -293,4 +293,40 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
 
-**Firmware hosting** (future Phase 5.6 OTA): Firmware binaries will be stored on Google Cloud Storage (Always Free tier). Release metadata (version, sha256, channel, board type) tracked in a Prisma `Release` model. See `docs/adr/0001-ota-update-architecture.md`.
+### OTA Release Metadata (Phase 5.6 — in progress)
+
+**Prisma Model: `FirmwareRelease`**
+
+| Field        | Type      | Purpose                                                                     |
+| ------------ | --------- | --------------------------------------------------------------------------- |
+| `id`         | String    | Primary key (UUID)                                                          |
+| `version`    | String    | Semantic version (e.g., "3.5.0")                                            |
+| `boardType`  | BoardType | Target hardware: `ESP32_C3` or `ESP32_C6`                                   |
+| `channel`    | Channel   | Release stability: `ALPHA`, `BETA`, or `STABLE`                             |
+| `checksum`   | String    | SHA256 hex digest of the binary                                             |
+| `gcsPath`    | String    | Cloud Storage path (e.g., `gs://home-pulse-ota-releases/esp32c3/3.5.0.bin`) |
+| `isCritical` | Boolean   | Marks security/stability-critical releases requiring forced upgrade         |
+| `createdAt`  | DateTime  | Metadata creation timestamp                                                 |
+
+**TypeScript Enums (libs/core)**
+
+- `BoardType`: `ESP32_C3 = 'esp32c3'`, `ESP32_C6 = 'esp32c6'`
+- `ReleaseChannel`: `ALPHA`, `BETA`, `STABLE`
+
+**Infrastructure**
+
+- `IFirmwareReleaseRepository` interface in Core layer
+- `PrismaFirmwareReleaseRepository` implementation in Infrastructure (with `withPrismaError()` wrapper)
+- `FirmwareReleaseMapper` for Prisma ↔ Entity conversions
+
+**Cloud Storage**
+
+- Bucket: `home-pulse-ota-releases` (Always Free tier)
+- Metadata only — binary upload and device→release linking not yet implemented
+
+**Still pending** _(ADR pending — will document OTA architecture decisions once additional OTA endpoint & device upgrade linking is complete)_:
+
+- GCS binary upload via admin CLI
+- `/api/ota/check` endpoint (device queries current release for its board type + channel)
+- Device → Release linking for tracking upgrade status
+- Firmware rollback protection

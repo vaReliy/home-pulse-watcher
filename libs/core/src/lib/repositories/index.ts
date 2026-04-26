@@ -5,3 +5,7 @@ export type {
   IPowerEventRepository,
   PowerEventQueryOptions,
 } from './power-event.repository.interface.js';
+export type {
+  IFirmwareReleaseRepository,
+  CreateFirmwareReleaseInput,
+} from './firmware-release.repository.interface.js';

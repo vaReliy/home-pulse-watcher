@@ -1,5 +1,15 @@
 # Changelog
 
+## Phase 5.6 — OTA Release Metadata Layer (in progress)
+
+- Added `FirmwareRelease` Prisma model with fields: `version`, `boardType`, `channel`, `checksum`, `gcsPath`, `isCritical`, `createdAt`.
+- Created `BoardType` enum in core lib: `ESP32_C3`, `ESP32_C6`.
+- Created `ReleaseChannel` enum in core lib: `ALPHA`, `BETA`, `STABLE`.
+- Implemented `IFirmwareReleaseRepository` interface and `PrismaFirmwareReleaseRepository` with Prisma error translation.
+- Added `FirmwareReleaseMapper` for entity-to-ORM conversions.
+- Cloud Storage bucket: `home-pulse-ota-releases` (Always Free tier).
+- Pending: GCS binary upload, OTA check endpoint, device→release upgrade linking.
+
 ## v3.5.0 — Firmware Refactoring & Quality Assurance (Phase 5.5)
 
 - Extracted `sendPowerStatus` payload/signature building into `libs/firmware-shared/include/HomePulse/telemetry.h`.

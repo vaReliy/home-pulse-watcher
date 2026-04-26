@@ -59,3 +59,17 @@ model PowerEvent {
 
   @@index([deviceId, timestamp])
 }
+
+model FirmwareRelease {
+  id         String   @id @default(uuid())
+  version    String   // SemVer string, ≤20 chars
+  boardType  String   // 'esp32c3' | 'esp32c6'
+  channel    String   // 'ALPHA' | 'BETA' | 'STABLE'
+  checksum   String   @unique // SHA-256 hex (64 chars)
+  gcsPath    String   @unique // path inside home-pulse-ota-releases GCS bucket
+  isCritical Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([version, boardType])
+  @@index([boardType, channel, createdAt(sort: Desc)])
+}
