@@ -40,6 +40,7 @@
 #include "config.h"
 #include <HomePulse/credentials.h>
 #include <HomePulse/led.h>
+#include <HomePulse/ota.h>
 #include <HomePulse/portal.h>
 #include <HomePulse/reset.h>
 #include <HomePulse/SecurityUtils.h>
@@ -80,6 +81,11 @@ static HomePulse::DebounceState debounceState{POWER_STATUS_ON, HomePulse::kDebou
 // Messaging state (decoupled from internal state)
 static unsigned long lastSendTime = 0;     // Last successful HTTP send
 static unsigned long lastHeartbeatTime = 0; // Last heartbeat send
+
+// OTA state
+static bool bootWasPendingValidation = false;
+static bool otaValidated = false;
+static unsigned long lastOtaCheckTime = 0;
 
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(LED_COUNT, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -265,6 +271,7 @@ bool sendPowerStatus(int status, int adcValue) {
 
 void setup() {
     setupHardware();
+    bootWasPendingValidation = HomePulse::Ota::isPendingValidation();
     initResetButton();
 
     // Read hardware MAC address (requires WIFI_STA mode to be set first)
@@ -354,6 +361,11 @@ void setup() {
         if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
             lastSendTime = millis();
             initialSendOk = true;
+            if (bootWasPendingValidation && !otaValidated) {
+                HomePulse::Ota::markCurrentAppValid();
+                otaValidated = true;
+                Serial.println("[OTA] App validated, rollback cancelled.");
+            }
             break;
         }
         if (attempt < INITIAL_SEND_RETRIES) {
@@ -379,6 +391,25 @@ void setup() {
     esp_task_wdt_init(&wdtConfig);
 #endif
     esp_task_wdt_add(NULL);
+    // Boot-time OTA check
+    {
+        HomePulse::Ota::UpdateInfo otaInfo;
+        auto otaResult = HomePulse::Ota::checkForUpdate(
+            creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);
+        if (otaResult == HomePulse::Ota::CheckResult::UpdateAvailable) {
+            Serial.println("[OTA] Update available: " + otaInfo.version);
+            esp_task_wdt_delete(NULL);
+            bool ok = HomePulse::Ota::applyUpdate(otaInfo, led);
+            if (ok) {
+                Serial.println("[OTA] Flash OK, rebooting.");
+                ESP.restart();
+            } else {
+                Serial.println("[OTA] Flash failed, continuing normal boot.");
+                esp_task_wdt_add(NULL);
+            }
+        }
+    }
+    lastOtaCheckTime = millis();
     Serial.printf("Watchdog configured: %ds timeout\n", WATCHDOG_TIMEOUT_S);
 
     Serial.println("Setup complete. Monitoring power status...");
@@ -464,8 +495,31 @@ void loop() {
         if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
             lastSendTime = currentTime;
             Serial.println("Heartbeat sent");
+            if (bootWasPendingValidation && !otaValidated) {
+                HomePulse::Ota::markCurrentAppValid();
+                otaValidated = true;
+                Serial.println("[OTA] App validated, rollback cancelled.");
+            }
         } else {
             Serial.println("Heartbeat failed, will retry next interval");
+        }
+    }
+
+    // Periodic OTA check (every 6 h)
+    if (millis() - lastOtaCheckTime >= OTA_CHECK_INTERVAL_MS) {
+        lastOtaCheckTime = millis();
+        HomePulse::Ota::UpdateInfo otaInfo;
+        auto otaResult = HomePulse::Ota::checkForUpdate(
+            creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);
+        if (otaResult == HomePulse::Ota::CheckResult::UpdateAvailable) {
+            Serial.println("[OTA] Periodic: update available " + otaInfo.version);
+            esp_task_wdt_delete(NULL);
+            bool ok = HomePulse::Ota::applyUpdate(otaInfo, led);
+            if (ok) {
+                ESP.restart();
+            } else {
+                esp_task_wdt_add(NULL);
+            }
         }
     }
 

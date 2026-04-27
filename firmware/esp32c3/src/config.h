@@ -112,4 +112,8 @@
 // #define ENABLE_DEEP_SLEEP
 #define DEEP_SLEEP_DURATION_US 60000000  // 60 seconds
 
+// OTA Update Configuration
+#define BOARD_TYPE "esp32c3"
+#define OTA_CHECK_INTERVAL_MS (6UL * 60UL * 60UL * 1000UL)
+
 #endif // CONFIG_H
