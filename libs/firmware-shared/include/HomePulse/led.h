@@ -30,6 +30,9 @@
 /** Rapid flash interval for pairing/saving mode (milliseconds) */
 #define LED_FLASH_INTERVAL_MS     100
 
+/** Fast blink cadence for OTA progress indication (milliseconds) */
+#define LED_FAST_FLASH_INTERVAL_MS  80
+
 // ─── Named Colors ─────────────────────────────────────────────────────────────
 
 /** Orange: used for configuration mode animations */
@@ -41,6 +44,11 @@
 #define LED_COLOR_PURPLE_R  128
 #define LED_COLOR_PURPLE_G  0
 #define LED_COLOR_PURPLE_B  255
+
+/** White: dimmed for OTA progress (max ~60/255 per channel — stays within USB current budget) */
+#define LED_COLOR_WHITE_R   60
+#define LED_COLOR_WHITE_G   60
+#define LED_COLOR_WHITE_B   60
 
 // ─── Core Helpers ─────────────────────────────────────────────────────────────
 
@@ -115,6 +123,27 @@ inline void tickFlashLed(Adafruit_NeoPixel& led) {
     ledOn = !ledOn;
     if (ledOn) {
         setLedColor(led, LED_COLOR_ORANGE_R, LED_COLOR_ORANGE_G, LED_COLOR_ORANGE_B);
+    } else {
+        setLedOff(led);
+    }
+}
+
+/**
+ * Non-blocking fast white blink for OTA download/flash progress.
+ *
+ * Toggles white/off every LED_FAST_FLASH_INTERVAL_MS (80ms).
+ * Call once per loop() iteration while OTA is active.
+ */
+inline void tickFastWhiteLed(Adafruit_NeoPixel& led) {
+    static unsigned long lastToggleMs = 0;
+    static bool ledOn = false;
+    unsigned long now = millis();
+    if (now - lastToggleMs < LED_FAST_FLASH_INTERVAL_MS) return;
+    lastToggleMs = now;
+
+    ledOn = !ledOn;
+    if (ledOn) {
+        setLedColor(led, LED_COLOR_WHITE_R, LED_COLOR_WHITE_G, LED_COLOR_WHITE_B);
     } else {
         setLedOff(led);
     }
