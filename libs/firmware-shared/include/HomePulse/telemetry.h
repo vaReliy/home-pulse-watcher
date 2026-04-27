@@ -29,4 +29,20 @@ String buildPowerStatusPayload(const PowerStatusReport& r);
  */
 String buildSignatureInput(const PowerStatusReport& r);
 
+/** Upper-cases a colon-separated MAC in place. out must be ≥ strlen(in)+1 bytes. */
+void toUpperMac(const char* in, char* out, size_t outSize);
+
+/**
+ * Build HMAC canonical string for /api/ota/check.
+ * Format: "<UPPER_MAC>:<ts>:<boardType>:<currentVersion>:<channel>"
+ */
+void buildOtaSignatureInput(
+    const char* mac,
+    unsigned long ts,
+    const char* boardType,
+    const char* currentVersion,
+    const char* channel,
+    char* out,
+    size_t outSize);
+
 }  // namespace HomePulse
