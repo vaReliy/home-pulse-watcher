@@ -231,6 +231,57 @@ void test_save_then_load_round_trip(void) {
   TEST_ASSERT_EQUAL_STRING(orig.backend_url,   loaded.backend_url);
 }
 
+// ─── ota_channel ─────────────────────────────────────────────────────────────
+
+void test_load_empty_nvs_gives_stable_channel(void) {
+  // Fresh NVS (setUp calls resetAll) — channel must default to "STABLE".
+  DeviceCredentials loaded;
+  memset(&loaded, 0, sizeof(loaded));
+  loadCredentials(&loaded);
+  TEST_ASSERT_EQUAL_STRING("STABLE", loaded.ota_channel);
+}
+
+void test_ota_channel_round_trip(void) {
+  // Save BETA, reload — must come back as BETA.
+  DeviceCredentials orig;
+  memset(&orig, 0, sizeof(orig));
+  strncpy(orig.wifi_ssid,     "Net",           CRED_SSID_MAX - 1);
+  strncpy(orig.device_secret, "sec",           CRED_SECRET_MAX - 1);
+  strncpy(orig.backend_url,   "http://h/api",  CRED_URL_MAX - 1);
+  strncpy(orig.ota_channel,   "BETA",          CRED_OTA_CHAN_MAX - 1);
+
+  TEST_ASSERT_TRUE(saveCredentials(&orig));
+
+  DeviceCredentials loaded;
+  memset(&loaded, 0, sizeof(loaded));
+  loadCredentials(&loaded);
+  TEST_ASSERT_EQUAL_STRING("BETA", loaded.ota_channel);
+}
+
+void test_merge_preserves_existing_channel_when_submitted_empty(void) {
+  DeviceCredentials existing, submitted;
+  memset(&existing, 0, sizeof(existing));
+  memset(&submitted, 0, sizeof(submitted));
+
+  strncpy(existing.ota_channel,  "ALPHA",         CRED_OTA_CHAN_MAX - 1);
+  strncpy(existing.device_secret, "sec",          CRED_SECRET_MAX - 1);
+  strncpy(existing.backend_url,   "http://h/api", CRED_URL_MAX - 1);
+  strncpy(submitted.wifi_ssid,    "Net",          CRED_SSID_MAX - 1);
+  // submitted.ota_channel intentionally empty
+
+  DeviceCredentials result = mergeSubmittedCredentials(existing, submitted, false, false);
+  TEST_ASSERT_EQUAL_STRING("ALPHA", result.ota_channel);
+}
+
+void test_isValidOtaChannel_rejects_unknown(void) {
+  TEST_ASSERT_TRUE(isValidOtaChannel("STABLE"));
+  TEST_ASSERT_TRUE(isValidOtaChannel("BETA"));
+  TEST_ASSERT_TRUE(isValidOtaChannel("ALPHA"));
+  TEST_ASSERT_FALSE(isValidOtaChannel("INVALID"));
+  TEST_ASSERT_FALSE(isValidOtaChannel(""));
+  TEST_ASSERT_FALSE(isValidOtaChannel("stable"));  // case-sensitive
+}
+
 // ─── Wiring ──────────────────────────────────────────────────────────────────
 
 void setUp(void) { Preferences::resetAll(); }
@@ -262,6 +313,11 @@ int main(void) {
   RUN_TEST(test_apply_empty_inputs_returns_false);
   RUN_TEST(test_apply_partial_secret_and_url_only);
   RUN_TEST(test_apply_all_fields_written);
+
+  RUN_TEST(test_load_empty_nvs_gives_stable_channel);
+  RUN_TEST(test_ota_channel_round_trip);
+  RUN_TEST(test_merge_preserves_existing_channel_when_submitted_empty);
+  RUN_TEST(test_isValidOtaChannel_rejects_unknown);
 
   return UNITY_END();
 }

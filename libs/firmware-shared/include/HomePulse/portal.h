@@ -165,6 +165,15 @@ static void handleSave() {
     if (urlProvided)
         _webServer.arg("url").toCharArray(submitted.backend_url, CRED_URL_MAX);
 
+    String channelArg = _webServer.hasArg("ota_channel") ? _webServer.arg("ota_channel") : String("");
+    if (channelArg.length() > 0) {
+        if (!isValidOtaChannel(channelArg.c_str())) {
+            _webServer.send(400, "text/plain", "Invalid ota_channel. Must be STABLE, BETA, or ALPHA.");
+            return;
+        }
+        channelArg.toCharArray(submitted.ota_channel, CRED_OTA_CHAN_MAX);
+    }
+
     DeviceCredentials merged = mergeSubmittedCredentials(existing, submitted, secretProvided, urlProvided);
 
     if (merged.device_secret[0] == '\0') {

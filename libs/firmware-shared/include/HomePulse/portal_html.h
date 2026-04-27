@@ -112,6 +112,13 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
          maxlength="128">
   <p class="hint" id="url-hint" style="display:none">Edit to point the device at a different backend.</p>
 
+  <label for="ota-channel">OTA Channel</label>
+  <select id="ota-channel" name="ota_channel">
+    <option value="STABLE">STABLE (recommended)</option>
+    <option value="BETA">BETA</option>
+    <option value="ALPHA">ALPHA</option>
+  </select>
+
   <div id="status"></div>
   <button type="submit" id="save-btn">Save &amp; Connect</button>
 </form>
@@ -197,6 +204,9 @@ function loadConfig() {
         storedSsid = c.ssid;
         selectStoredSsid(document.getElementById('ssid-select'));
       }
+      if (c.otaChannel) {
+        document.getElementById('ota-channel').value = c.otaChannel;
+      }
       if (c.hasSecret) {
         var secretEl = document.getElementById('secret');
         secretEl.value = SECRET_PLACEHOLDER;
@@ -248,10 +258,11 @@ function doSave(e) {
   showStatus('Saving credentials…', 'status-info');
 
   var data = new URLSearchParams();
-  data.append('ssid',     ssid);
-  data.append('password', document.getElementById('password').value);
-  data.append('secret',   secretVal);
-  data.append('url',      document.getElementById('url').value.trim());
+  data.append('ssid',        ssid);
+  data.append('password',    document.getElementById('password').value);
+  data.append('secret',      secretVal);
+  data.append('url',         document.getElementById('url').value.trim());
+  data.append('ota_channel', document.getElementById('ota-channel').value);
 
   fetch('/save', { method: 'POST', body: data,
                    headers: {'Content-Type': 'application/x-www-form-urlencoded'} })

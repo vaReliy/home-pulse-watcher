@@ -9,6 +9,7 @@
 #define CRED_PASSWORD_MAX 65   ///< WiFi password: 64 chars + null
 #define CRED_SECRET_MAX   65   ///< Device HMAC secret: 64 hex chars + null
 #define CRED_URL_MAX      129  ///< Backend URL: 128 chars + null
+#define CRED_OTA_CHAN_MAX 8    ///< OTA channel: "STABLE"|"BETA"|"ALPHA" + null
 
 /** NVS namespace for all HomePulse credentials */
 #define NVS_NAMESPACE "homepulse"
@@ -18,6 +19,7 @@
 #define NVS_KEY_PASS    "wifi_pass"
 #define NVS_KEY_SECRET  "dev_secret"
 #define NVS_KEY_URL     "backend_url"
+#define NVS_KEY_OTA_CHAN "ota_channel"
 
 /**
  * Device credentials loaded from NVS.
@@ -28,6 +30,7 @@ struct DeviceCredentials {
     char wifi_password[CRED_PASSWORD_MAX];
     char device_secret[CRED_SECRET_MAX];
     char backend_url[CRED_URL_MAX];
+    char ota_channel[CRED_OTA_CHAN_MAX];  ///< "STABLE", "BETA", or "ALPHA"
 };
 
 /**
@@ -42,10 +45,11 @@ inline bool loadCredentials(DeviceCredentials* creds) {
 
     memset(creds, 0, sizeof(DeviceCredentials));
 
-    String ssid   = prefs.getString(NVS_KEY_SSID,   "");
-    String pass   = prefs.getString(NVS_KEY_PASS,   "");
-    String secret = prefs.getString(NVS_KEY_SECRET, "");
-    String url    = prefs.getString(NVS_KEY_URL,    "");
+    String ssid    = prefs.getString(NVS_KEY_SSID,    "");
+    String pass    = prefs.getString(NVS_KEY_PASS,    "");
+    String secret  = prefs.getString(NVS_KEY_SECRET,  "");
+    String url     = prefs.getString(NVS_KEY_URL,     "");
+    String channel = prefs.getString(NVS_KEY_OTA_CHAN, "");
 
     prefs.end();
 
@@ -53,6 +57,13 @@ inline bool loadCredentials(DeviceCredentials* creds) {
     pass.toCharArray(creds->wifi_password,  CRED_PASSWORD_MAX);
     secret.toCharArray(creds->device_secret, CRED_SECRET_MAX);
     url.toCharArray(creds->backend_url,     CRED_URL_MAX);
+    channel.toCharArray(creds->ota_channel, CRED_OTA_CHAN_MAX);
+
+    // Channel is optional config — default to STABLE when not yet persisted.
+    if (creds->ota_channel[0] == '\0') {
+        strncpy(creds->ota_channel, "STABLE", CRED_OTA_CHAN_MAX - 1);
+        creds->ota_channel[CRED_OTA_CHAN_MAX - 1] = '\0';
+    }
 
     return ssid.length() > 0;
 }
@@ -67,10 +78,11 @@ inline bool saveCredentials(const DeviceCredentials* creds) {
     Preferences prefs;
     prefs.begin(NVS_NAMESPACE, false);  // read-write
 
-    prefs.putString(NVS_KEY_SSID,   creds->wifi_ssid);
-    prefs.putString(NVS_KEY_PASS,   creds->wifi_password);
-    prefs.putString(NVS_KEY_SECRET, creds->device_secret);
-    prefs.putString(NVS_KEY_URL,    creds->backend_url);
+    prefs.putString(NVS_KEY_SSID,    creds->wifi_ssid);
+    prefs.putString(NVS_KEY_PASS,    creds->wifi_password);
+    prefs.putString(NVS_KEY_SECRET,  creds->device_secret);
+    prefs.putString(NVS_KEY_URL,     creds->backend_url);
+    prefs.putString(NVS_KEY_OTA_CHAN, creds->ota_channel);
 
     prefs.end();
     return true;
@@ -127,7 +139,22 @@ inline DeviceCredentials mergeSubmittedCredentials(
         strncpy(result.backend_url, existing.backend_url, CRED_URL_MAX - 1);
         result.backend_url[CRED_URL_MAX - 1] = '\0';
     }
+    // Channel is optional — keep existing when form omits it
+    if (submitted.ota_channel[0] == '\0' && existing.ota_channel[0] != '\0') {
+        strncpy(result.ota_channel, existing.ota_channel, CRED_OTA_CHAN_MAX - 1);
+        result.ota_channel[CRED_OTA_CHAN_MAX - 1] = '\0';
+    }
     return result;
+}
+
+/**
+ * Return true when the channel string is a recognised OTA channel.
+ * Used both for portal validation and compile-time sanity.
+ */
+inline bool isValidOtaChannel(const char* ch) {
+    return strcmp(ch, "STABLE") == 0
+        || strcmp(ch, "BETA")   == 0
+        || strcmp(ch, "ALPHA")  == 0;
 }
 
 /** JSON-escape backslash and double-quote characters in a string. */
@@ -185,6 +212,11 @@ inline bool applyCompileTimeSecrets(DeviceCredentials& creds,
         creds.backend_url[CRED_URL_MAX - 1] = '\0';
         wrote = true;
     }
+#ifdef OTA_CHANNEL
+    strncpy(creds.ota_channel, OTA_CHANNEL, CRED_OTA_CHAN_MAX - 1);
+    creds.ota_channel[CRED_OTA_CHAN_MAX - 1] = '\0';
+    wrote = true;
+#endif
     return wrote;
 }
 
@@ -202,7 +234,8 @@ inline String buildConfigJson(const DeviceCredentials& creds) {
     bool hasSecret = creds.device_secret[0] != '\0';
     return String("{\"ssid\":\"") + jsonEscapeStr(creds.wifi_ssid) +
            "\",\"url\":\"" + jsonEscapeStr(creds.backend_url) +
-           "\",\"hasSecret\":" + (hasSecret ? "true" : "false") + "}";
+           "\",\"hasSecret\":" + (hasSecret ? "true" : "false") +
+           ",\"otaChannel\":\"" + String(creds.ota_channel) + "\"}";
 }
 
 #endif  // HOMEPULSE_CREDENTIALS_H
