@@ -27,7 +27,26 @@
 - Response structure: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`.
 - Device firmware calls endpoint with deviceId/MAC, current version, channel, and HMAC signature; signed response includes GCS V4 download URL with 15-minute TTL.
 
-**Pending**: Device→release upgrade status linking, firmware rollback protection.
+### Task 4 — Firmware OTA Client
+
+- `HomePulse::Ota::checkForUpdate()` — HMAC-signed `POST /api/ota/check` using 5-field canonical string (`MAC:TS:boardType:version:channel`); returns `UpdateAvailable`, `NoUpdate`, or `Error`.
+- `HomePulse::Ota::applyUpdate()` — HTTPS binary download via `httpUpdate.h` (`setInsecure`), SHA-256 post-flash verification via `esp_partition_get_sha256`.
+- Passive rollback: `markCurrentAppValid()` deferred until first successful heartbeat; bootloader auto-reverts if device never validates (watchdog fires before heartbeat).
+- White-LED fast blink during download/flash (`tickFastWhiteLed`, 80 ms cadence).
+- NVS `ota_channel` field (default `STABLE`) configurable via captive portal select.
+- OTA-ready partition table (`partitions.csv`) for both ESP32-C3 and ESP32-C6 (4 MB flash, min_spiffs layout).
+- Boot-time OTA check (after WiFi + NTP, before watchdog fires) and periodic check every 6 h in `loop()`, both with watchdog pause around flash.
+- 9 Unity/native tests added: `checkForUpdate` canonical string format, channel values, signature composition.
+
+### Firmware Refactor — Shared Sketch
+
+- Replaced per-board `firmware/esp32c3/src/main.cpp` and `firmware/esp32c6/src/main.cpp` with a single `firmware/common/main.cpp` consumed by both envs via PlatformIO `build_src_filter`.
+- Per-board values (`BOARD_TYPE`, GPIO pins, `BATTERY_DIVIDER_RATIO_*`) remain in each env's `config.h` — zero `#ifdef` in the shared source.
+- Added `BATTERY_DIVIDER_RATIO_NUM=2000` / `_DEN=1000` to `esp32c3/src/config.h` (nominal 100k/100k divider); ESP32-C6 retains empirically calibrated `1993/1000`.
+- Boot banner now uses `BOARD_TYPE` macro: `Serial.printf("HomePulse Watcher - %s\n", BOARD_TYPE)`.
+- IDF version guard for watchdog API (`esp_task_wdt_reconfigure` vs `esp_task_wdt_init`) applied unconditionally — safe on both platforms.
+
+**Pending**: Task 5 — `device:upgrade` CLI command; device→release upgrade status linking.
 
 ## v3.5.0 — Firmware Refactoring & Quality Assurance (Phase 5.5)
 

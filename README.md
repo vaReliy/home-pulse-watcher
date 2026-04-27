@@ -273,7 +273,7 @@ This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 
     - [x] Binary Hosting: GCS integration — `GcsService` (upload + V4 signed URLs), `StorageModule` DI wiring
     - [x] Release Management: Prisma-based `FirmwareRelease` DB to track versions, checksums, and stability
     - [x] Secure Service: Backend endpoint for update checks with HMAC-signed validation
-    - [ ] Firmware Logic: `httpUpdate` integration with white LED status and auto-rollback protection
+    - [x] Firmware Logic: `httpUpdate` integration with white LED status and auto-rollback protection
     - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
   - [ ] 5.7: Telegram Admin UI & Role Management
     - [ ] Access Control: Implementation of Owner and Editor roles (RBAC)

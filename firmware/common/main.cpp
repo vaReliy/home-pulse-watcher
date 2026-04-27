@@ -1,5 +1,5 @@
 /**
- * HomePulse Watcher - ESP32-C6 Firmware
+ * HomePulse Watcher - Shared Firmware
  *
  * Power monitoring sensor that reports status changes to the backend.
  *
@@ -8,14 +8,13 @@
  * - Sends HMAC-signed HTTP POST requests on status change
  * - NTP time synchronization for accurate timestamps
  * - LED status indication
- * - WiFi 6 support (ESP32-C6 specific)
  *
  * Hardware:
- * - ESP32-C6 SuperMini or compatible
+ * - ESP32-C3 or ESP32-C6 SuperMini (selected via BOARD_TYPE in config.h)
  * - 10k/10k voltage divider + 0.1µF cap on POWER_SENSE_PIN (V2.1)
  *
  * Configuration:
- * - config.h: Hardware settings (GPIO pins, timing)
+ * - config.h: Hardware settings (GPIO pins, timing, BOARD_TYPE)
  * - credentials.h: NVS credential loader (WiFi, device secret, backend URL)
  * - secrets.h (optional): Compile-time fallback for first-boot NVS provisioning
  *
@@ -35,6 +34,7 @@
 #include <time.h>
 #include <mbedtls/md.h>
 #include <esp_task_wdt.h>
+#include <esp_idf_version.h>
 #include <Adafruit_NeoPixel.h>
 
 #include "config.h"
@@ -105,7 +105,7 @@ void setupHardware() {
 
     Serial.println();
     Serial.println("=================================");
-    Serial.println("HomePulse Watcher - ESP32-C6");
+    Serial.printf("HomePulse Watcher - %s\n", BOARD_TYPE);
     Serial.println("Firmware: v" FIRMWARE_VERSION);
     Serial.println("=================================");
 
@@ -197,7 +197,7 @@ int readAdcAverage() {
 
 #if HAS_UPS_MODULE
 /**
- * Read averaged battery voltage from GPIO3 (100k/100k divider, calibrated).
+ * Read averaged battery voltage from GPIO3 (100k/100k divider).
  * Takes BATTERY_ADC_SAMPLES readings and returns millivolts.
  *
  * Uses analogReadMilliVolts() for factory-calibrated ADC linearity correction,
@@ -385,7 +385,11 @@ void setup() {
         .idle_core_mask = 0,
         .trigger_panic = true,
     };
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
     esp_task_wdt_reconfigure(&wdtConfig);
+#else
+    esp_task_wdt_init(&wdtConfig);
+#endif
     esp_task_wdt_add(NULL);
     // Boot-time OTA check
     {
@@ -406,7 +410,7 @@ void setup() {
         }
     }
     lastOtaCheckTime = millis();
-    Serial.printf("Watchdog reconfigured: %ds timeout\n", WATCHDOG_TIMEOUT_S);
+    Serial.printf("Watchdog configured: %ds timeout\n", WATCHDOG_TIMEOUT_S);
 
     Serial.println("Setup complete. Monitoring power status...");
 }

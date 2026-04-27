@@ -48,15 +48,20 @@ ESP32-based power monitoring firmware for HomePulse Watcher.
 
 ```
 firmware/
-├── esp32c3/              # ESP32-C3 firmware
-│   ├── platformio.ini    # Build configuration
+├── common/
+│   └── main.cpp          # Shared sketch (both boards) — edit once, applies to both
+├── esp32c3/              # ESP32-C3 environment
+│   ├── platformio.ini    # Build configuration (points to common/main.cpp via build_src_filter)
 │   ├── src/
-│   │   ├── main.cpp      # Main entry point
-│   │   └── config.h      # Hardware configuration
+│   │   └── config.h      # Board-specific: GPIO pins, BOARD_TYPE, battery divider ratio
 │   └── include/
 │       └── secrets.h.example
-├── esp32c6/              # ESP32-C6 firmware
-│   └── ...               # Same structure
+├── esp32c6/              # ESP32-C6 environment
+│   ├── platformio.ini
+│   ├── src/
+│   │   └── config.h      # Board-specific settings for C6
+│   └── include/
+│       └── secrets.h.example
 └── docs/
     └── FLASHING_GUIDE.md # Detailed flashing instructions
 ```
@@ -97,7 +102,7 @@ See `secrets.h.example` for the full template.
 
 | Setting                  | Default        | Description                                |
 | ------------------------ | -------------- | ------------------------------------------ |
-| `FIRMWARE_VERSION`       | `"3.4.0"`      | Reported to backend on every status ping   |
+| `FIRMWARE_VERSION`       | `"3.5.0"`      | Reported to backend on every status ping   |
 | `POWER_SENSE_PIN`        | 2              | GPIO for power detection                   |
 | `STATUS_LED_PIN`         | 8              | Onboard WS2812B RGB LED                    |
 | `LED_BRIGHTNESS`         | 10             | WS2812 LED brightness (0-255)              |
@@ -130,6 +135,7 @@ The onboard WS2812B RGB LED shows device status:
 | Green                       | 220V power present (normal)             |
 | Red                         | 220V power lost (outage)                |
 | Blue flash                  | HTTP request in progress                |
+| White fast blink (80 ms)    | OTA update download/flash in progress   |
 
 ### Initial Configuration (Captive Portal)
 

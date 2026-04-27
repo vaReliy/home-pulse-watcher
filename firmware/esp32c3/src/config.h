@@ -70,6 +70,9 @@
 #define HAS_UPS_MODULE false
 
 // Battery ADC (100k/100k divider on GPIO3)
+// Nominal ratio 2:1; calibrate empirically if readings drift.
+#define BATTERY_DIVIDER_RATIO_NUM 2000
+#define BATTERY_DIVIDER_RATIO_DEN 1000
 #define BATTERY_SENSE_PIN 3
 #define BATTERY_ADC_SAMPLES 8
 #define BATTERY_ADC_SAMPLE_DELAY_MS 5

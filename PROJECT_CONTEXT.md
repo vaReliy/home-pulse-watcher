@@ -29,7 +29,7 @@
 | Bot        | Telegraf (manual NestJS integration)                                                                                                             |
 | Testing    | Jest 30 + SWC compiler                                                                                                                           |
 | CLI        | nest-commander                                                                                                                                   |
-| Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6; shared headers in `libs/firmware-shared/` (8 modules); Unity/Native tests via `pio test -e native`  |
+| Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6; shared sketch at `firmware/common/main.cpp` (both envs via `build_src_filter`); shared headers in `libs/firmware-shared/` (8 modules); Unity/Native tests via `pio test -e native` |
 | Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                |
 | AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher |
 
@@ -140,9 +140,10 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 
 #### Battery Monitoring (V2.3 UPS Edition)
 
-- **GPIO3** with 100k/100k divider (calibrated) for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
-- Voltage formula: `(long)adcAvg * BATTERY_CALIBRATED_SCALE / 4095` millivolts (`BATTERY_CALIBRATED_SCALE = 6953`)
-- Calibrated from hardware measurement: 2.95V battery → 1.40V at GPIO3 → scale = 3300 × (2950/1400) = 6953
+- **GPIO3** with 100k/100k divider for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
+- Uses `analogReadMilliVolts()` (factory-calibrated ADC) × divider ratio via `HomePulse::calculateBatteryMv(mvAvg, NUM, DEN)`
+  - ESP32-C6: `BATTERY_DIVIDER_RATIO_NUM=1993`, `BATTERY_DIVIDER_RATIO_DEN=1000` (empirically calibrated from 4 measurements)
+  - ESP32-C3: `BATTERY_DIVIDER_RATIO_NUM=2000`, `BATTERY_DIVIDER_RATIO_DEN=1000` (nominal 100k/100k)
 - SOS alert threshold: **3400 mV** (`BATTERY_VOLTAGE_LOW_MV`, `BATTERY_LOW_THRESHOLD_MV`)
 - SOS cooldown: 15 min (`SOS_COOLDOWN_MS`) — firmware only sends SOS when power is OFF
 - Backend emits `BATTERY_LOW_EVENT` when `batteryVoltage < 3400 && batteryVoltage > 0`
@@ -341,7 +342,18 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
   - Response: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`
   - Guard decorator: `@HmacCanonical()` pluggable (supports both deviceId/MAC canonicalization)
 
-**Still pending** _(ADR pending — will document OTA architecture decisions once additional OTA endpoint & device upgrade linking is complete)_:
+**Firmware OTA Client (Task 4, Complete)**
 
-- Device → Release linking for tracking upgrade status
-- Firmware rollback protection
+- `HomePulse::Ota::checkForUpdate()` — HMAC-signed POST to `/api/ota/check`, 5-field canonical (`MAC:TS:boardType:version:channel`)
+- `HomePulse::Ota::applyUpdate()` — HTTPS download via `httpUpdate.h` (`setInsecure`), SHA-256 post-flash verify via `esp_partition_get_sha256`
+- Passive rollback: `markCurrentAppValid()` deferred until first heartbeat; bootloader auto-reverts if device never validates
+- White-LED fast blink during download/flash (`tickFastWhiteLed`, 80 ms cadence)
+- Boot-time check (after WiFi+NTP, before watchdog fires) + periodic check every 6 h in `loop()`
+- Shared source: both envs now use `firmware/common/main.cpp` — OTA logic lives once
+
+**Firmware shared-library boundary:** `libs/firmware-shared` must not include board-specific headers (`config.h`). LED helpers used in OTA progress are inlined in `ota.cpp` to preserve this boundary. The shared sketch (`firmware/common/main.cpp`) consumes `config.h` from each env's `src/` via the implicit `src_dir` include path — zero `#ifdef` in the shared source.
+
+**Still pending:**
+
+- Task 5: Admin Tools — `device:upgrade` CLI command
+- Device → Release linking for tracking upgrade status per-device
