@@ -1,4 +1,4 @@
-import { NotFoundError } from '@home-pulse-watcher/shared';
+import { BaseError, NotFoundError } from '@home-pulse-watcher/shared';
 
 /** Structural logger type compatible with NestJS LoggerService and nestjs-pino. */
 interface Logger {
@@ -9,12 +9,44 @@ interface Logger {
 
 /** Shape of an error thrown by @google-cloud/storage SDK. */
 interface GcsError {
-  code?: number;
+  code?: number | string;
   message?: string;
+}
+
+/** POSIX/Node.js network error codes that indicate GCS is unreachable. */
+const NETWORK_ERROR_CODES = new Set([
+  'ENOTFOUND',
+  'ECONNREFUSED',
+  'EAI_AGAIN',
+  'ETIMEDOUT',
+  'ENETUNREACH',
+]);
+
+/**
+ * Thrown when GCS cannot be reached due to a network or availability issue.
+ * Maps to HTTP 503 Service Unavailable via ServiceExceptionFilter.
+ */
+export class StorageUnavailableError extends BaseError {
+  readonly code = 'STORAGE_UNAVAILABLE';
+  readonly httpStatus = 503;
+
+  constructor(operation: string, cause?: unknown) {
+    super(`GCS storage unreachable during "${operation}"`);
+    // Set standard Node 18+ error cause for error chain introspection.
+    if (cause !== undefined) {
+      this.cause = cause;
+    }
+  }
 }
 
 function isGcsError(err: unknown): err is GcsError {
   return typeof err === 'object' && err !== null && 'code' in err;
+}
+
+function isNetworkError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const code = (err as Record<string, unknown>)['code'];
+  return typeof code === 'string' && NETWORK_ERROR_CODES.has(code);
 }
 
 /**
@@ -33,6 +65,13 @@ export async function withGcsError<T>(
   try {
     return await fn();
   } catch (err) {
+    // Network errors: GCS unreachable — typed as StorageUnavailableError (→ HTTP 503).
+    if (isNetworkError(err)) {
+      const code = (err as Record<string, unknown>)['code'];
+      logger.error('GCS unreachable — network error', { operation, code });
+      throw new StorageUnavailableError(operation, err);
+    }
+
     if (isGcsError(err)) {
       logger.error('GCS operation failed', {
         operation,

@@ -46,6 +46,24 @@
 - Boot banner now uses `BOARD_TYPE` macro: `Serial.printf("HomePulse Watcher - %s\n", BOARD_TYPE)`.
 - IDF version guard for watchdog API (`esp_task_wdt_reconfigure` vs `esp_task_wdt_init`) applied unconditionally — safe on both platforms.
 
+### Bugfixes — Backend OTA Hardening
+
+- Fixed GCS signed URL failure (`error:1E08010C:DECODER routines::unsupported`) on Node 22 / OpenSSL 3: service account `private_key` env vars often contain literal `\n` escape sequences instead of real newlines after JSON round-trips; OpenSSL 3 rejects such PEM blocks. Added `normalizePemKey()` utility that converts escaped sequences to real newlines before passing the key to `@google-cloud/storage`. Validation runs at startup (`validateEnv`) so misconfigured keys are caught before the first OTA request.
+- Fixed backend process crash (exit 1) when GCS was unreachable (device on LAN, backend offline): added `bootstrap().catch()` and `process.on('unhandledRejection')` / `process.on('uncaughtException')` handlers so transient network errors from `google-auth-library` retries cannot escape NestJS's exception filter and kill the process. Network errors (`ENOTFOUND`, `ECONNREFUSED`, `EAI_AGAIN`, `ETIMEDOUT`, `ENETUNREACH`) in `withGcsError` are now classified as `StorageUnavailableError extends BaseError` (HTTP 503) instead of falling through to the 500 catch-all.
+- Added `maxRetryDelay: 5000` and `timeout: 10_000` to GCS `Storage` client config to prevent long hangs on offline retries.
+
+### Bugfixes — Firmware OTA Hardening
+
+- `BACKEND_URL` semantics changed: now stores the base origin only (e.g. `https://your-server.com`) with no path. Firmware appends `/api/device/status` for power events and `/api/ota/check` for OTA checks. `secrets.h.example` and README updated accordingly.
+- Fixed OTA binary truncation caused by SSL `close_notify` cutting the stream mid-download when using `httpUpdate` / `HTTPUpdate.h`. Rewrote `HomePulse::Ota::applyUpdate()` with direct `HTTPClient` + `Update` (streaming `stream->read()` loop), which keeps the connection open until the full binary is drained. SHA-256 post-flash verification now works correctly end-to-end; automatic flashing confirmed on real hardware.
+- Fixed OTA `url[]` buffer overflow: GCS V4 signed URLs exceed 600 characters; `parseOtaResponse` used a `char url[384]` buffer that silently truncated the URL. Buffer extended to `url[1024]`.
+- Fixed NeoPixel `show()` calls inside the OTA progress callback starving the WiFi ISR and stalling the download. Removed LED animation from `applyUpdate()` (marked `(void)statusLed`); download no longer interrupts the RF stack.
+- Added `client.setTimeout(60)` to `WiFiClientSecure` in `applyUpdate()` to handle slow GCS responses on large binaries.
+- Added explicit logging for all `CheckResult` cases in the boot-time OTA switch block (`main.cpp`) — `NoUpdate`, `NetworkError`, `AuthError`, `ParseError` are now printed to serial.
+- Added `Serial.printf("[OTA] HTTP %d / body len / body preview"` and `parseOtaResponse` result logging to `checkForUpdate()` for field diagnostics.
+- Added `monitor_dtr = 0` / `monitor_rts = 0` to both `platformio.ini` files — prevents the serial monitor from triggering a hardware reset on open (soft-reset support for OTA post-flash verification sessions).
+- Added 810-character URL regression test to `test_ota.cpp` verifying that `parseOtaResponse` correctly handles URLs at the new buffer size.
+
 **Pending**: Task 5 — `device:upgrade` CLI command; device→release upgrade status linking.
 
 ## v3.5.0 — Firmware Refactoring & Quality Assurance (Phase 5.5)

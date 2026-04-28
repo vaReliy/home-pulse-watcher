@@ -127,9 +127,17 @@ pio run -t upload
 
 On first boot the device starts a `HomePulse-Setup-XXXX` Wi-Fi AP. Connect to it and open `http://192.168.4.1` to enter your Wi-Fi SSID, password, device MAC, secret, and backend URL. Credentials are saved to NVS (non-volatile flash) and persist across reboots.
 
+> **Backend URL format**: Enter the base origin only — no path, no trailing slash (e.g., `https://your-server.com`). The firmware appends `/api/device/status` for power events and `/api/ota/check` for OTA update checks.
+
 > **Dev shortcut**: Copy `include/secrets.h.example` to `include/secrets.h` and fill in credentials. If the file exists at compile time, its values are written to NVS on the first boot (when NVS is empty) — no captive portal required. Do **not** commit `secrets.h`.
 
 > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s — the LED will flash SOS, credentials are cleared, and the captive portal starts again.
+
+#### OTA Requirements
+
+OTA updates require a dual-partition flash layout. Both ESP32-C3 and ESP32-C6 builds use the `min_spiffs` partition table (configured in `platformio.ini` via `board_build.partitions`), which provides two equal OTA partitions on a 4 MB flash chip.
+
+> **TLS note**: OTA binary downloads use `setInsecure()` (no certificate verification) for the current phase. The download URL is a short-lived GCS signed URL returned by the backend, so the attack surface is limited. Certificate pinning or a CA bundle is planned for a future hardening phase.
 
 See [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 

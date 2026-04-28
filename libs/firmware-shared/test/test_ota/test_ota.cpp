@@ -67,6 +67,34 @@ void test_parse_missing_url_field_returns_parse_error(void) {
     TEST_ASSERT_EQUAL_INT((int)CheckResult::ParseError, (int)r);
 }
 
+void test_parse_long_gcs_signed_url_succeeds(void) {
+    // Regression: url[] was 384 bytes — GCS V4 signed URLs with 512-hex-char
+    // RSA-2048 signatures easily exceed this. Buffer is now 1024.
+    UpdateInfo info;
+    // X-Goog-Signature is 512 hex chars (RSA-2048), giving ~810-char total URL.
+    const char* body =
+        "{\"hasUpdate\":true"
+        ",\"version\":\"1.1.0\""
+        ",\"url\":\"https://storage.googleapis.com/homepulse-fw/esp32c3/v1.1.0/firmware.bin"
+        "?X-Goog-Algorithm=GOOG4-RSA-SHA256"
+        "&X-Goog-Credential=sa%40project.iam.gserviceaccount.com%2F20260428%2Fauto%2Fstorage%2Fgoog4_request"
+        "&X-Goog-Date=20260428T120000Z"
+        "&X-Goog-Expires=900"
+        "&X-Goog-SignedHeaders=host"
+        "&X-Goog-Signature=aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+                           "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+                           "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+                           "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899\""
+        ",\"checksum\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\""
+        ",\"isCritical\":false}";
+
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::UpdateAvailable, (int)r);
+    TEST_ASSERT_EQUAL_STRING("1.1.0", info.version.c_str());
+    // URL must exceed old 384-byte limit to prove the buffer fix holds.
+    TEST_ASSERT_TRUE(info.url.length() > 384);
+}
+
 // ─── Canonical string format (integration with buildOtaSignatureInput) ────────
 
 void test_ota_canonical_string_format(void) {
@@ -101,6 +129,7 @@ int main(void) {
     RUN_TEST(test_parse_malformed_json_returns_parse_error);
     RUN_TEST(test_parse_null_body_returns_parse_error);
     RUN_TEST(test_parse_missing_url_field_returns_parse_error);
+    RUN_TEST(test_parse_long_gcs_signed_url_succeeds);
     RUN_TEST(test_ota_canonical_string_format);
     RUN_TEST(test_ota_canonical_beta_channel);
 

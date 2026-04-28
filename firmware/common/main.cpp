@@ -261,7 +261,8 @@ bool sendPowerStatus(int status, int adcValue) {
     // Blue during request
     setLedColor(led, 0, 0, 255);
     HomePulse::HttpResult result = HomePulse::postSignedPayload(
-        client, creds.backend_url, body, signature, deviceMac, timestamp, HTTP_TIMEOUT_MS);
+        client, String(creds.backend_url) + "/api/device/status",
+        body, signature, deviceMac, timestamp, HTTP_TIMEOUT_MS);
     updateStatusLed(led, status);
 
     Serial.printf("HTTP %d: %s\n", result.statusCode, result.body.c_str());
@@ -393,20 +394,37 @@ void setup() {
     esp_task_wdt_add(NULL);
     // Boot-time OTA check
     {
+        Serial.println("[OTA] Checking for update...");
         HomePulse::Ota::UpdateInfo otaInfo;
         auto otaResult = HomePulse::Ota::checkForUpdate(
             creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);
-        if (otaResult == HomePulse::Ota::CheckResult::UpdateAvailable) {
-            Serial.println("[OTA] Update available: " + otaInfo.version);
-            esp_task_wdt_delete(NULL);
-            bool ok = HomePulse::Ota::applyUpdate(otaInfo, led);
-            if (ok) {
-                Serial.println("[OTA] Flash OK, rebooting.");
-                ESP.restart();
-            } else {
-                Serial.println("[OTA] Flash failed, continuing normal boot.");
-                esp_task_wdt_add(NULL);
-            }
+        switch (otaResult) {
+            case HomePulse::Ota::CheckResult::UpdateAvailable:
+                Serial.println("[OTA] Update available: " + otaInfo.version);
+                esp_task_wdt_delete(NULL);
+                {
+                    bool ok = HomePulse::Ota::applyUpdate(otaInfo, led);
+                    if (ok) {
+                        Serial.println("[OTA] Flash OK, rebooting.");
+                        ESP.restart();
+                    } else {
+                        Serial.println("[OTA] Flash failed, continuing normal boot.");
+                        esp_task_wdt_add(NULL);
+                    }
+                }
+                break;
+            case HomePulse::Ota::CheckResult::NoUpdate:
+                Serial.println("[OTA] Up to date.");
+                break;
+            case HomePulse::Ota::CheckResult::NetworkError:
+                Serial.println("[OTA] Network error.");
+                break;
+            case HomePulse::Ota::CheckResult::AuthError:
+                Serial.println("[OTA] Auth error (HMAC rejected).");
+                break;
+            case HomePulse::Ota::CheckResult::ParseError:
+                Serial.println("[OTA] Parse error — response malformed or URL too long.");
+                break;
         }
     }
     lastOtaCheckTime = millis();

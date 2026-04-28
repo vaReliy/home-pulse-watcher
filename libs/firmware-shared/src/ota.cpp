@@ -10,9 +10,9 @@
 #include "HomePulse/SecurityUtils.h"
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
-#include <HTTPUpdate.h>
+#include <HTTPClient.h>
+#include <Update.h>
 #include <esp_ota_ops.h>
-#include <esp_task_wdt.h>
 #include <time.h>
 #endif
 
@@ -55,9 +55,9 @@ CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo) {
     if (!extractJsonBool(body, "hasUpdate", hasUpdate)) return CheckResult::ParseError;
     if (!hasUpdate) return CheckResult::NoUpdate;
 
-    char version[32]  = {};
-    char url[384]     = {};
-    char checksum[65] = {};
+    char version[32]   = {};
+    char url[1024]     = {};
+    char checksum[65]  = {};
     bool isCritical   = false;
 
     if (!extractJsonString(body, "version",  version,  sizeof(version)))  return CheckResult::ParseError;
@@ -100,40 +100,114 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
     HttpResult res = postSignedPayload(client, url, String(bodyBuf),
                                       sig, String(mac), ts, 10000);
 
+    Serial.printf("[OTA] HTTP %d, body len: %d\n", res.statusCode, res.body.length());
+    if (res.body.length() > 0) {
+        Serial.printf("[OTA] Body: %.200s\n", res.body.c_str());
+    }
+
     if (res.statusCode == 401) return CheckResult::AuthError;
     if (res.statusCode != 200) return CheckResult::NetworkError;
 
-    return parseOtaResponse(res.body.c_str(), outInfo);
+    CheckResult pr = parseOtaResponse(res.body.c_str(), outInfo);
+    Serial.printf("[OTA] parseOtaResponse: %d\n", (int)pr);
+    return pr;
 }
 
 bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
+    (void)statusLed;
+
     WiFiClientSecure client;
     client.setInsecure();
+    client.setTimeout(60);
 
-    httpUpdate.rebootOnUpdate(false);
-    // Inline fast-white blink (80ms cadence) — mirrors tickFastWhiteLed in led.h.
-    // led.h is not included here because it transitively requires config.h,
-    // which is board-specific and unavailable in the shared library build context.
-    httpUpdate.onProgress([&](int recv, int total) {
-        (void)recv; (void)total;
-        static unsigned long lastToggleMs = 0;
-        static bool ledOn = false;
-        unsigned long now = millis();
-        if (now - lastToggleMs >= 80UL) {
-            lastToggleMs = now;
-            ledOn = !ledOn;
-            if (ledOn) {
-                statusLed.setPixelColor(0, statusLed.Color(60, 60, 60));
-            } else {
-                statusLed.clear();
-            }
-            statusLed.show();
+    HTTPClient http;
+    http.begin(client, info.url);
+    http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+
+    int httpCode = http.GET();
+    if (httpCode != HTTP_CODE_OK) {
+        Serial.printf("[OTA] HTTP error: %d\n", httpCode);
+        http.end();
+        return false;
+    }
+
+    int contentLength = http.getSize();
+    if (contentLength <= 0) {
+        Serial.printf("[OTA] Missing Content-Length\n");
+        http.end();
+        return false;
+    }
+
+    Serial.printf("[OTA] Binary size: %d bytes, free heap: %u\n",
+                  contentLength, ESP.getFreeHeap());
+
+    if (!Update.begin(contentLength, U_FLASH)) {
+        Serial.printf("[OTA] Update.begin failed: %s\n", Update.errorString());
+        http.end();
+        return false;
+    }
+
+    // available() is safe while data remains in the current TLS record —
+    // mbedtls_ssl_get_bytes_avail() returns > 0 without touching the next record.
+    // close_notify only appears when the record is empty and we peek forward.
+    // We exit the loop at remaining == 0, before that next available() call.
+    WiFiClient* stream = http.getStreamPtr();
+    size_t remaining = (size_t)contentLength;
+    uint8_t buf[4096];
+    size_t downloaded = 0;
+
+    while (remaining > 0) {
+        // Block until data arrives or 30s stall timeout
+        uint32_t t0 = millis();
+        int avail = 0;
+        do {
+            avail = stream->available();
+            if (avail > 0) break;
+            delay(1);
+        } while (millis() - t0 < 30000UL);
+
+        if (avail <= 0) {
+            Serial.printf("[OTA] Stream stalled: %u bytes remaining\n", remaining);
+            break;
         }
-        esp_task_wdt_reset();
-    });
 
-    HTTPUpdateResult result = httpUpdate.update(client, info.url);
-    if (result != HTTP_UPDATE_OK) return false;
+        size_t toRead = min(min((size_t)avail, sizeof(buf)), remaining);
+        int n = stream->read(buf, toRead);
+        if (n <= 0) {
+            Serial.printf("[OTA] Read error: %u bytes remaining\n", remaining);
+            break;
+        }
+
+        size_t written = Update.write(buf, (size_t)n);
+        if (written != (size_t)n) {
+            Serial.printf("[OTA] Flash write failed at offset %u\n", downloaded);
+            Update.abort();
+            http.end();
+            return false;
+        }
+        downloaded += (size_t)n;
+        remaining  -= (size_t)n;
+
+        size_t prevChunk = (downloaded - (size_t)n) / (64 * 1024);
+        size_t currChunk = downloaded / (64 * 1024);
+        if (currChunk != prevChunk) {
+            Serial.printf("[OTA] Progress: %u / %d bytes\n", downloaded, contentLength);
+        }
+    }
+
+    http.end();
+
+    if (downloaded < (size_t)contentLength) {
+        Serial.printf("[OTA] Incomplete download: %u / %d bytes\n",
+                      downloaded, contentLength);
+        Update.abort();
+        return false;
+    }
+
+    if (!Update.end()) {
+        Serial.printf("[OTA] Update.end failed: %s\n", Update.errorString());
+        return false;
+    }
 
     const esp_partition_t* updated = esp_ota_get_next_update_partition(nullptr);
     if (!updated) return false;
@@ -147,7 +221,12 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     }
     hexBuf[64] = '\0';
 
-    return info.checksum == String(hexBuf);
+    bool checksumOk = (info.checksum == String(hexBuf));
+    if (!checksumOk) {
+        Serial.printf("[OTA] Checksum mismatch: expected %s got %s\n",
+                      info.checksum.c_str(), hexBuf);
+    }
+    return checksumOk;
 }
 
 bool isPendingValidation() {

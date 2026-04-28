@@ -12,6 +12,7 @@ export { PrismaFirmwareReleaseRepository } from './lib/persistence/firmware-rele
 
 // Storage
 export { GcsService } from './lib/storage/index.js';
+export { StorageUnavailableError } from './lib/storage/gcs-error.wrapper.js';
 
 // Mappers
 export { mapPrismaUserToEntity } from './lib/mappers/user.mapper.js';

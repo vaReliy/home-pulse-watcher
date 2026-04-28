@@ -1,3 +1,5 @@
+import { normalizePemKey } from '../modules/storage/pem-key.util.js';
+
 interface RequiredVar {
   name: string;
   validate?: (value: string) => string | null;
@@ -37,6 +39,14 @@ const OPTIONAL_VARS: OptionalVar[] = [
         !('private_key' in parsed)
       ) {
         return 'must be a service account JSON containing client_email and private_key';
+      }
+      // Normalize and validate private_key PEM format early at startup.
+      const key = (parsed as Record<string, unknown>)['private_key'];
+      if (typeof key === 'string') {
+        const normalized = normalizePemKey(key);
+        if (!normalized.startsWith('-----BEGIN')) {
+          return 'private_key must be a valid PEM block starting with "-----BEGIN"';
+        }
       }
       return null;
     },

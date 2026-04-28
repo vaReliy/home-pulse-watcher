@@ -350,3 +350,7 @@ Using the same bot token for local development and production can cause the prod
 2. Send `/newbot` and follow the prompts to create a development bot (e.g. `HomePulse Dev`)
 3. Copy the token and set it as `TELEGRAM_BOT_TOKEN` in your local `.env` file
 4. Keep the production bot token only in GCP Secret Manager
+
+## Related Guides
+
+- [Manually inserting a FirmwareRelease record](firmware-release-manual-insert.md) — dev/testing shortcut

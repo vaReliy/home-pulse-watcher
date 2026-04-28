@@ -20,18 +20,18 @@
 
 ## Core Tech Stack
 
-| Layer      | Technology                                                                                                                                       |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Monorepo   | Nx 22.4 (`@home-pulse-watcher/*` prefix)                                                                                                         |
-| Backend    | NestJS 11, TypeScript (NodeNext modules)                                                                                                         |
-| ORM        | Prisma 7.3 + PostgreSQL (`pg` adapter)                                                                                                           |
-| Validation | LIVR (custom rules: `macAddress`, `hmacFormat`)                                                                                                  |
-| Bot        | Telegraf (manual NestJS integration)                                                                                                             |
-| Testing    | Jest 30 + SWC compiler                                                                                                                           |
-| CLI        | nest-commander                                                                                                                                   |
+| Layer      | Technology                                                                                                                                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo   | Nx 22.4 (`@home-pulse-watcher/*` prefix)                                                                                                                                                                                        |
+| Backend    | NestJS 11, TypeScript (NodeNext modules)                                                                                                                                                                                        |
+| ORM        | Prisma 7.3 + PostgreSQL (`pg` adapter)                                                                                                                                                                                          |
+| Validation | LIVR (custom rules: `macAddress`, `hmacFormat`)                                                                                                                                                                                 |
+| Bot        | Telegraf (manual NestJS integration)                                                                                                                                                                                            |
+| Testing    | Jest 30 + SWC compiler                                                                                                                                                                                                          |
+| CLI        | nest-commander                                                                                                                                                                                                                  |
 | Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6; shared sketch at `firmware/common/main.cpp` (both envs via `build_src_filter`); shared headers in `libs/firmware-shared/` (8 modules); Unity/Native tests via `pio test -e native` |
-| Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                |
-| AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher |
+| Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                                                                                               |
+| AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher                                                                                |
 
 ---
 
@@ -219,7 +219,8 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 - **Timing**: Runs before `NestFactory.create()` in `main.ts`
 - **Failure mode**: Logs `[EnvValidation] CRITICAL: ...` via `console.error` and calls `process.exit(1)`
-- **Required vars**: `DATABASE_URL`, `DEVICE_SECRET_ENCRYPTION_KEY` (64 hex chars)
+- **Required vars**: `DATABASE_URL`, `DEVICE_SECRET_ENCRYPTION_KEY` (64 hex chars), `GCS_BUCKET_NAME`
+- **Optional validated var**: `GCP_SERVICE_ACCOUNT_KEY` — if set, JSON is parsed and `private_key` PEM format is verified at startup (catches `\n` escape issues before first OTA request)
 
 ### Health Check Endpoints
 
@@ -235,18 +236,19 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 ## Documentation Map
 
-| Document         | Path                                                                       | Purpose                                               |
-| ---------------- | -------------------------------------------------------------------------- | ----------------------------------------------------- |
-| README           | [`README.md`](README.md)                                                   | Quick start, feature overview                         |
-| AI Workflow      | [`CLAUDE.md`](CLAUDE.md)                                                   | Agent dispatch rules, pipelines, and coding standards |
-| Architecture     | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                             | Layer diagrams, DI patterns, Webpack config           |
-| Power Sensing v2 | [`docs/technical/power-sensing-v2.md`](docs/technical/power-sensing-v2.md) | Full 4-layer pipeline spec with ADC values            |
-| Admin Guide      | [`docs/admin-guide.md`](docs/admin-guide.md)                               | Device provisioning, hardware wiring, troubleshooting |
-| CLI Reference    | [`docs/cli-reference.md`](docs/cli-reference.md)                           | All nest-commander commands with flags and exit codes |
-| Flashing Guide   | [`firmware/docs/FLASHING_GUIDE.md`](firmware/docs/FLASHING_GUIDE.md)       | PlatformIO build, upload, serial monitor              |
-| Firmware Testing | [`firmware/docs/TESTING.md`](firmware/docs/TESTING.md)                     | Unity/native test setup and adding new test suites    |
-| HW: Standard     | [`docs/hardware/standard.md`](docs/hardware/standard.md)                   | V2.1 wiring, voltage divider, ADC calibration         |
-| HW: UPS Edition  | [`docs/hardware/ups.md`](docs/hardware/ups.md)                             | V2.3 battery backup, OR-gate, isolated sensor         |
+| Document           | Path                                                                               | Purpose                                                       |
+| ------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| README             | [`README.md`](README.md)                                                           | Quick start, feature overview                                 |
+| AI Workflow        | [`CLAUDE.md`](CLAUDE.md)                                                           | Agent dispatch rules, pipelines, and coding standards         |
+| Architecture       | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)                                     | Layer diagrams, DI patterns, Webpack config                   |
+| Power Sensing v2   | [`docs/technical/power-sensing-v2.md`](docs/technical/power-sensing-v2.md)         | Full 4-layer pipeline spec with ADC values                    |
+| Admin Guide        | [`docs/admin-guide.md`](docs/admin-guide.md)                                       | Device provisioning, hardware wiring, troubleshooting         |
+| CLI Reference      | [`docs/cli-reference.md`](docs/cli-reference.md)                                   | All nest-commander commands with flags and exit codes         |
+| Flashing Guide     | [`firmware/docs/FLASHING_GUIDE.md`](firmware/docs/FLASHING_GUIDE.md)               | PlatformIO build, upload, serial monitor                      |
+| Firmware Testing   | [`firmware/docs/TESTING.md`](firmware/docs/TESTING.md)                             | Unity/native test setup and adding new test suites            |
+| OTA Release Insert | [`docs/firmware-release-manual-insert.md`](docs/firmware-release-manual-insert.md) | Manual SQL guide for inserting `FirmwareRelease` rows into DB |
+| HW: Standard       | [`docs/hardware/standard.md`](docs/hardware/standard.md)                           | V2.1 wiring, voltage divider, ADC calibration                 |
+| HW: UPS Edition    | [`docs/hardware/ups.md`](docs/hardware/ups.md)                                     | V2.3 battery backup, OR-gate, isolated sensor                 |
 
 ---
 
@@ -287,7 +289,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 ## Firmware Version Tracking
 
-- Current firmware version: **3.5.0** (both ESP32-C3 and ESP32-C6)
+- Current firmware version: **3.5.1** (ESP32-C3) / **3.5.2** (ESP32-C6)
 - Defined in `FIRMWARE_VERSION` constant in each `config.h`
 - Devices report `firmwareVersion` in the JSON body of every status ping
 - Devices with `HAS_UPS_MODULE true` also report `batteryVoltage` in the JSON body
@@ -342,16 +344,17 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
   - Response: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`
   - Guard decorator: `@HmacCanonical()` pluggable (supports both deviceId/MAC canonicalization)
 
-**Firmware OTA Client (Task 4, Complete)**
+**Firmware OTA Client (Task 4, Complete + Hardened)**
 
-- `HomePulse::Ota::checkForUpdate()` — HMAC-signed POST to `/api/ota/check`, 5-field canonical (`MAC:TS:boardType:version:channel`)
-- `HomePulse::Ota::applyUpdate()` — HTTPS download via `httpUpdate.h` (`setInsecure`), SHA-256 post-flash verify via `esp_partition_get_sha256`
+- `HomePulse::Ota::checkForUpdate()` — HMAC-signed POST to `/api/ota/check`, 5-field canonical (`MAC:TS:boardType:version:channel`); logs HTTP code, body preview, and `CheckResult` to serial
+- `HomePulse::Ota::applyUpdate()` — HTTPS download via `HTTPClient` + `Update` (direct stream, not `httpUpdate.h`); `client.setTimeout(60)`, `HTTPC_FORCE_FOLLOW_REDIRECTS`; SHA-256 post-flash verify via `esp_partition_get_sha256`; LED animation removed (was starving WiFi ISR)
 - Passive rollback: `markCurrentAppValid()` deferred until first heartbeat; bootloader auto-reverts if device never validates
-- White-LED fast blink during download/flash (`tickFastWhiteLed`, 80 ms cadence)
-- Boot-time check (after WiFi+NTP, before watchdog fires) + periodic check every 6 h in `loop()`
-- Shared source: both envs now use `firmware/common/main.cpp` — OTA logic lives once
+- Boot-time check (after WiFi+NTP, before watchdog fires) + periodic check every 6 h in `loop()`; all `CheckResult` branches explicitly logged
+- Shared source: both envs use `firmware/common/main.cpp` — OTA logic lives once
+- `BACKEND_URL` in NVS/`secrets.h` is the base origin only (`https://your-server.com`); firmware appends `/api/device/status` and `/api/ota/check` at call sites
+- OTA confirmed working end-to-end on real ESP32-C6 hardware (v3.5.2 auto-flashed)
 
-**Firmware shared-library boundary:** `libs/firmware-shared` must not include board-specific headers (`config.h`). LED helpers used in OTA progress are inlined in `ota.cpp` to preserve this boundary. The shared sketch (`firmware/common/main.cpp`) consumes `config.h` from each env's `src/` via the implicit `src_dir` include path — zero `#ifdef` in the shared source.
+**Firmware shared-library boundary:** `libs/firmware-shared` must not include board-specific headers (`config.h`). LED helpers in `ota.cpp` are now suppressed (`(void)statusLed`) to preserve this boundary. The shared sketch (`firmware/common/main.cpp`) consumes `config.h` from each env's `src/` via the implicit `src_dir` include path — zero `#ifdef` in the shared source.
 
 **Still pending:**
 
