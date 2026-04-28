@@ -85,15 +85,18 @@ ba → ddd-architect? → impl-{slug} team ══╣
               ╚═══════════════╤═══════════════╝
                               ║
                         docs-writer
+                              ║
+                     knowledge capture  ← orchestrator (mandatory)
 ```
 
-| Phase             | Mode                                    | Agent(s)                                       | Output                            |
-| ----------------- | --------------------------------------- | ---------------------------------------------- | --------------------------------- |
-| 1. Requirements   | sequential                              | `ba`                                           | User stories, scope, API contract |
-| 2. Architecture   | sequential _(skip if no arch decision)_ | `ddd-architect`                                | Domain model, placement           |
-| 3. Implementation | **team** `impl-{slug}`                  | `backend-developer` + frontend agent(s) if UI  | Code + ESLint + tsc               |
-| 4. Quality Gate   | **team** `qg-{slug}`                    | `tester`, `reviewer`, `security-scanner`, `qa` | Parallel reports                  |
-| 5. Documentation  | sequential                              | `docs-writer`                                  | PR description + `gh pr create`   |
+| Phase                | Mode                                    | Agent(s)                                       | Output                            |
+| -------------------- | --------------------------------------- | ---------------------------------------------- | --------------------------------- |
+| 1. Requirements      | sequential                              | `ba`                                           | User stories, scope, API contract |
+| 2. Architecture      | sequential _(skip if no arch decision)_ | `ddd-architect`                                | Domain model, placement           |
+| 3. Implementation    | **team** `impl-{slug}`                  | `backend-developer` + frontend agent(s) if UI  | Code + ESLint + tsc               |
+| 4. Quality Gate      | **team** `qg-{slug}`                    | `tester`, `reviewer`, `security-scanner`, `qa` | Parallel reports                  |
+| 5. Documentation     | sequential                              | `docs-writer`                                  | PR description + `gh pr create`   |
+| 6. Knowledge Capture | orchestrator (mandatory — never skip)   | —                                              | Updated docs + auto-memory        |
 
 ### Implementation Team (Phase 3)
 
@@ -191,6 +194,50 @@ devops ══╗
 | 2. Quality Gate   | **team** `qg-ci-{slug}` | `reviewer`, `security-scanner` | Review + security |
 
 No `tester` or `qa` for infra-only changes.
+
+## Phase 6: Knowledge Capture (Mandatory After Every Pipeline)
+
+**This phase is non-negotiable.** After every feature, bugfix, or CI/CD pipeline completes — the orchestrator MUST capture learnings before declaring the task done.
+
+### What to update
+
+| Artifact                      | When to update                      | What goes in                                                          |
+| ----------------------------- | ----------------------------------- | --------------------------------------------------------------------- |
+| `CHANGELOG.md`                | **Always**                          | Concise summary of what changed and why; one entry per task           |
+| `PROJECT_CONTEXT.md`          | Architecture/domain changed         | New modules, domain rule changes, infra changes, historical incidents |
+| Auto-memory (`project` type)  | Non-obvious decision or gotcha      | One-time discoveries that are not in code comments                    |
+| Auto-memory (`feedback` type) | Workflow correction or confirmation | Agent behavior to repeat or avoid                                     |
+
+### Decision rules
+
+- Changed a UseCase, domain rule, or layer boundary → update `PROJECT_CONTEXT.md`
+- Added a module, endpoint, or schema model → update `PROJECT_CONTEXT.md`
+- Discovered a subtle bug (e.g. buffer size, ISR starvation, PEM newline) → save to auto-memory as `project` type
+- Everything else → `CHANGELOG.md` only
+- If nothing non-obvious was learned → `CHANGELOG.md` only, no auto-memory needed
+
+### What NOT to save
+
+- Code patterns already visible in source
+- Git history facts (commit messages capture these)
+- Ephemeral task details (task lists, in-progress state)
+- Anything already written in CLAUDE.md verbatim
+
+### Format for auto-memory (project type)
+
+```
+**[Area] — [short fact]**
+Why: [root cause or motivation]
+How to apply: [when this matters in future sessions]
+```
+
+Example:
+
+```
+**OTA — GCS V4 signed URLs exceed 600 chars**
+Why: URL contains bucket, object path, expiry, signature — all base64-encoded.
+How to apply: Any char[] buffer holding a GCS signed URL must be ≥ 1024 bytes.
+```
 
 ## Team Conventions
 

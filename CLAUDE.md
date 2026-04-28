@@ -287,21 +287,15 @@ export class ServiceNameService extends BaseService<ServiceNameInput, ServiceNam
 - **Concise descriptions**: One-line summary preferred
 - **Include parameter/return descriptions** for non-obvious cases
 
-### Keeping CHANGELOG.md in Sync
+### Knowledge Capture (Mandatory — enforced by pipeline Phase 6)
 
-After completing a feature, bug fix, or significant change — add or update an entry in [`CHANGELOG.md`](CHANGELOG.md). Each entry should be a concise summary under a descriptive heading. Update existing entries if enhancing a previously logged feature.
+Every completed task must update at minimum `CHANGELOG.md`. See `.claude/rules/workflow.md` → **Phase 6: Knowledge Capture** for the full decision rules (when to also update `PROJECT_CONTEXT.md` and what to save to auto-memory).
 
-### Keeping PROJECT_CONTEXT.md in Sync
+**Quick reference:**
 
-After any change that affects the project's architecture, domain rules, tech stack, deployment, or historical context — update [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) to reflect the new state. This file is the shared mental model loaded at the start of every AI session.
-
-Examples of changes that require a PROJECT_CONTEXT.md update:
-
-- New or removed layers, modules, or significant services
-- Changes to domain rules (debounce thresholds, HMAC parameters, ADC ranges, etc.)
-- Deployment or infrastructure changes
-- New historical incidents worth remembering (like the Flapping Incident)
-- Stack or dependency upgrades that change developer workflow
+- `CHANGELOG.md` — always, after every task
+- `PROJECT_CONTEXT.md` — when architecture, domain rules, infra, or historical incidents change
+- Auto-memory (`project` type) — non-obvious discoveries not visible from code (buffer sizes, ISR constraints, PEM format gotchas, etc.)
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
