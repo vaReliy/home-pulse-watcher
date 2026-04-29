@@ -5,6 +5,7 @@
 #include <cstdlib>
 
 #ifndef UNIT_TEST
+#include "HomePulse/led.h"
 #include "HomePulse/telemetry.h"
 #include "HomePulse/telemetry_http.h"
 #include "HomePulse/SecurityUtils.h"
@@ -114,7 +115,7 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
 }
 
 bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
-    (void)statusLed;
+    // LED contract: caller (main loop) reclaims LED state via setPowerStatusLed() on next iteration.
 
     WiFiClientSecure client;
     client.setInsecure();
@@ -188,6 +189,8 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
         downloaded += (size_t)n;
         remaining  -= (size_t)n;
 
+        tickFastWhiteLed(statusLed);
+
         size_t prevChunk = (downloaded - (size_t)n) / (64 * 1024);
         size_t currChunk = downloaded / (64 * 1024);
         if (currChunk != prevChunk) {
@@ -213,6 +216,7 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     if (!updated) return false;
 
     uint8_t sha256[32];
+    tickFastWhiteLed(statusLed);  // tick before blocking SHA-256 partition read
     if (esp_partition_get_sha256(updated, sha256) != ESP_OK) return false;
 
     char hexBuf[65];

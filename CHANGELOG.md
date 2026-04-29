@@ -2,7 +2,15 @@
 
 ## Phase 5.6 — OTA Release Metadata & Storage Layer (in progress)
 
-### Task 1 — Release Metadata
+### Firmware: White LED progress during OTA apply
+
+- Wired `tickFastWhiteLed(statusLed)` into `HomePulse::Ota::applyUpdate()`: called once per download-chunk loop iteration and once before the blocking `esp_partition_get_sha256` partition read.
+- Removed `(void)statusLed;` stub that previously discarded the parameter.
+- Added `#include "HomePulse/led.h"` to `libs/firmware-shared/src/ota.cpp` (device-only block).
+- The 80 ms white fast-blink documented in `firmware/README.md` is now actually driven by code; no README text change required.
+- LED ownership contract documented in a single comment at function entry: main loop reclaims LED state via `setPowerStatusLed()` on its next iteration.
+
+### Release Metadata
 
 - Added `FirmwareRelease` Prisma model with fields: `version`, `boardType`, `channel`, `checksum`, `gcsPath`, `isCritical`, `createdAt`.
 - Created `BoardType` enum in core lib: `ESP32_C3`, `ESP32_C6`.
@@ -11,7 +19,7 @@
 - Added `FirmwareReleaseMapper` for entity-to-ORM conversions.
 - Cloud Storage bucket: `home-pulse-ota-releases` (Always Free tier).
 
-### Task 2 — GCS Integration
+### GCS Integration
 
 - Added `IFirmwareStorageService` interface in libs/core (port for binary upload and URL generation).
 - Implemented `GcsService` in libs/infrastructure: upload-by-buffer with `ifGenerationMatch: 0` (prevents overwrites), V4 signed URL generation (15-minute TTL).
@@ -19,7 +27,7 @@
 - Wired `StorageModule` in apps/api via NestJS DI with application default credentials (ADC) or service account key JSON auth.
 - Added `GCS_BUCKET_NAME` to required env vars; optional `GCP_SERVICE_ACCOUNT_KEY` JSON validation at startup.
 
-### Task 3 — OTA Discovery API
+### OTA Discovery API
 
 - Implemented `POST /api/ota/check` endpoint — HMAC-SHA256 authenticated via `@HmacCanonical()` decorator (pluggable canonicalization: deviceId or MAC).
 - Channel waterfall logic: `STABLE` returns only stable releases, `BETA` returns beta + stable, `ALPHA` returns all channels.
@@ -27,7 +35,7 @@
 - Response structure: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`.
 - Device firmware calls endpoint with deviceId/MAC, current version, channel, and HMAC signature; signed response includes GCS V4 download URL with 15-minute TTL.
 
-### Task 4 — Firmware OTA Client
+### Firmware OTA Client
 
 - `HomePulse::Ota::checkForUpdate()` — HMAC-signed `POST /api/ota/check` using 5-field canonical string (`MAC:TS:boardType:version:channel`); returns `UpdateAvailable`, `NoUpdate`, or `Error`.
 - `HomePulse::Ota::applyUpdate()` — HTTPS binary download via `httpUpdate.h` (`setInsecure`), SHA-256 post-flash verification via `esp_partition_get_sha256`.
