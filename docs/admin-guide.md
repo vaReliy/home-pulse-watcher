@@ -351,6 +351,61 @@ Using the same bot token for local development and production can cause the prod
 3. Copy the token and set it as `TELEGRAM_BOT_TOKEN` in your local `.env` file
 4. Keep the production bot token only in GCP Secret Manager
 
+## OTA Rollback Flow
+
+### How it works
+
+1. A new firmware binary is flashed over-the-air.
+2. The ESP32 bootloader boots the new image in `ESP_OTA_IMG_PENDING_VERIFY` state.
+3. The firmware counts successful heartbeats (HMAC-signed POSTs to `/api/device/status`).
+4. After **≥ 3 heartbeats AND ≥ 5 minutes uptime**, it calls `esp_ota_mark_app_valid_cancel_rollback()`.
+5. If the firmware crashes, reboots, or fails to reach the backend within the grace period, the bootloader detects the uncleared `PENDING_VERIFY` flag and **automatically boots the previous firmware** on the next restart.
+
+> The grace period ensures a firmware with a memory leak, WiFi regression, or crash-loop cannot survive long enough to mark itself valid.
+
+### Monitoring validation in serial logs
+
+Connect to the device serial port (115200 baud). Key log lines:
+
+```
+[OTA] Checking for update...
+[OTA] Update available: 3.6.0
+[OTA] Flash OK, rebooting.
+... (device reboots into new firmware) ...
+Heartbeat sent          ← count 1
+Heartbeat sent          ← count 2
+Heartbeat sent          ← count 3 + uptime ≥ 5 min
+[OTA] App validated, rollback cancelled.
+```
+
+If validation does **not** complete within the grace period, the next reboot will restore the previous firmware. No manual action required.
+
+### Detecting a rollback
+
+After a suspected rollback, check the serial log on the next boot. If the reported `FIRMWARE_VERSION` is lower than the deployed version, the rollback triggered. Common causes:
+
+- Firmware crashes early (check for exception/backtrace in serial output)
+- WiFi or backend unreachable during the first 5 minutes (transient network issue)
+- New firmware introduced a regression that prevents heartbeat sends
+
+### Abort events during flash
+
+All flash-abort events log `[OTA][ABORT]` to serial output. To grep:
+
+```bash
+# If using pio device monitor piped to a log file:
+grep '\[OTA\]\[ABORT\]' serial.log
+```
+
+Causes logged: stream stall (>30 s), short read, flash write failure, SHA-256 mismatch.
+
+### Manual rollback (emergency)
+
+If the new firmware boots and marks itself valid (logged as `[OTA] App validated`) but later proves defective, the bootloader auto-revert is no longer available. Options:
+
+1. **Re-deploy previous version** via the `firmware:upload` CLI command (creates a new `FirmwareRelease`) — the device will pick it up on the next OTA check (every 6 hours) or on next boot.
+2. **USB re-flash** using PlatformIO: `pio run -t upload -d firmware/esp32c3` (or `esp32c6`).
+
 ## Related Guides
 
 - [Manually inserting a FirmwareRelease record](firmware-release-manual-insert.md) — dev/testing shortcut

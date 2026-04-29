@@ -29,6 +29,22 @@ struct UpdateInfo {
  */
 CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo);
 
+/**
+ * Returns true when all grace-period conditions are satisfied for marking the
+ * current OTA boot as valid. Pure function — testable natively without hardware.
+ *
+ * @param pendingValidation  true if this boot is an unvalidated OTA boot (and not yet marked)
+ * @param heartbeatsSinceBoot  number of successful backend contacts since boot
+ * @param uptimeMs  current millis() value (time since boot)
+ * @param minHeartbeats  minimum successful contacts required before mark-valid
+ * @param minUptimeMs  minimum uptime required before mark-valid
+ */
+bool shouldMarkAppValid(bool pendingValidation,
+                        uint32_t heartbeatsSinceBoot,
+                        uint32_t uptimeMs,
+                        uint32_t minHeartbeats,
+                        uint32_t minUptimeMs);
+
 #ifndef UNIT_TEST
 
 /**

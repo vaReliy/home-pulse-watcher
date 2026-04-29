@@ -2,6 +2,27 @@
 
 ## Phase 5.6 — OTA Release Metadata & Storage Layer (in progress)
 
+### Firmware: OTA rollback hardening + grace-period validation
+
+- Added `HomePulse::Ota::shouldMarkAppValid()` — pure predicate returning `true` only when
+  `pendingValidation && heartbeats ≥ minHeartbeats && uptime ≥ minUptimeMs`.
+  Exposed in `ota.h` outside `#ifndef UNIT_TEST` so it is natively testable.
+- Replaced single-heartbeat `markCurrentAppValid()` trigger in `firmware/common/main.cpp` with
+  a grace-period guard (`OTA_VALIDATION_MIN_HEARTBEATS=3`, `OTA_VALIDATION_MIN_UPTIME_MS=300000`).
+  Both the setup() initial send and the loop() heartbeat increment the shared `heartbeatsSinceBoot`
+  counter; the predicate gates the actual IDF call.
+- Added `OTA_VALIDATION_MIN_HEARTBEATS` and `OTA_VALIDATION_MIN_UPTIME_MS` constants to both
+  `firmware/esp32c3/src/config.h` and `firmware/esp32c6/src/config.h`.
+- Fixed SHA-256 mismatch path in `applyUpdate()`: after `Update.end()` succeeds but checksum
+  fails, `esp_ota_set_boot_partition(esp_ota_get_running_partition())` is called to revert the
+  next-boot partition selection — prevents a bad build from booting on the next power cycle.
+- Standardised abort log tag to `[OTA][ABORT]` on all abort paths
+  (short write, incomplete download, checksum mismatch) for grep-ability.
+- Added 9 native unit tests in `libs/firmware-shared/test/test_ota_rollback/` covering all
+  branches of `shouldMarkAppValid` including exact-boundary cases.
+- Documented rollback flow in `firmware/README.md` (OTA Auto-Rollback section) and added
+  "OTA Rollback Flow" runbook to `docs/admin-guide.md`.
+
 ### Firmware: White LED progress during OTA apply
 
 - Wired `tickFastWhiteLed(statusLed)` into `HomePulse::Ota::applyUpdate()`: called once per download-chunk loop iteration and once before the blocking `esp_partition_get_sha256` partition read.

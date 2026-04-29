@@ -73,6 +73,19 @@ CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo) {
     return CheckResult::UpdateAvailable;
 }
 
+// ─── Grace-period predicate (always compiled — native-testable) ──────────────
+
+bool shouldMarkAppValid(bool pendingValidation,
+                        uint32_t heartbeatsSinceBoot,
+                        uint32_t uptimeMs,
+                        uint32_t minHeartbeats,
+                        uint32_t minUptimeMs) {
+    if (!pendingValidation) return false;
+    if (heartbeatsSinceBoot < minHeartbeats) return false;
+    if (uptimeMs < minUptimeMs) return false;
+    return true;
+}
+
 // ─── Device-only implementation ───────────────────────────────────────────────
 
 #ifndef UNIT_TEST
@@ -181,7 +194,7 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
 
         size_t written = Update.write(buf, (size_t)n);
         if (written != (size_t)n) {
-            Serial.printf("[OTA] Flash write failed at offset %u\n", downloaded);
+            Serial.printf("[OTA][ABORT] Flash write failed at offset %u\n", downloaded);
             Update.abort();
             http.end();
             return false;
@@ -201,7 +214,7 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     http.end();
 
     if (downloaded < (size_t)contentLength) {
-        Serial.printf("[OTA] Incomplete download: %u / %d bytes\n",
+        Serial.printf("[OTA][ABORT] Incomplete download: %u / %d bytes\n",
                       downloaded, contentLength);
         Update.abort();
         return false;
@@ -227,8 +240,11 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
 
     bool checksumOk = (info.checksum == String(hexBuf));
     if (!checksumOk) {
-        Serial.printf("[OTA] Checksum mismatch: expected %s got %s\n",
+        Serial.printf("[OTA][ABORT] Checksum mismatch: expected %s got %s\n",
                       info.checksum.c_str(), hexBuf);
+        // Update.end() already committed the partition; revert next-boot selection
+        // to the currently running partition so the bad build never boots.
+        esp_ota_set_boot_partition(esp_ota_get_running_partition());
     }
     return checksumOk;
 }

@@ -347,8 +347,9 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 **Firmware OTA Client (Task 4, Complete + Hardened)**
 
 - `HomePulse::Ota::checkForUpdate()` — HMAC-signed POST to `/api/ota/check`, 5-field canonical (`MAC:TS:boardType:version:channel`); logs HTTP code, body preview, and `CheckResult` to serial
-- `HomePulse::Ota::applyUpdate()` — HTTPS download via `HTTPClient` + `Update` (direct stream, not `httpUpdate.h`); `client.setTimeout(60)`, `HTTPC_FORCE_FOLLOW_REDIRECTS`; SHA-256 post-flash verify via `esp_partition_get_sha256`; LED animation removed (was starving WiFi ISR)
-- Passive rollback: `markCurrentAppValid()` deferred until first heartbeat; bootloader auto-reverts if device never validates
+- `HomePulse::Ota::applyUpdate()` — HTTPS download via `HTTPClient` + `Update` (direct stream, not `httpUpdate.h`); `client.setTimeout(60)`, `HTTPC_FORCE_FOLLOW_REDIRECTS`; SHA-256 post-flash verify via `esp_partition_get_sha256`
+- **Rollback grace period**: `markCurrentAppValid()` fires only after **≥ 3 heartbeats AND ≥ 5 minutes uptime** (`OTA_VALIDATION_MIN_HEARTBEATS`, `OTA_VALIDATION_MIN_UPTIME_MS`). Controlled by pure predicate `shouldMarkAppValid()` (natively tested). Bootloader auto-reverts if validation never completes.
+- **Partial-flash abort**: `Update.abort()` on stream stall, short read, write error. SHA mismatch after `Update.end()` calls `esp_ota_set_boot_partition(running)` to revert next-boot selection. All abort events tagged `[OTA][ABORT]` in serial logs.
 - Boot-time check (after WiFi+NTP, before watchdog fires) + periodic check every 6 h in `loop()`; all `CheckResult` branches explicitly logged
 - Shared source: both envs use `firmware/common/main.cpp` — OTA logic lives once
 - `BACKEND_URL` in NVS/`secrets.h` is the base origin only (`https://your-server.com`); firmware appends `/api/device/status` and `/api/ota/check` at call sites
