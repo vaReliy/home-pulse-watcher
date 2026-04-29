@@ -192,8 +192,8 @@ Every OTA update boots in an **unvalidated** state (`ESP_OTA_IMG_PENDING_VERIFY`
 
 **Validation grace period** (configured in `config.h`):
 
-| Constant                       | Default | Meaning                                              |
-| ------------------------------ | ------- | ---------------------------------------------------- |
+| Constant                        | Default | Meaning                                              |
+| ------------------------------- | ------- | ---------------------------------------------------- |
 | `OTA_VALIDATION_MIN_HEARTBEATS` | 3       | Minimum successful backend contacts since boot       |
 | `OTA_VALIDATION_MIN_UPTIME_MS`  | 300000  | Minimum uptime (5 minutes) before mark-valid allowed |
 

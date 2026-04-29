@@ -24,6 +24,7 @@ import { CheckOtaUpdateDto } from './dto/check-ota-update.dto.js';
  * HMAC canonical format: MAC:TS:boardType:currentVersion:channel
  */
 @Controller('ota')
+@UseGuards(HmacAuthGuard)
 export class OtaController {
   constructor(
     @Inject(SERVICE_TOKENS.CHECK_OTA_UPDATE)
@@ -40,7 +41,6 @@ export class OtaController {
    */
   @Post('check')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(HmacAuthGuard)
   @HmacCanonical(
     (b) => `${b['boardType']}:${b['currentVersion']}:${b['channel']}`,
   )

@@ -2,6 +2,22 @@
 
 ## Phase 5.6 — OTA Release Metadata & Storage Layer (in progress)
 
+### Backend: OTA controller validation + integration test coverage
+
+- Added `checkOtaUpdateRules` LIVR rule set to `check-ota-update.dto.ts` — validates
+  `boardType` (`esp32c3`|`esp32c6`), `currentVersion` (string ≤ 20 chars), `channel` (`ALPHA`|`BETA`|`STABLE`).
+- Moved `@UseGuards(HmacAuthGuard)` from the `@Post('check')` method to the `@Controller('ota')`
+  class level, aligning with the `device-status.controller.ts` pattern.
+- Added `apps/api/src/controllers/ota/ota.controller.spec.ts` — 7 NestJS integration tests
+  using `Test.createTestingModule` + Node.js `http` module (no supertest dependency):
+  - 400 when `boardType` is missing
+  - 400 when `boardType` is invalid (not `esp32c3`/`esp32c6`)
+  - 400 when `channel` is not `ALPHA`/`BETA`/`STABLE`
+  - 401 when HMAC headers are absent
+  - 401 when HMAC signature is invalid
+  - 200 `{ hasUpdate: false }` when no release exists
+  - 200 `{ hasUpdate: true, version, url, checksum, isCritical }` with mocked `GcsService.getSignedUrl`
+
 ### Firmware: OTA rollback hardening + grace-period validation
 
 - Added `HomePulse::Ota::shouldMarkAppValid()` — pure predicate returning `true` only when
