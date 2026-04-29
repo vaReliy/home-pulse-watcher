@@ -325,16 +325,25 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 **Cloud Storage**
 
 - Bucket: `home-pulse-ota-releases` (Always Free tier)
-- Metadata only — binary upload and device→release linking not yet implemented
+- Binary upload and release registration: use `firmware:upload` CLI command (see Admin CLI section below)
 
 **Storage Layer (Task 2, Complete)**
 
 - `IFirmwareStorageService` interface (core port) + `GcsService` adapter (infrastructure) wired via NestJS DI
+- Methods: `uploadBuffer`, `getSignedUrl`, `deleteObject` (used for best-effort cleanup on DB failure)
 - Authentication: `GCP_SERVICE_ACCOUNT_KEY` env var (JSON) or application default credentials fallback (Cloud Run Workload Identity)
 - Bucket: `GCS_BUCKET_NAME` env var (required)
-- Binary upload: buffer-based with `ifGenerationMatch: 0` (prevents silent overwrites)
+- Binary upload: buffer-based with `ifGenerationMatch: 0` (prevents silent overwrites — GCS 412 = already exists)
 - Signed URLs: V4 format, 15-minute TTL
 - Error translation: GCS 404 → `NotFoundError`, 403 → permission denied, etc.
+
+**Admin CLI: `firmware:upload` (Task 4, Complete)**
+
+- Command: `node apps/api/dist/cli.js firmware:upload --file <bin> --version <semver> --board <board> --channel <channel> [--critical]`
+- GCS path convention: `firmware/<board>/<channel>/<version>/<filename>`
+- `CliModule` imports `StorageModule` directly — `ServicesModule` does not re-export the storage token, so direct import is required
+- Best-effort GCS cleanup on DB failure prevents orphaned GCS objects
+- Default binary search path: `./tmp/firmware/` (when `--file` is a bare basename)
 
 **OTA Discovery API (Task 3, Complete)**
 
@@ -359,5 +368,5 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 **Still pending:**
 
-- Task 5: Admin Tools — `device:upgrade` CLI command
-- Device → Release linking for tracking upgrade status per-device
+- Device → Release linking for tracking upgrade status per-device (deferred to 5.7)
+- `firmware:list`, `firmware:promote` admin commands (deferred)

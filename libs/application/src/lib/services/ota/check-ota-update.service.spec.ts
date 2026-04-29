@@ -34,6 +34,7 @@ const createMockStorage = (): jest.Mocked<IFirmwareStorageService> => ({
   getSignedUrl: jest
     .fn()
     .mockResolvedValue('https://signed-url.example.com/firmware.bin'),
+  deleteObject: jest.fn().mockResolvedValue(undefined),
 });
 
 describe('CheckOtaUpdateService', () => {

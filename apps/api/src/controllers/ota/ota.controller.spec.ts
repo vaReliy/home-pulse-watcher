@@ -143,6 +143,7 @@ describe('OtaController (integration)', () => {
     mockStorageService = {
       uploadBuffer: jest.fn(),
       getSignedUrl: jest.fn(),
+      deleteObject: jest.fn(),
     };
 
     mockDeviceRepository = {

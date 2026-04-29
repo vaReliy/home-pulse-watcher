@@ -25,6 +25,7 @@ interface GcsBucket {
       action: 'read' | 'write' | 'delete' | 'resumable';
       expires: number;
     }): Promise<[string]>;
+    delete(): Promise<unknown>;
   };
 }
 
@@ -89,5 +90,18 @@ export class GcsService implements IFirmwareStorageService {
       this.logger,
     );
     return url;
+  }
+
+  /**
+   * Deletes a GCS object at the given path.
+   * Used for best-effort cleanup after a failed DB write.
+   */
+  async deleteObject(gcsPath: string): Promise<void> {
+    await withGcsError(
+      `deleteObject:${gcsPath}`,
+      () => this.bucket.file(gcsPath).delete(),
+      this.logger,
+    );
+    this.logger.log('GCS object deleted', { path: gcsPath });
   }
 }

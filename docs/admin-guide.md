@@ -351,6 +351,63 @@ Using the same bot token for local development and production can cause the prod
 3. Copy the token and set it as `TELEGRAM_BOT_TOKEN` in your local `.env` file
 4. Keep the production bot token only in GCP Secret Manager
 
+## Publishing a Firmware Release
+
+Use the `firmware:upload` CLI command to publish a new firmware binary. It uploads the file to GCS and creates a `FirmwareRelease` DB record in one step. Devices discover the new release on their next OTA check (every 6 hours, or on boot).
+
+### Prerequisites
+
+- GCS bucket configured (`GCS_BUCKET_NAME` env var).
+- GCS credentials available — one of:
+  - `GCP_SERVICE_ACCOUNT_KEY` in `.env` (production service account JSON), or
+  - Application Default Credentials via `gcloud auth application-default login` (local dev).
+- Database running and `DATABASE_URL` set.
+- Firmware binary built with PlatformIO (`pio run -d firmware/esp32c6`).
+
+### Workflow
+
+1. Build the firmware binary:
+
+   ```bash
+   cd firmware/esp32c6   # or esp32c3
+   pio run
+   # output: .pio/build/esp32c6/firmware.bin
+   ```
+
+2. Copy the binary to `./tmp/firmware/` and rename it with the version:
+
+   ```bash
+   mkdir -p tmp/firmware
+   cp firmware/esp32c6/.pio/build/esp32c6/firmware.bin \
+      tmp/firmware/esp32c6-v0.2.0.bin
+   ```
+
+3. Upload and register:
+
+   ```bash
+   # Load environment
+   export $(grep -v '^#' .env | xargs)
+
+   node apps/api/dist/cli.js firmware:upload \
+     --file esp32c6-v0.2.0.bin \
+     --version 0.2.0 \
+     --board esp32c6 \
+     --channel STABLE
+   ```
+
+4. Confirm output shows the GCS path and signed URL preview.
+
+Devices set to the same channel will download and apply the release on their next OTA check without any additional action.
+
+### Using Docker (admin profile)
+
+See the Docker admin profile docs (task 05) for running `firmware:upload` inside a container with ADC credentials mounted from the host.
+
+### Idempotency
+
+- Uploading the same version + board combination twice is rejected (GCS 412 + DB unique constraint).
+- To re-publish, use a new version tag or delete the existing GCS object and DB row manually.
+
 ## OTA Rollback Flow
 
 ### How it works

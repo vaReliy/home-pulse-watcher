@@ -2,6 +2,20 @@
 
 ## Phase 5.6 — OTA Release Metadata & Storage Layer (in progress)
 
+### Admin CLI: `firmware:upload` command
+
+- Added `apps/api/src/cli/firmware/upload-firmware.command.ts` — `firmware:upload` nest-commander command.
+  - Reads a `.bin` file (absolute path or bare basename searched in `./tmp/firmware/`), computes SHA-256, uploads to GCS, and creates a `FirmwareRelease` DB record.
+  - GCS path convention: `firmware/<board>/<channel>/<version>/<filename>`.
+  - Idempotent upload guard: detects GCS 412 (object already exists via `ifGenerationMatch: 0`) and surfaces a clear error message.
+  - Best-effort GCS cleanup on DB write failure — calls `deleteObject` and warns if cleanup itself fails.
+  - LIVR validation: `version` (semver), `board` (`esp32c3`|`esp32c6`), `channel` (`ALPHA`|`BETA`|`STABLE`).
+  - Prints a summary table including a 15-minute signed URL preview on success.
+  - `--critical` flag marks the release, forcing all channel-subscribed devices to update.
+- Added `IFirmwareStorageService.deleteObject(gcsPath)` to core interface and `GcsService` implementation.
+- Updated `CliModule` — imported `StorageModule` directly (storage token not re-exported through `ServicesModule`) and registered `UploadFirmwareCommand`.
+- Added 11 unit tests covering: success, `--critical`, path resolution, file-not-found, LIVR validation failures, GCS 412 conflict, DB unique-constraint + cleanup, generic DB error + cleanup, cleanup-also-fails scenario.
+
 ### Backend: OTA controller validation + integration test coverage
 
 - Added `checkOtaUpdateRules` LIVR rule set to `check-ota-update.dto.ts` — validates

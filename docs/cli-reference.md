@@ -461,6 +461,91 @@ View help for a specific command:
 node apps/api/dist/cli.js device:register --help
 ```
 
+### firmware:upload
+
+Upload a compiled firmware binary to GCS and register it as a `FirmwareRelease` in the database. Devices discover new releases on their next OTA check.
+
+**Usage:**
+
+```bash
+node apps/api/dist/cli.js firmware:upload \
+  --file <path-or-basename> \
+  --version <semver> \
+  --board <board> \
+  --channel <channel> \
+  [--critical]
+```
+
+**Options:**
+
+| Option                    | Required | Description                                                             |
+| ------------------------- | -------- | ----------------------------------------------------------------------- |
+| `-f, --file <file>`       | Yes      | Path to firmware `.bin`, or bare filename searched in `./tmp/firmware/` |
+| `-v, --version <version>` | Yes      | Semantic version tag (e.g. `0.2.0` or `0.2.0-beta.1`)                   |
+| `-b, --board <board>`     | Yes      | Board type: `esp32c3` or `esp32c6`                                      |
+| `-c, --channel <channel>` | Yes      | Release channel: `ALPHA`, `BETA`, or `STABLE`                           |
+| `--critical`              | No       | Mark as critical — all devices on the channel must update               |
+
+**GCS credentials** — two paths (configured via environment):
+
+- `GCP_SERVICE_ACCOUNT_KEY` set → explicit service account JSON (production).
+- Not set → [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) (`gcloud auth application-default login`).
+
+**GCS object path** (convention used for all releases):
+
+```
+firmware/<board>/<channel>/<version>/<filename>
+```
+
+**Examples:**
+
+```bash
+# Upload a BETA release (file in default ./tmp/firmware/)
+node apps/api/dist/cli.js firmware:upload \
+  --file esp32c6-v0.2.0.bin \
+  --version 0.2.0 \
+  --board esp32c6 \
+  --channel BETA
+
+# Upload using an absolute path and mark critical
+node apps/api/dist/cli.js firmware:upload \
+  --file /build/output/esp32c6-v0.3.0.bin \
+  --version 0.3.0 \
+  --board esp32c6 \
+  --channel STABLE \
+  --critical
+```
+
+**Output on success:**
+
+```
+Uploading esp32c6-v0.2.0.bin (156432 bytes) → firmware/esp32c6/BETA/0.2.0/esp32c6-v0.2.0.bin
+
+=== Firmware Release Created ===
+ID:         550e8400-e29b-41d4-a716-446655440000
+Version:    0.2.0
+Board:      esp32c6
+Channel:    BETA
+Critical:   no
+Checksum:   a3f5...
+GCS Path:   firmware/esp32c6/BETA/0.2.0/esp32c6-v0.2.0.bin
+
+Signed URL (valid 15 min):
+https://storage.googleapis.com/...
+
+Devices on this channel will discover this release on their next OTA check.
+```
+
+**Error cases:**
+
+| Situation                                   | Exit code | Message                                  |
+| ------------------------------------------- | --------- | ---------------------------------------- |
+| File not found                              | 1         | `File not found: <path>`                 |
+| Invalid semver / board / channel            | 1         | `Validation failed: ...`                 |
+| GCS object already at that path             | 1         | `Release already uploaded — v=X board=Y` |
+| DB unique constraint (version+board exists) | 1         | `Release already exists in DB — ...`     |
+| GCS upload fails for other reasons          | 1         | GCS error message                        |
+
 ## Exit Codes
 
 | Code | Meaning                                         |
