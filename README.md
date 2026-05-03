@@ -15,14 +15,14 @@
 
 Two editions are supported:
 
-**Standard Edition (V2.1)**
+**Standard Edition (V3.x.x)**
 
 - MCU: ESP32-C3 or ESP32-C6 SuperMini (RISC-V)
 - Sensor: Non-contact monitoring via 220V → 5V USB adapter logic
 - Power: USB adapter only (no battery backup)
 - Wiring: [`docs/hardware/standard.md`](docs/hardware/standard.md)
 
-**UPS Edition (V2.3)**
+**UPS Edition (V3.x.x)**
 
 - MCU: ESP32-C3 or ESP32-C6 SuperMini (RISC-V)
 - Sensor: Same USB adapter logic (10k/10k voltage divider on GPIO2)
@@ -30,8 +30,6 @@ Two editions are supported:
 - Battery monitoring: GPIO3 ADC with SOS alert at 3400 mV
 - Dual-diode OR-gate ensures outage detection even when battery-powered
 - Wiring: [`docs/hardware/ups.md`](docs/hardware/ups.md)
-
-![UPS Schematic](./docs/assets/ups-schematic-v2.3.png)
 
 ### Software
 

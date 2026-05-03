@@ -8,40 +8,7 @@ Use this variant when battery backup is not needed (e.g., monitoring locations w
 
 ## Wiring Diagram
 
-```
-================================================================================
-                 HOME_PULSE WATCHER V2.1 — STANDARD SCHEMATIC
-================================================================================
-
-[ ADAPTER 5V ] (Input Source)
-      |
-      +--- (A) MAINS SENSING (Detecting AC Power) ------------------------------+
-      |    [ R1 10k ]                                                           |
-      |       |------> GPIO 2 (Sense Pin)                                       |
-      |    [ R2 10k ]                                                           |
-      |       |                                                                 |
-      |    [ C1 0.1uF ] (Noise Filter)                                          |
-      |       |                                                                 |
-      |    [ GND ]                                                              |
-      |                                                                         |
-      +--- (B) DIRECT POWER PATH (Direct 5V supply) ----------------------------+
-      |                                                                         |
-      |                                                       [ ESP32 ]         |
-      |                                                       (C3 / C6)         |
-      |                                                     +-----------+       |
-      +---------------------------------------------------> |   5V IN   |       |
-                                                            |           |       |
-                                                            |   GPIO 2  | <-----+
-                                                            |           |       |
-                                                            |   GND     | --+   |
-                                                            +-----------+   |   |
-                                                                  |         |   |
-                                                                  |         |   |
-                                             +--------------------+---------+---+
-                                             |
-                                      [ COMMON GND ]
-================================================================================
-```
+![Standard Edition Schematic v3.x.x](../assets/hpw-standart-schematic-v3.x.x.png)
 
 - **Full grid power (5V adapter):** 5V x R2/(R1+R2) = 5V x 10k/(10k+10k) = 2.5V at GPIO -> ADC ~3100
 - **Brownout (~3V adapter):** 3V x R2/(R1+R2) = 3V x 10k/(10k+10k) = 1.5V -> ADC ~1860 (hysteresis band, ignored)
