@@ -122,6 +122,7 @@
 - Added `Serial.printf("[OTA] HTTP %d / body len / body preview"` and `parseOtaResponse` result logging to `checkForUpdate()` for field diagnostics.
 - Added `monitor_dtr = 0` / `monitor_rts = 0` to both `platformio.ini` files — prevents the serial monitor from triggering a hardware reset on open (soft-reset support for OTA post-flash verification sessions).
 - Added 810-character URL regression test to `test_ota.cpp` verifying that `parseOtaResponse` correctly handles URLs at the new buffer size.
+- Fixed `fatal error: config.h: No such file or directory` when building `firmware-shared` library for both boards: added `-I src` to `build_flags` in `firmware/esp32c3/platformio.ini` and `firmware/esp32c6/platformio.ini`. PlatformIO does not add the project's `src/` to the include path when compiling symlinked library sources; `led.h` includes `config.h` which lives in the board-specific `src/`.
 
 **Pending**: Task 5 — `device:upgrade` CLI command; device→release upgrade status linking.
 
