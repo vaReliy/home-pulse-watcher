@@ -23,6 +23,9 @@ import {
 /** Timestamp tolerance in seconds (5 minutes) */
 const TIMESTAMP_TOLERANCE_SECONDS = 300;
 
+/** Uppercase MAC address format: AA:BB:CC:DD:EE:FF */
+const MAC_RE = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/;
+
 /**
  * Guard that verifies HMAC signatures from ESP32 devices.
  *
@@ -93,13 +96,22 @@ export class HmacAuthGuard implements CanActivate {
 
     // 3. Find device by MAC
     const normalizedMac = mac.toUpperCase();
+
+    if (!MAC_RE.test(normalizedMac)) {
+      this.logger.warn(`INVALID_MAC_FORMAT: mac=${normalizedMac}`);
+      throw new AuthenticationError(
+        'Invalid MAC address format',
+        AuthenticationErrorCode.INVALID_CREDENTIALS,
+      );
+    }
+
     const device = await this.deviceRepository.findByMacAddress(normalizedMac);
 
     if (!device) {
       this.logger.warn(`DEVICE_NOT_FOUND: mac=${normalizedMac}`);
       throw new AuthenticationError(
         'Device not found',
-        AuthenticationErrorCode.DEVICE_NOT_FOUND,
+        AuthenticationErrorCode.INVALID_CREDENTIALS,
       );
     }
 
@@ -149,7 +161,7 @@ export class HmacAuthGuard implements CanActivate {
       this.logger.warn(`INVALID_SIGNATURE: mac=${normalizedMac}`);
       throw new AuthenticationError(
         'Invalid signature',
-        AuthenticationErrorCode.INVALID_SIGNATURE,
+        AuthenticationErrorCode.INVALID_CREDENTIALS,
       );
     }
 

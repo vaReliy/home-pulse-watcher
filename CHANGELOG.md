@@ -2,6 +2,13 @@
 
 ## Security
 
+### HMAC guard: MAC format validation + unified error codes (I1 + I2)
+
+- **MAC format validation** (`hmac-auth.guard.ts`): added `MAC_RE = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/` check immediately after header normalization, before any DB query — rejects too-short, lowercase, wrong-separator, or non-hex MACs with `INVALID_CREDENTIALS`. Closes log-injection and unbounded-input-to-DB vectors.
+- **Unified client error code**: both the "device not found" and "invalid signature" branches now return `{ code: 'INVALID_CREDENTIALS' }` to callers. Prevents MAC enumeration via distinct error codes (Espressif OUI prefix space is only ~16 M addresses — practically enumerable without rate limiting).
+- Server logs still emit distinct `DEVICE_NOT_FOUND` / `INVALID_SIGNATURE` context so operators can diagnose without leaking info to callers.
+- Unit tests added / updated in `hmac-auth.guard.spec.ts`: invalid MAC format (3 cases), unknown MAC → `INVALID_CREDENTIALS`, bad signature → `INVALID_CREDENTIALS`, anti-enumeration assertions confirm `DEVICE_NOT_FOUND`/`INVALID_SIGNATURE` never appear in response.
+
 ### Enforce firmware boardType binding + validate basename (C3)
 
 - **CLI basename guard** (`upload-firmware.command.ts`): validates the firmware filename against `SAFE_BASENAME = /^[A-Za-z0-9._-]+\.bin$/` before constructing the GCS path — rejects directory traversal, spaces, and non-`.bin` extensions with a clear error.
