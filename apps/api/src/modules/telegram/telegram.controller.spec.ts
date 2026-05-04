@@ -153,4 +153,74 @@ describe('TelegramController', () => {
       expect(res.sendStatus).toHaveBeenCalledWith(HttpStatus.OK);
     });
   });
+
+  describe('timing-safe secret comparison', () => {
+    const secretConfig: TelegramConfig = {
+      botToken: 'test-token',
+      useWebhook: true,
+      webhookSecret: 'my-secret-token',
+    };
+
+    it('responds 401 when secret header is missing', async () => {
+      const bot = createMockBot();
+      const controller = new TelegramController(bot, secretConfig);
+
+      const req = createMockRequest({ update_id: 1 });
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      expect(bot.handleUpdate).not.toHaveBeenCalled();
+      expect(res.sendStatus).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+    });
+
+    it('responds 401 when secret header has wrong value', async () => {
+      const bot = createMockBot();
+      const controller = new TelegramController(bot, secretConfig);
+
+      const req = createMockRequest(
+        { update_id: 1 },
+        { 'x-telegram-bot-api-secret-token': 'wrong-secret' },
+      );
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      expect(bot.handleUpdate).not.toHaveBeenCalled();
+      expect(res.sendStatus).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+    });
+
+    it('responds 401 when secret has correct content but different length prefix', async () => {
+      const bot = createMockBot();
+      const controller = new TelegramController(bot, secretConfig);
+
+      const req = createMockRequest(
+        { update_id: 1 },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token-extra' },
+      );
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      expect(bot.handleUpdate).not.toHaveBeenCalled();
+      expect(res.sendStatus).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+    });
+
+    it('proceeds when secret header matches', async () => {
+      const bot = createMockBot();
+      bot.handleUpdate.mockResolvedValue(undefined);
+      const controller = new TelegramController(bot, secretConfig);
+
+      const req = createMockRequest(
+        { update_id: 1 },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token' },
+      );
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      expect(bot.handleUpdate).toHaveBeenCalled();
+      expect(res.sendStatus).toHaveBeenCalledWith(HttpStatus.OK);
+    });
+  });
 });

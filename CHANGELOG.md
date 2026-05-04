@@ -2,6 +2,12 @@
 
 ## Security
 
+### Telegram webhook: require secret + timing-safe comparison (I4 + I5)
+
+- **`TELEGRAM_WEBHOOK_SECRET` now required** (`env.validation.ts`): added to `REQUIRED_VARS` — app exits on startup if the variable is absent in any environment (not just production). Closes the unauthenticated-webhook / bot-impersonation vector.
+- **Timing-safe comparison** (`telegram.controller.ts`): replaced `headerSecret !== webhookSecret` with `crypto.timingSafeEqual` behind a length-equality pre-check. Eliminates timing side-channel that could leak secret length or partial matches.
+- Unit tests added: `env.validation.spec.ts` (missing `TELEGRAM_WEBHOOK_SECRET` → process exit), `telegram.controller.spec.ts` (missing header → 401, wrong value → 401, length-extended value → 401, exact match → passes).
+
 ### HMAC guard: MAC format validation + unified error codes (I1 + I2)
 
 - **MAC format validation** (`hmac-auth.guard.ts`): added `MAC_RE = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/` check immediately after header normalization, before any DB query — rejects too-short, lowercase, wrong-separator, or non-hex MACs with `INVALID_CREDENTIALS`. Closes log-injection and unbounded-input-to-DB vectors.

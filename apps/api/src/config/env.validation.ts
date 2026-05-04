@@ -20,6 +20,7 @@ const REQUIRED_VARS: RequiredVar[] = [
         : 'must be exactly 64 hex characters (32 bytes for AES-256-GCM)',
   },
   { name: 'GCS_BUCKET_NAME' },
+  { name: 'TELEGRAM_WEBHOOK_SECRET' },
 ];
 
 const OPTIONAL_VARS: OptionalVar[] = [

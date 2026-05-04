@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import {
   Controller,
   Post,
@@ -53,7 +54,11 @@ export class TelegramController {
     // Validate webhook secret if configured
     if (this.config?.webhookSecret) {
       const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
-      if (headerSecret !== this.config.webhookSecret) {
+      const a = Buffer.from(
+        typeof headerSecret === 'string' ? headerSecret : '',
+      );
+      const b = Buffer.from(this.config.webhookSecret);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
         this.logger.warn('Webhook request with invalid secret token');
         res.sendStatus(HttpStatus.UNAUTHORIZED);
         return;
