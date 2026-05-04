@@ -2,6 +2,22 @@
 
 ## Phase 5.6 — OTA Release Metadata & Storage Layer (in progress)
 
+### Infra: Docker `admin` profile with gcloud
+
+- Added `Dockerfile.admin` at repo root — multi-stage build (`google/cloud-sdk:alpine` → `node:22-alpine`).
+  - Copies pre-built `apps/api/dist/` (requires `npx nx build api` on host first).
+  - Copies `prisma/` schema and `prisma.config.ts`; runs `npx prisma generate` at image build time.
+  - Installs production deps via `npm install --omit=dev` (no lockfile in `assets/package.json`); installs `prisma@7` + `dotenv` with `--no-save`.
+  - Runs as `USER node` (non-root) — gcloud mount target is `/home/node/.config/gcloud`.
+  - Entrypoint: `node /app/cli.js`.
+- Updated `docker-compose.yml` — added `admin` service under `profiles: [admin]`.
+  - `env_file: .env` — leave `GCP_SERVICE_ACCOUNT_KEY` empty; ADC via mounted host credentials takes precedence.
+  - Volumes: `~/.config/gcloud:/home/node/.config/gcloud:ro` (ADC) + `./tmp/firmware:/firmware:ro` (firmware binaries).
+  - `depends_on: postgres: condition: service_healthy`.
+- Updated `README.md` — added "Running Admin CLI in a Container" subsection with step-by-step commands.
+- Updated `docs/admin-guide.md` — added containerized CLI runbook section.
+- Usage: `docker compose --profile admin run --rm admin firmware:upload --file /firmware/<bin> --version <semver> --board esp32c3 --channel BETA`
+
 ### Admin CLI: `firmware:upload` command
 
 - Added `apps/api/src/cli/firmware/upload-firmware.command.ts` — `firmware:upload` nest-commander command.

@@ -38,6 +38,8 @@ Create User (CLI) -> Register Device (CLI) -> Flash ESP32 -> Link Device (CLI) -
    export $(grep -v '^#' .env | xargs)
    ```
 
+> **Docker alternative:** If you don't have Node.js installed locally, all CLI commands can run inside the Docker admin container (includes gcloud SDK). See [Running Admin CLI in a Container](#running-admin-cli-in-a-container) at the end of this guide.
+
 ## Step 1: Create User Account
 
 Create the user who will receive Telegram notifications.
@@ -298,12 +300,78 @@ The Telegram bot uses webhooks in production. If commands like `/status` get no 
 
 4. **Webhook security:** Set `TELEGRAM_WEBHOOK_SECRET` in GCP Secret Manager to validate that incoming webhook requests originate from Telegram (via the `X-Telegram-Bot-Api-Secret-Token` header).
 
-### No Notifications
+## Running Admin CLI in a Container
 
-- Verify user has `/start`ed the bot
-- Check device is linked to user via `/devices` bot command
-- Verify device is sending status updates (check backend logs)
-- Ensure `TELEGRAM_BOT_TOKEN` is set correctly
+If you don't have Node.js or gcloud SDK installed locally, all CLI commands can run inside the Docker admin container.
+
+### Prerequisites
+
+1. **gcloud authenticated** (one-time):
+
+   ```bash
+   gcloud auth application-default login
+   ```
+
+   This creates credentials at `~/.config/gcloud`, which the container mounts as read-only.
+
+2. **Application built**:
+
+   ```bash
+   npx nx build api
+   ```
+
+3. **Admin container image built**:
+
+   ```bash
+   docker compose --profile admin build admin
+   ```
+
+### Usage
+
+Run any CLI command with `docker compose --profile admin run --rm admin`:
+
+```bash
+# Create a user
+docker compose --profile admin run --rm admin user:create \
+  --telegram-id 123456789 \
+  --username johndoe
+
+# List users
+docker compose --profile admin run --rm admin user:list
+
+# Register a device
+docker compose --profile admin run --rm admin device:register \
+  --mac AA:BB:CC:DD:EE:FF \
+  --label "Kitchen Sensor"
+
+# Link device to user
+docker compose --profile admin run --rm admin device:link \
+  --telegram-id 123456789 \
+  --mac AA:BB:CC:DD:EE:FF \
+  --role OWNER
+
+# Upload firmware to GCS
+docker compose --profile admin run --rm admin firmware:upload \
+  --file /firmware/esp32c3-v0.2.0.bin \
+  --version 0.2.0 \
+  --board esp32c3 \
+  --channel BETA
+```
+
+**Firmware files:** Place binary files in `./tmp/firmware/` — the container has this mounted at `/firmware`. Reference them in commands as `/firmware/<name>.bin`.
+
+### Authentication
+
+The container uses **Application Default Credentials (ADC)** from your host's gcloud installation. Leave `GCP_SERVICE_ACCOUNT_KEY` empty in `.env` for ADC to activate automatically.
+
+If you need to use a specific GCP service account instead:
+
+```bash
+export GCP_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
+docker compose --profile admin run --rm admin firmware:upload ...
+```
+
+See [CLI Reference](./cli-reference.md) for all available commands.
 
 ## Post-Deploy Setup (GCP Console)
 

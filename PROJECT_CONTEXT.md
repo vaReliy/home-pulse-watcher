@@ -345,6 +345,17 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Best-effort GCS cleanup on DB failure prevents orphaned GCS objects
 - Default binary search path: `./tmp/firmware/` (when `--file` is a bare basename)
 
+**Docker Admin Profile (Task 5, Complete)**
+
+- `Dockerfile.admin` at repo root — multi-stage: `google/cloud-sdk:alpine` → `node:22-alpine`; copies pre-built `apps/api/dist/`, `prisma/`, and `prisma.config.ts`; runs `npx prisma generate`; runs as `USER node` (non-root)
+- docker-compose `admin` profile: `docker compose --profile admin run --rm admin <command>`
+  - Mounts `~/.config/gcloud:/home/node/.config/gcloud:ro` for ADC (Application Default Credentials)
+  - Mounts `./tmp/firmware:/firmware:ro` so `--file /firmware/<name>.bin` works without absolute host paths
+  - `env_file: .env` — leave `GCP_SERVICE_ACCOUNT_KEY` empty; ADC from mounted gcloud config takes precedence
+  - `depends_on: postgres: condition: service_healthy`
+- **One-time host setup**: `gcloud auth application-default login` + `npx nx build api` + `docker compose --profile admin build admin`
+- `prisma.config.ts` must be copied into the admin image (Prisma 7.x reads DB URL from config, not schema)
+
 **OTA Discovery API (Task 3, Complete)**
 
 - `POST /api/ota/check` endpoint — HMAC-SHA256 authenticated, device queries latest release for its board type + channel

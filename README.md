@@ -110,6 +110,34 @@ node apps/api/dist/cli.js device:list --telegram-id 123456789
 node apps/api/dist/cli.js device:link --telegram-id 123456789 --mac AA:BB:CC:DD:EE:FF --role OWNER
 ```
 
+#### Running Admin CLI in a Container
+
+If you don't have Node.js or gcloud SDK installed locally, run the CLI inside a Docker container with bundled gcloud:
+
+```bash
+# one-time: authenticate with your GCP account
+gcloud auth application-default login
+
+# build application artifacts
+npx nx build api
+
+# build admin container image
+docker compose --profile admin build admin
+
+# run any CLI command (examples)
+docker compose --profile admin run --rm admin user:list
+docker compose --profile admin run --rm admin user:create --telegram-id 123456789 --username johndoe
+docker compose --profile admin run --rm admin device:register --mac AA:BB:CC:DD:EE:FF --label "Kitchen"
+docker compose --profile admin run --rm admin device:link --telegram-id 123456789 --mac AA:BB:CC:DD:EE:FF --role OWNER
+
+# upload firmware to GCS (via gcloud ADC)
+docker compose --profile admin run --rm admin firmware:upload \
+  --file /firmware/esp32c3-v0.2.0.bin --version 0.2.0 \
+  --board esp32c3 --channel BETA
+```
+
+**Authentication note:** gcloud inside the container uses Application Default Credentials (ADC) from `~/.config/gcloud` on the host. Leave `GCP_SERVICE_ACCOUNT_KEY` empty in `.env` — ADC automatically kicks in when the environment variable is not set.
+
 See [CLI Reference](./docs/cli-reference.md) for full documentation and the [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 
 ### 7. ESP32 Firmware
