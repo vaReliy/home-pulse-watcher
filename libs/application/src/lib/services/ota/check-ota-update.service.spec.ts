@@ -4,7 +4,7 @@ import type {
   FirmwareRelease,
 } from '@home-pulse-watcher/core';
 import { BoardType, ReleaseChannel } from '@home-pulse-watcher/core';
-import { ValidationError } from '@home-pulse-watcher/shared';
+import { ValidationError, DomainError } from '@home-pulse-watcher/shared';
 import { CheckOtaUpdateService } from './check-ota-update.service.js';
 
 const makeFirmwareRelease = (
@@ -273,6 +273,43 @@ describe('CheckOtaUpdateService', () => {
       });
 
       expect(result.data).toMatchObject({ hasUpdate: true, version: '1.1.0' });
+    });
+  });
+
+  describe('board mismatch guard', () => {
+    it('throws DomainError when gcsPath board prefix does not match requesting boardType', async () => {
+      // Release is stored under esp32c6/ but device requests as esp32c3
+      const mismatchedRelease = makeFirmwareRelease({
+        version: '2.0.0',
+        boardType: BoardType.ESP32_C3,
+        gcsPath: 'firmware/esp32c6/STABLE/2.0.0/esp32c6-v2.0.0.bin',
+      });
+      firmwareRepo.findLatestForBoard.mockResolvedValue([mismatchedRelease]);
+
+      await expect(
+        service.run({
+          boardType: BoardType.ESP32_C3,
+          currentVersion: '1.0.0',
+          channel: ReleaseChannel.STABLE,
+        }),
+      ).rejects.toThrow(DomainError);
+    });
+
+    it('does not throw when gcsPath board prefix matches requesting boardType', async () => {
+      const correctRelease = makeFirmwareRelease({
+        version: '2.0.0',
+        boardType: BoardType.ESP32_C3,
+        gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+      });
+      firmwareRepo.findLatestForBoard.mockResolvedValue([correctRelease]);
+
+      const result = await service.run({
+        boardType: BoardType.ESP32_C3,
+        currentVersion: '1.0.0',
+        channel: ReleaseChannel.STABLE,
+      });
+
+      expect(result.data).toMatchObject({ hasUpdate: true, version: '2.0.0' });
     });
   });
 });

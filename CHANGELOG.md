@@ -2,6 +2,14 @@
 
 ## Security
 
+### Enforce firmware boardType binding + validate basename (C3)
+
+- **CLI basename guard** (`upload-firmware.command.ts`): validates the firmware filename against `SAFE_BASENAME = /^[A-Za-z0-9._-]+\.bin$/` before constructing the GCS path — rejects directory traversal, spaces, and non-`.bin` extensions with a clear error.
+- **Service boardType prefix assertion** (`check-ota-update.service.ts`): after selecting the latest release, asserts `gcsPath.startsWith(firmware/${boardType}/)` before calling `getSignedUrl` — throws `DomainError(BOARD_MISMATCH)` if a DB-row corruption or mislinked release would deliver a wrong-board binary.
+- **Shared helper** `firmwareGcsPathPrefix(boardType)` extracted to `libs/application/src/lib/services/ota/firmware-gcs-path.ts` — single source of truth for the GCS path prefix convention.
+- **`BOARD_MISMATCH`** added to `DomainErrorCode` enum for machine-readable HTTP boundary handling.
+- Defense-in-depth: previously the only protection was SHA-256 hash check; now wrong-board firmware is caught before a signed URL is ever issued.
+
 ### Add global rate limiting (C2)
 
 - Installed `@nestjs/throttler` v6+ and configured globally with 60 requests/minute default limit.

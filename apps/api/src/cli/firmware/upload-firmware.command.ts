@@ -58,12 +58,18 @@ export class UploadFirmwareCommand extends CommandRunner {
         throw new Error(`File not found: ${filePath}`);
       }
 
+      const fileBasename = basename(filePath);
+      const SAFE_BASENAME = /^[A-Za-z0-9._-]+\.bin$/;
+      if (!SAFE_BASENAME.test(fileBasename)) {
+        throw new Error(`Unsafe firmware filename: ${fileBasename}`);
+      }
+
       const buffer = readFileSync(filePath);
       const checksum = createHash('sha256').update(buffer).digest('hex');
-      const gcsPath = `firmware/${options.board}/${options.channel}/${options.version}/${basename(filePath)}`;
+      const gcsPath = `firmware/${options.board}/${options.channel}/${options.version}/${fileBasename}`;
 
       console.log(
-        `Uploading ${basename(filePath)} (${buffer.length} bytes) → ${gcsPath}`,
+        `Uploading ${fileBasename} (${buffer.length} bytes) → ${gcsPath}`,
       );
 
       try {

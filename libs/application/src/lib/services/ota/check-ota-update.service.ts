@@ -11,7 +11,9 @@ import {
   channelsVisibleTo,
 } from '@home-pulse-watcher/core';
 import type { LivrRules, ServiceContext } from '@home-pulse-watcher/shared';
+import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
+import { firmwareGcsPathPrefix } from './firmware-gcs-path.js';
 
 export interface CheckOtaUpdateInput {
   boardType: string;
@@ -95,6 +97,14 @@ export class CheckOtaUpdateService extends BaseService<
 
     if (!semver.gt(latest.version, params.currentVersion)) {
       return { hasUpdate: false };
+    }
+
+    const expectedPrefix = firmwareGcsPathPrefix(params.boardType);
+    if (!latest.gcsPath.startsWith(expectedPrefix)) {
+      throw new DomainError(
+        DomainErrorCode.BOARD_MISMATCH,
+        `Board mismatch: release path does not match requesting board`,
+      );
     }
 
     const url = await this.storage.getSignedUrl(latest.gcsPath);
