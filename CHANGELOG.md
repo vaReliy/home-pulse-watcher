@@ -1,5 +1,14 @@
 # Changelog
 
+## Reliability & Code Quality
+
+### GCS 403 typed error + query bound + dead export cleanup (R1 + R2 + I3)
+
+- **GCS permission error mapped correctly (R1)**: Added `StoragePermissionError extends BaseError` (`httpStatus = 403`, `code = STORAGE_PERMISSION_DENIED`) in `gcs-error.wrapper.ts`. The 403 branch of `withGcsError` now throws this typed error instead of a plain `Error` with a bolted-on `.code`. Previously, `ServiceExceptionFilter` couldn't catch the plain error → HTTP 500; now the device receives a proper 403.
+- **`findLatestForBoard` query bounded (R2)**: Added `orderBy: { createdAt: 'desc' }` and `take: MAX_CANDIDATE_RELEASES` (= 50, named constant with JSDoc) to the `findMany` call in `firmware-release.repository.ts`. Previously the query returned every historical release for the board+channel, with max-semver selection happening in memory.
+- **Dead `checkOtaUpdateRules` export removed (I3)**: Deleted the unreachable export and its unused `LivrRules` import from `check-ota-update.dto.ts`. Service-level `validationRules()` is the single source of truth.
+- Unit test: `gcs-error.wrapper.spec.ts` extended with `StoragePermissionError` instanceof + `httpStatus === 403` assertions.
+
 ## Security
 
 ### Telegram webhook: require secret + timing-safe comparison (I4 + I5)
