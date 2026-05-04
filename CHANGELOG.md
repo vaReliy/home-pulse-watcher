@@ -1,5 +1,14 @@
 # Changelog
 
+## Security
+
+### Remove unauthenticated Telegram debug endpoints (C1)
+
+- Deleted `GET /api/telegram/debug-webhook` and `POST /api/telegram/reset-webhook` from `TelegramController`.
+- Both had zero authentication and no rate limiting — exposure risk: Cloud Run hostname / error fragments (info disclosure) + unlimited `setWebhook` calls (DoS → bot offline).
+- Removed the `Get` import that was only used by the deleted handler.
+- All remaining routes and the webhook handler are untouched.
+
 ## Phase 5.6 — OTA Release Metadata & Storage Layer (in progress)
 
 ### Infra: Docker `admin` profile with gcloud
