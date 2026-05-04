@@ -1,4 +1,6 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { json, urlencoded } from 'express';
 import { Logger } from 'nestjs-pino';
 import { livrValidatorFactory } from '@home-pulse-watcher/shared';
 import { AppModule } from './app/app.module';
@@ -34,7 +36,12 @@ async function bootstrap() {
   validateEnv();
   livrValidatorFactory.initialize();
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+  app.set('trust proxy', 1);
+  app.use(json({ limit: 4 * 1024 }));
+  app.use(urlencoded({ limit: '4kb', extended: false }));
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
   const globalPrefix = 'api';

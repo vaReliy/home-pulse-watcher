@@ -2,6 +2,19 @@
 
 ## Security
 
+### Add global rate limiting (C2)
+
+- Installed `@nestjs/throttler` v6+ and configured globally with 60 requests/minute default limit.
+- Applied `ThrottlerGuard` as global `APP_GUARD` in `app.module.ts` with per-route overrides via `@Throttle()` decorator:
+  - `POST /api/device/status`: 60 req/min/IP (standard power events)
+  - `POST /api/ota/check`: 12 req/min/IP (GCS signed URL generation is expensive)
+  - `POST /api/telegram/webhook`: 60 req/sec/IP (webhook flood protection)
+- Exempt health checks and keep-warm pings via `@SkipThrottle()` on `HealthController` and `AppController`.
+- Set `app.set('trust proxy', 1)` in `main.ts` to resolve client IP correctly behind Cloud Run load balancer.
+- Added body size limits: `json({ limit: '4kb' })` + `urlencoded({ limit: '4kb', extended: false })`.
+- Uses in-memory throttle store; documented migration path to Redis for horizontal scaling.
+- Prevents DB amplification attacks (unbounded AES-GCM decrypt on `/api/device/status`), GCS egress amplification (signed URL generation per OTA check), and MAC enumeration via request volume DOS.
+
 ### Remove unauthenticated Telegram debug endpoints (C1)
 
 - Deleted `GET /api/telegram/debug-webhook` and `POST /api/telegram/reset-webhook` from `TelegramController`.

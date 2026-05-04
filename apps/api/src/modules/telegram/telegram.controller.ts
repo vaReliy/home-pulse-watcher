@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { Telegraf } from 'telegraf';
 import { TELEGRAM_TOKENS } from './telegram.tokens.js';
@@ -34,7 +35,9 @@ export class TelegramController {
 
   /**
    * Receives Telegram webhook POST updates and delegates to Telegraf.
+   * 60 req/sec/IP — matches Telegram's max update delivery rate per bot.
    */
+  @Throttle({ default: { ttl: 1_000, limit: 60 } })
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   async handleWebhook(

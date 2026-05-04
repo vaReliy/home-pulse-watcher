@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type {
   CheckOtaUpdateService,
   CheckOtaUpdateOutput,
@@ -39,6 +40,8 @@ export class OtaController {
    * - X-Timestamp: Unix timestamp (seconds)
    * - X-Signature: HMAC-SHA256 signature
    */
+  /** 12 req/min/IP — OTA check is infrequent; tighten to deter scanning */
+  @Throttle({ default: { ttl: 60_000, limit: 12 } })
   @Post('check')
   @HttpCode(HttpStatus.OK)
   @HmacCanonical(
