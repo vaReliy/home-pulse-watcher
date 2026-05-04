@@ -49,14 +49,14 @@ WORKDIR /app
 
 # Copy bundled application from build stage
 # Includes main.js, cli.js, and minimal package.json (only Prisma externals)
-COPY --from=build /app/apps/api/dist ./
+COPY --chown=node:node --from=build /app/apps/api/dist ./
 
 # Copy Prisma schema, migrations, and config for runtime migration
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/prisma.config.ts ./prisma.config.ts
+COPY --chown=node:node --from=build /app/prisma ./prisma
+COPY --chown=node:node --from=build /app/prisma.config.ts ./prisma.config.ts
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh ./docker-entrypoint.sh
+# Copy entrypoint script with execute permission
+COPY --chown=node:node docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
 # Install external dependencies (Prisma + pg from minimal package.json)
@@ -71,6 +71,9 @@ RUN npx prisma generate
 ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
+
+# Run as non-root user for least-privilege hardening
+USER node
 
 ENTRYPOINT ["tini", "--"]
 CMD ["./docker-entrypoint.sh"]

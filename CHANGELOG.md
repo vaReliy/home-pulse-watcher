@@ -1,5 +1,11 @@
 # Changelog
 
+## Security
+
+### Container runs as non-root user (I6)
+
+- **`USER node` added to production Dockerfile stage**: All `COPY` directives in the production stage now use `--chown=node:node`; `USER node` is set before `ENTRYPOINT`. The built-in `node` user (uid 1000) from the `node:22-alpine` base image is used — no custom user created. `docker inspect <image> --format '{{.Config.User}}'` now returns `node` instead of empty (root). Eliminates unnecessary root privilege inside the gVisor sandbox on Cloud Run.
+
 ## Reliability & Code Quality
 
 ### GCS 403 typed error + query bound + dead export cleanup (R1 + R2 + I3)
