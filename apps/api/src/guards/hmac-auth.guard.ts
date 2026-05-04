@@ -142,7 +142,20 @@ export class HmacAuthGuard implements CanActivate {
         'Route missing @HmacCanonical decorator — HMAC body canonical undefined',
       );
     }
-    const bodyPart = builder(body);
+    let bodyPart: string;
+    try {
+      bodyPart = builder(body);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Canonical builder error';
+      this.logger.warn(
+        `CANONICAL_BUILD_FAILED: mac=${normalizedMac} reason=${msg}`,
+      );
+      throw new AuthenticationError(
+        'Invalid signature',
+        AuthenticationErrorCode.INVALID_CREDENTIALS,
+      );
+    }
     const payload = `${normalizedMac}:${timestamp}:${bodyPart}`;
 
     const expectedSignature = crypto

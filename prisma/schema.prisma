@@ -32,6 +32,7 @@ model Device {
   statusChangedAt  DateTime?
   firmwareVersion  String?
   batteryVoltage   Int?
+  releaseChannel   String       @default("STABLE")
   users           UserDevice[]
   events          PowerEvent[]
 }

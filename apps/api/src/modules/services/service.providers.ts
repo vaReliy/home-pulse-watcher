@@ -135,10 +135,12 @@ export const serviceProviders: Provider[] = [
   {
     provide: SERVICE_TOKENS.CHECK_OTA_UPDATE,
     useFactory: (
+      deviceRepo: IDeviceRepository,
       firmwareRepo: IFirmwareReleaseRepository,
       storage: IFirmwareStorageService,
-    ) => new CheckOtaUpdateService(firmwareRepo, storage),
+    ) => new CheckOtaUpdateService(deviceRepo, firmwareRepo, storage),
     inject: [
+      REPOSITORY_TOKENS.DEVICE,
       REPOSITORY_TOKENS.FIRMWARE_RELEASE,
       STORAGE_TOKENS.FIRMWARE_STORAGE,
     ],

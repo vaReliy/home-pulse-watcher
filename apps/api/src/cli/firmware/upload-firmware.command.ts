@@ -99,8 +99,6 @@ export class UploadFirmwareCommand extends CommandRunner {
         release = await this.firmwareRepo.markCritical(release.id);
       }
 
-      const signedUrl = await this.storage.getSignedUrl(gcsPath);
-
       console.log('\n=== Firmware Release Created ===');
       console.log(`ID:         ${release.id}`);
       console.log(`Version:    ${release.version}`);
@@ -109,7 +107,6 @@ export class UploadFirmwareCommand extends CommandRunner {
       console.log(`Critical:   ${release.isCritical ? 'YES' : 'no'}`);
       console.log(`Checksum:   ${release.checksum}`);
       console.log(`GCS Path:   ${release.gcsPath}`);
-      console.log(`\nSigned URL (valid 15 min):\n${signedUrl}`);
       console.log(
         '\nDevices on this channel will discover this release on their next OTA check.\n',
       );

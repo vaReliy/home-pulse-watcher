@@ -51,18 +51,26 @@ export class TelegramController {
       return;
     }
 
-    // Validate webhook secret if configured
-    if (this.config?.webhookSecret) {
-      const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
-      const a = Buffer.from(
-        typeof headerSecret === 'string' ? headerSecret : '',
+    // Require webhook secret — reject all requests if secret is absent at runtime.
+    // env.validation.ts marks TELEGRAM_WEBHOOK_SECRET required, but guard defensively here
+    // to prevent unsigned requests if that validation is ever bypassed.
+    if (!this.config?.webhookSecret) {
+      this.logger.error(
+        'Webhook secret not configured — rejecting request to prevent unsigned update acceptance',
       );
-      const b = Buffer.from(this.config.webhookSecret);
-      if (a.length !== b.length || !timingSafeEqual(a, b)) {
-        this.logger.warn('Webhook request with invalid secret token');
-        res.sendStatus(HttpStatus.UNAUTHORIZED);
-        return;
-      }
+      res
+        .status(HttpStatus.SERVICE_UNAVAILABLE)
+        .json({ error: 'Webhook not configured' });
+      return;
+    }
+
+    const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
+    const a = Buffer.from(typeof headerSecret === 'string' ? headerSecret : '');
+    const b = Buffer.from(this.config.webhookSecret);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      this.logger.warn('Webhook request with invalid secret token');
+      res.sendStatus(HttpStatus.UNAUTHORIZED);
+      return;
     }
 
     try {

@@ -6,10 +6,16 @@ import type { TelegramContext } from './types/telegram-context.type';
 import { TelegramController } from './telegram.controller';
 
 describe('TelegramController', () => {
-  const createMockResponse = (): jest.Mocked<Response> =>
-    ({
+  const createMockResponse = (): jest.Mocked<Response> => {
+    const res = {
       sendStatus: jest.fn(),
-    }) as unknown as jest.Mocked<Response>;
+      status: jest.fn(),
+      json: jest.fn(),
+    } as unknown as jest.Mocked<Response>;
+    // Make res.status() chainable → returns the same res so .json() can be called
+    (res.status as jest.Mock).mockReturnValue(res);
+    return res;
+  };
 
   const createMockRequest = (
     body: unknown = {},
@@ -21,14 +27,22 @@ describe('TelegramController', () => {
       handleUpdate: jest.fn(),
     }) as unknown as jest.Mocked<Telegraf<TelegramContext>>;
 
+  const secretConfig: TelegramConfig = {
+    botToken: 'test-token',
+    useWebhook: true,
+    webhookSecret: 'my-secret-token',
+  };
+
   describe('handleWebhook', () => {
-    it('should respond 200 and delegate update to bot', async () => {
+    it('should respond 200 and delegate update to bot when secret matches', async () => {
       const bot = createMockBot();
       bot.handleUpdate.mockResolvedValue(undefined);
-      const controller = new TelegramController(bot, null);
+      const controller = new TelegramController(bot, secretConfig);
 
       const body = { update_id: 1, message: { text: '/start' } };
-      const req = createMockRequest(body);
+      const req = createMockRequest(body, {
+        'x-telegram-bot-api-secret-token': 'my-secret-token',
+      });
       const res = createMockResponse();
 
       await controller.handleWebhook(req, res);
@@ -50,9 +64,12 @@ describe('TelegramController', () => {
     it('should respond 200 even when bot.handleUpdate throws', async () => {
       const bot = createMockBot();
       bot.handleUpdate.mockRejectedValue(new Error('Processing failed'));
-      const controller = new TelegramController(bot, null);
+      const controller = new TelegramController(bot, secretConfig);
 
-      const req = createMockRequest({ update_id: 1 });
+      const req = createMockRequest(
+        { update_id: 1 },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token' },
+      );
       const res = createMockResponse();
 
       await controller.handleWebhook(req, res);
@@ -63,7 +80,7 @@ describe('TelegramController', () => {
     it('should pass request body directly to bot.handleUpdate', async () => {
       const bot = createMockBot();
       bot.handleUpdate.mockResolvedValue(undefined);
-      const controller = new TelegramController(bot, null);
+      const controller = new TelegramController(bot, secretConfig);
 
       const body = {
         update_id: 42,
@@ -73,7 +90,9 @@ describe('TelegramController', () => {
           text: '/status',
         },
       };
-      const req = createMockRequest(body);
+      const req = createMockRequest(body, {
+        'x-telegram-bot-api-secret-token': 'my-secret-token',
+      });
       const res = createMockResponse();
 
       await controller.handleWebhook(req, res);
@@ -83,12 +102,6 @@ describe('TelegramController', () => {
   });
 
   describe('webhook secret validation', () => {
-    const secretConfig: TelegramConfig = {
-      botToken: 'test-token',
-      useWebhook: true,
-      webhookSecret: 'my-secret-token',
-    };
-
     it('should respond 200 when valid secret is provided', async () => {
       const bot = createMockBot();
       bot.handleUpdate.mockResolvedValue(undefined);
@@ -135,12 +148,12 @@ describe('TelegramController', () => {
       expect(res.sendStatus).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
     });
 
-    it('should skip validation when no secret is configured', async () => {
+    it('should respond 503 when bot is configured but no webhook secret is set', async () => {
       const bot = createMockBot();
-      bot.handleUpdate.mockResolvedValue(undefined);
       const noSecretConfig: TelegramConfig = {
         botToken: 'test-token',
         useWebhook: true,
+        // webhookSecret intentionally absent
       };
       const controller = new TelegramController(bot, noSecretConfig);
 
@@ -149,18 +162,15 @@ describe('TelegramController', () => {
 
       await controller.handleWebhook(req, res);
 
-      expect(bot.handleUpdate).toHaveBeenCalled();
-      expect(res.sendStatus).toHaveBeenCalledWith(HttpStatus.OK);
+      expect(bot.handleUpdate).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Webhook not configured',
+      });
     });
   });
 
   describe('timing-safe secret comparison', () => {
-    const secretConfig: TelegramConfig = {
-      botToken: 'test-token',
-      useWebhook: true,
-      webhookSecret: 'my-secret-token',
-    };
-
     it('responds 401 when secret header is missing', async () => {
       const bot = createMockBot();
       const controller = new TelegramController(bot, secretConfig);

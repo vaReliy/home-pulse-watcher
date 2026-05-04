@@ -48,8 +48,14 @@ export class DomainError extends BaseError {
       DomainErrorCode.DEVICE_NOT_OWNED,
     ];
 
+    /** Data-integrity violations that indicate a server-side bug, not a client error. */
+    const internalCodes: DomainErrorCodeType[] = [
+      DomainErrorCode.BOARD_MISMATCH,
+    ];
+
     if (conflictCodes.includes(code)) return 409;
     if (forbiddenCodes.includes(code)) return 403;
+    if (internalCodes.includes(code)) return 500;
     return 422;
   }
 }

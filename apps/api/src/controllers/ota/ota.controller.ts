@@ -23,6 +23,8 @@ import { CheckOtaUpdateDto } from './dto/check-ota-update.dto.js';
  * Protected by HMAC authentication.
  *
  * HMAC canonical format: MAC:TS:boardType:currentVersion:channel
+ * The channel field is included in the canonical string for backwards compatibility
+ * with deployed firmware, but channel selection uses the device's DB record.
  */
 @Controller('ota')
 @UseGuards(HmacAuthGuard)
@@ -44,9 +46,15 @@ export class OtaController {
   @Throttle({ default: { ttl: 60_000, limit: 12 } })
   @Post('check')
   @HttpCode(HttpStatus.OK)
-  @HmacCanonical(
-    (b) => `${b['boardType']}:${b['currentVersion']}:${b['channel']}`,
-  )
+  @HmacCanonical((b) => {
+    const boardType = b['boardType'];
+    const currentVersion = b['currentVersion'];
+    const channel = b['channel'];
+    if (!boardType || !currentVersion || !channel) {
+      throw new Error('Missing required HMAC canonical fields');
+    }
+    return `${String(boardType)}:${String(currentVersion)}:${String(channel)}`;
+  })
   async checkForUpdate(
     @Body() body: CheckOtaUpdateDto,
     @DeviceId() deviceId: string,
@@ -55,7 +63,6 @@ export class OtaController {
       {
         boardType: body.boardType,
         currentVersion: body.currentVersion,
-        channel: body.channel,
       },
       { deviceId },
     );

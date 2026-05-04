@@ -1,5 +1,5 @@
 import type { Device as PrismaDevice } from '@prisma/client';
-import { Device, PowerStatus } from '@home-pulse-watcher/core';
+import { Device, PowerStatus, ReleaseChannel } from '@home-pulse-watcher/core';
 
 /**
  * Maps Prisma Device model to Domain Device entity.
@@ -18,5 +18,6 @@ export function mapPrismaDeviceToEntity(prismaDevice: PrismaDevice): Device {
     statusChangedAt: prismaDevice.statusChangedAt,
     firmwareVersion: prismaDevice.firmwareVersion,
     batteryVoltage: prismaDevice.batteryVoltage,
+    releaseChannel: prismaDevice.releaseChannel as ReleaseChannel,
   });
 }

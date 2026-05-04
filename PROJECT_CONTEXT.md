@@ -296,7 +296,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
 
-### OTA Release Metadata (Phase 5.6 — in progress)
+### OTA Release Metadata (Phase 5.6)
 
 **Prisma Model: `FirmwareRelease`**
 
@@ -376,6 +376,13 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - OTA confirmed working end-to-end on real ESP32-C6 hardware (v3.5.2 auto-flashed)
 
 **Firmware shared-library boundary:** `libs/firmware-shared` must not include board-specific headers (`config.h`). LED helpers in `ota.cpp` are now suppressed (`(void)statusLed`) to preserve this boundary. The shared sketch (`firmware/common/main.cpp`) consumes `config.h` from each env's `src/` via the implicit `src_dir` include path — zero `#ifdef` in the shared source.
+
+**OTA Security Boundaries (Post-Audit)**
+
+- **`Device.releaseChannel` controls firmware tier** — Prisma schema: `releaseChannel String @db.Char(6) @default("STABLE")` with CHECK constraint. Backend **never** uses the request body `channel` field for security decisions. The field is included only in the HMAC canonical string for backward compat with V3.x firmware that transmits it; `CheckOtaUpdateService` always reads `device.releaseChannel` from DB. Prevents device downgrade via tampering.
+- **GCS signed URLs never in stdout/logs** — `IFirmwareStorageService.getSignedUrl()` is for internal use only (backend response to `/api/ota/check`). Must never be printed to stdout or stderr in CLI commands. URLs are time-limited credentials (15 min) and appear in Cloud Logging otherwise. The CLI `firmware:upload` summary prints only the GCS path (not the URL), with a note to use the backend endpoint.
+- **Telegram webhook returns 503 when secret is missing** — `TELEGRAM_WEBHOOK_SECRET` is in `REQUIRED_VARS` (app exits on startup if absent). If it's somehow nil at runtime in the webhook controller, return 403 (or 401) **not** a silent accept. Any guard that depends on a secret should fail closed (deny by default).
+- **HMAC guard catches canonical builder exceptions** (`hmac-auth.guard.ts`): All throws from `@HmacCanonical()` builder → `AuthenticationError(INVALID_CREDENTIALS)` → 401. Builders can validate fields explicitly (`throw` if missing/unparseable) without risk of unhandled 500s.
 
 **Still pending:**
 

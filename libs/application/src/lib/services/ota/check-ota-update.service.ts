@@ -1,5 +1,6 @@
 import semver from 'semver';
 import type {
+  IDeviceRepository,
   IFirmwareReleaseRepository,
   IFirmwareStorageService,
   BoardType,
@@ -7,7 +8,6 @@ import type {
 } from '@home-pulse-watcher/core';
 import {
   BoardType as BoardTypeConst,
-  ReleaseChannel as ReleaseChannelConst,
   channelsVisibleTo,
 } from '@home-pulse-watcher/core';
 import type { LivrRules, ServiceContext } from '@home-pulse-watcher/shared';
@@ -18,7 +18,6 @@ import { firmwareGcsPathPrefix } from './firmware-gcs-path.js';
 export interface CheckOtaUpdateInput {
   boardType: string;
   currentVersion: string;
-  channel: string;
 }
 
 export type CheckOtaUpdateOutput =
@@ -34,6 +33,9 @@ export type CheckOtaUpdateOutput =
 /**
  * Checks whether a newer firmware release is available for the requesting device.
  *
+ * Channel selection uses the device's DB-stored releaseChannel, not the request body,
+ * preventing privilege escalation via client-supplied channel values.
+ *
  * Channel waterfall rules:
  * - STABLE devices only see STABLE releases
  * - BETA devices see BETA + STABLE releases
@@ -44,6 +46,7 @@ export class CheckOtaUpdateService extends BaseService<
   CheckOtaUpdateOutput
 > {
   constructor(
+    private readonly deviceRepo: IDeviceRepository,
     private readonly firmwareRepo: IFirmwareReleaseRepository,
     private readonly storage: IFirmwareStorageService,
   ) {
@@ -58,19 +61,29 @@ export class CheckOtaUpdateService extends BaseService<
         { one_of: Object.values(BoardTypeConst) },
       ],
       currentVersion: ['required', 'string', 'semverVersion'],
-      channel: [
-        'required',
-        'string',
-        { one_of: Object.values(ReleaseChannelConst) },
-      ],
     };
   }
 
   protected async execute(
     params: CheckOtaUpdateInput,
-    _context: ServiceContext,
+    context: ServiceContext,
   ): Promise<CheckOtaUpdateOutput> {
-    const channels = channelsVisibleTo(params.channel as ReleaseChannel);
+    if (!context.deviceId) {
+      throw new DomainError(
+        DomainErrorCode.DEVICE_NOT_LINKED,
+        'Device ID missing from request context',
+      );
+    }
+
+    const device = await this.deviceRepo.findById(context.deviceId);
+    if (!device) {
+      throw new DomainError(
+        DomainErrorCode.DEVICE_NOT_LINKED,
+        `Device not found: ${context.deviceId}`,
+      );
+    }
+
+    const channels = channelsVisibleTo(device.releaseChannel as ReleaseChannel);
     const releases = await this.firmwareRepo.findLatestForBoard(
       params.boardType as BoardType,
       channels,

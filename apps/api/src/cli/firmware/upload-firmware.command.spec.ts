@@ -131,9 +131,8 @@ describe('UploadFirmwareCommand', () => {
         checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
         gcsPath: 'firmware/esp32c3/ALPHA/0.2.0/esp32c3-v0.2.0.bin',
       });
-      expect(storage.getSignedUrl).toHaveBeenCalledWith(
-        'firmware/esp32c3/ALPHA/0.2.0/esp32c3-v0.2.0.bin',
-      );
+      // Signed URL is no longer printed to stdout (H1 security fix) — devices fetch it via OTA check endpoint.
+      expect(storage.getSignedUrl).not.toHaveBeenCalled();
       expect(exitSpy).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('Firmware Release Created'),

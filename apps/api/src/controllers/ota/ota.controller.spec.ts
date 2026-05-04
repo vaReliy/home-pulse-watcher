@@ -10,6 +10,7 @@ import type {
   IFirmwareReleaseRepository,
   IFirmwareStorageService,
 } from '@home-pulse-watcher/core';
+import { ReleaseChannel } from '@home-pulse-watcher/core';
 import {
   encryptDeviceSecret,
   livrValidatorFactory,
@@ -37,6 +38,7 @@ const mockDevice: Device = {
   label: 'Test Device',
   lastStatus: null,
   lastSeenAt: null,
+  releaseChannel: ReleaseChannel.STABLE,
   isOnline: () => false,
 } as Device;
 
@@ -147,7 +149,7 @@ describe('OtaController (integration)', () => {
     };
 
     mockDeviceRepository = {
-      findById: jest.fn(),
+      findById: jest.fn().mockResolvedValue(mockDevice),
       findByMacAddress: jest.fn().mockResolvedValue(mockDevice),
       findByUserId: jest.fn(),
       create: jest.fn(),
@@ -158,6 +160,7 @@ describe('OtaController (integration)', () => {
     };
 
     const checkOtaUpdateService = new CheckOtaUpdateService(
+      mockDeviceRepository,
       mockFirmwareRepo,
       mockStorageService,
     );
@@ -195,15 +198,15 @@ describe('OtaController (integration)', () => {
     await app.close();
   });
 
-  describe('POST /ota/check — input validation', () => {
-    it('returns 400 when boardType is missing', async () => {
+  describe('POST /ota/check — HMAC canonical field guard', () => {
+    it('returns 401 when channel is absent — canonical builder throws', async () => {
       const timestamp = currentTimestamp();
-      // body sent without boardType
-      const body = { currentVersion: '1.0.0', channel: 'STABLE' };
+      // board and version present but channel omitted — canonical builder throws
+      const body = { boardType: 'esp32c3', currentVersion: '1.0.0' };
 
-      // The @HmacCanonical builder produces `${b['boardType']}:${b['currentVersion']}:${b['channel']}`
-      // When boardType is absent, b['boardType'] is undefined → String(undefined) = 'undefined'
-      const bodyPart = `undefined:1.0.0:STABLE`;
+      // Signature built with "undefined" in place of channel (to bypass HMAC check
+      // and verify the canonical builder error is the response cause)
+      const bodyPart = `esp32c3:1.0.0:undefined`;
       const mac = DEVICE_MAC;
       const payload = `${mac}:${timestamp}:${bodyPart}`;
       const signature = crypto
@@ -217,41 +220,18 @@ describe('OtaController (integration)', () => {
         'X-Signature': signature,
       });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
+      // Guard catches canonical builder throw → treats as invalid signature → 401
+      expect(response.status).toBe(401);
     });
+  });
 
+  describe('POST /ota/check — input validation', () => {
     it('returns 400 when boardType is invalid (not in enum)', async () => {
       const timestamp = currentTimestamp();
       const body = {
         boardType: 'esp32xx',
         currentVersion: '1.0.0',
         channel: 'STABLE',
-      };
-
-      const response = await post(httpServer, '/ota/check', body, {
-        'X-Device-Mac': DEVICE_MAC,
-        'X-Timestamp': timestamp,
-        'X-Signature': generateOtaSignature(
-          DEVICE_MAC,
-          timestamp,
-          body.boardType,
-          body.currentVersion,
-          body.channel,
-          DEVICE_SECRET,
-        ),
-      });
-
-      expect(response.status).toBe(400);
-      expect(response.body).toMatchObject({ code: 'VALIDATION_ERROR' });
-    });
-
-    it('returns 400 when channel is not in enum', async () => {
-      const timestamp = currentTimestamp();
-      const body = {
-        boardType: 'esp32c3',
-        currentVersion: '1.0.0',
-        channel: 'NIGHTLY',
       };
 
       const response = await post(httpServer, '/ota/check', body, {
