@@ -19,7 +19,13 @@ const REQUIRED_VARS: RequiredVar[] = [
         ? null
         : 'must be exactly 64 hex characters (32 bytes for AES-256-GCM)',
   },
-  { name: 'TELEGRAM_WEBHOOK_SECRET' },
+  {
+    name: 'TELEGRAM_WEBHOOK_SECRET',
+    validate: (value) =>
+      value.length >= 16
+        ? null
+        : 'must be at least 16 characters (empty or short secrets allow timing-safe bypass)',
+  },
 ];
 
 const OPTIONAL_VARS: OptionalVar[] = [

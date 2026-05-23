@@ -168,6 +168,49 @@ describe('TelegramController', () => {
         error: 'Webhook not configured',
       });
     });
+
+    it('should respond 503 when webhookSecret is empty string', async () => {
+      const bot = createMockBot();
+      const emptySecretConfig: TelegramConfig = {
+        botToken: 'test-token',
+        useWebhook: true,
+        webhookSecret: '',
+      };
+      const controller = new TelegramController(bot, emptySecretConfig);
+
+      const req = createMockRequest({ update_id: 1 });
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      expect(bot.handleUpdate).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+      expect(res.json).toHaveBeenCalledWith({
+        error: 'Webhook not configured',
+      });
+    });
+
+    it('should respond 401 for request with empty secret header when config has empty webhookSecret', async () => {
+      const bot = createMockBot();
+      const emptySecretConfig: TelegramConfig = {
+        botToken: 'test-token',
+        useWebhook: true,
+        webhookSecret: '',
+      };
+      const controller = new TelegramController(bot, emptySecretConfig);
+
+      const req = createMockRequest(
+        { update_id: 1 },
+        { 'x-telegram-bot-api-secret-token': '' },
+      );
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      expect(bot.handleUpdate).not.toHaveBeenCalled();
+      // Empty string config → treated as unconfigured → 503
+      expect(res.status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+    });
   });
 
   describe('timing-safe secret comparison', () => {

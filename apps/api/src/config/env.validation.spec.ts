@@ -43,6 +43,24 @@ describe('validateEnv', () => {
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
+  it('exits when TELEGRAM_WEBHOOK_SECRET is empty string', () => {
+    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: '' };
+    validateEnv();
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('exits when TELEGRAM_WEBHOOK_SECRET is shorter than 16 characters', () => {
+    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: 'tooshort' };
+    validateEnv();
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('passes when TELEGRAM_WEBHOOK_SECRET is exactly 16 characters', () => {
+    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: 'a'.repeat(16) };
+    validateEnv();
+    expect(process.exit).not.toHaveBeenCalled();
+  });
+
   it('exits in production when TELEGRAM_WEBHOOK_SECRET is missing', () => {
     const { TELEGRAM_WEBHOOK_SECRET: _, ...rest } = BASE_ENV;
     process.env = { ...rest, NODE_ENV: 'production' };

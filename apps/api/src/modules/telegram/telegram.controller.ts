@@ -54,7 +54,7 @@ export class TelegramController {
     // Require webhook secret — reject all requests if secret is absent at runtime.
     // env.validation.ts marks TELEGRAM_WEBHOOK_SECRET required, but guard defensively here
     // to prevent unsigned requests if that validation is ever bypassed.
-    if (!this.config?.webhookSecret) {
+    if (!this.config?.webhookSecret || this.config.webhookSecret.length === 0) {
       this.logger.error(
         'Webhook secret not configured — rejecting request to prevent unsigned update acceptance',
       );
