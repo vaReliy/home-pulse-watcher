@@ -92,6 +92,12 @@ CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo) {
 
     if (!extractJsonString(body, "version",  version,  sizeof(version)))  return CheckResult::ParseError;
     if (!extractJsonString(body, "url",      url,      sizeof(url)))      return CheckResult::ParseError;
+    if (strlen(url) == sizeof(url) - 1) {
+#ifndef UNIT_TEST
+        Serial.printf("[OTA] URL buffer full — possible truncation, aborting\n");
+#endif
+        return CheckResult::ParseError;
+    }
     if (!extractJsonString(body, "checksum", checksum, sizeof(checksum))) return CheckResult::ParseError;
     extractJsonBool(body, "isCritical", isCritical);  // optional; defaults to false
 
@@ -171,13 +177,17 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
 
         // Canonical string: version|url|checksum|isCritical|expiresAt|ts
         char respCanonical[1280];
-        snprintf(respCanonical, sizeof(respCanonical), "%s|%s|%s|%s|%s|%lu",
+        int canonLen = snprintf(respCanonical, sizeof(respCanonical), "%s|%s|%s|%s|%s|%lu",
             outInfo.version.c_str(),
             outInfo.url.c_str(),
             outInfo.checksum.c_str(),
             outInfo.isCritical ? "true" : "false",
             expiresAtBuf,
             (unsigned long)respTs);
+        if (canonLen < 0 || (size_t)canonLen >= sizeof(respCanonical)) {
+            Serial.printf("[OTA] canonical string buffer overflow, aborting\n");
+            return CheckResult::ParseError;
+        }
 
         String computed = calculateSignature(String(respCanonical), cred.device_secret);
         if (!constantTimeEquals(computed.c_str(), sigBuf, 64)) {

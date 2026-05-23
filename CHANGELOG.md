@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Security
+
+- **firmware/ota**: Detect silent URL buffer truncation in `parseOtaResponse` — if `url[1024]` fills to capacity (strlen == 1023), return `ParseError` and abort OTA rather than proceeding with a truncated signed URL. Added `snprintf` return-value guard on `respCanonical[1280]` in `checkForUpdate` as a secondary defence.
+
 ## Phase 5.6 — OTA Updates: Secure Remote Delivery (Complete)
 
 ### Summary
