@@ -1,4 +1,4 @@
-# Hardware V2.1 — Standard (Grid-Only)
+# Hardware V3.x.x — Standard Edition (Grid-Only)
 
 ## Overview
 

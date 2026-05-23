@@ -1,4 +1,4 @@
-# Hardware V2.3 — UPS Edition (Battery Backup)
+# Hardware V3.x.x — UPS Edition (Battery Backup)
 
 ## Overview
 
