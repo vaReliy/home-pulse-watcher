@@ -4,11 +4,11 @@ import type {
   IFirmwareReleaseRepository,
   IFirmwareStorageService,
   BoardType,
-  ReleaseChannel,
 } from '@home-pulse-watcher/core';
 import {
   BoardType as BoardTypeConst,
   channelsVisibleTo,
+  isReleaseChannel,
 } from '@home-pulse-watcher/core';
 import type { LivrRules, ServiceContext } from '@home-pulse-watcher/shared';
 import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
@@ -83,7 +83,14 @@ export class CheckOtaUpdateService extends BaseService<
       );
     }
 
-    const channels = channelsVisibleTo(device.releaseChannel as ReleaseChannel);
+    const raw = device.releaseChannel;
+    if (!isReleaseChannel(raw)) {
+      throw new DomainError(
+        DomainErrorCode.INVALID_DEVICE_STATE,
+        `Device ${device.macAddress} has invalid releaseChannel: "${raw}"`,
+      );
+    }
+    const channels = channelsVisibleTo(raw);
     const releases = await this.firmwareRepo.findLatestForBoard(
       params.boardType as BoardType,
       channels,

@@ -8,6 +8,14 @@ export type ReleaseChannel =
   (typeof ReleaseChannel)[keyof typeof ReleaseChannel];
 
 /**
+ * Type guard: returns true when value is a valid ReleaseChannel member.
+ * Use this to validate DB-sourced strings before casting.
+ */
+export function isReleaseChannel(value: unknown): value is ReleaseChannel {
+  return (Object.values(ReleaseChannel) as unknown[]).includes(value);
+}
+
+/**
  * Returns the set of channels visible to a device subscribed to the given channel.
  *
  * Channel visibility (waterfall):

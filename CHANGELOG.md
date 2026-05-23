@@ -2,6 +2,13 @@
 
 ## Phase 5.6 — OTA Security & Code Review Hardening (post-audit)
 
+### Fixed: Unsafe `releaseChannel` Cast in `CheckOtaUpdateService`
+
+- **Type guard added** (`isReleaseChannel(value: unknown): value is ReleaseChannel`): exported from `@home-pulse-watcher/core` to validate `device.releaseChannel` against the enum before use.
+- **Service-level validation**: `CheckOtaUpdateService` now calls the guard and throws `DomainError(INVALID_DEVICE_STATE)` for invalid channel values instead of propagating an untyped `Error` that would surface as HTTP 500.
+- **Error code standardized**: Added `INVALID_DEVICE_STATE` to `DomainErrorCode` enum (HTTP 500 — data-integrity violation, server-side, distinct from validation errors).
+- **Unit test added**: mock repo returns `releaseChannel: 'INVALID'` → service throws `DomainError` with `INVALID_DEVICE_STATE` code.
+
 ### OTA Release Channel Control + GCS URL Sanitization + Telegram Auth Fallback
 
 - **Server-controlled release channel** (`Device.releaseChannel`): Added `CHAR(6)` column to Prisma `Device` model with CHECK constraint `('ALPHA'|'BETA'|'STABLE')`, default `'STABLE'`. Device's firmware tier is now persistent in DB — server decides which release binary the device receives, not the client. Request body `channel` field is retained **only in the HMAC canonical string** for firmware backward compatibility (V3.x devices still transmit it); it no longer influences release selection. Prevents devices from downgrading to old / test binaries via request tampering. Security boundary: POST `/api/ota/check` receives untrusted `channel` from device, but `CheckOtaUpdateService` ignores it and uses `device.releaseChannel` from DB for the actual release query.

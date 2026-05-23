@@ -1,16 +1,20 @@
 import type {
+  Device,
+  FirmwareRelease,
   IDeviceRepository,
   IFirmwareReleaseRepository,
   IFirmwareStorageService,
-  FirmwareRelease,
-  Device,
 } from '@home-pulse-watcher/core';
 import {
   BoardType,
-  ReleaseChannel,
   PowerStatus,
+  ReleaseChannel,
 } from '@home-pulse-watcher/core';
-import { ValidationError, DomainError } from '@home-pulse-watcher/shared';
+import {
+  DomainError,
+  DomainErrorCode,
+  ValidationError,
+} from '@home-pulse-watcher/shared';
 import { CheckOtaUpdateService } from './check-ota-update.service.js';
 
 const makeFirmwareRelease = (
@@ -300,6 +304,22 @@ describe('CheckOtaUpdateService', () => {
       );
 
       expect(result.data).toMatchObject({ hasUpdate: true, version: '1.1.0' });
+    });
+  });
+
+  describe('invalid releaseChannel in DB', () => {
+    it('throws DomainError with INVALID_DEVICE_STATE when device has unrecognised releaseChannel', async () => {
+      deviceRepo = createMockDeviceRepo(
+        makeDevice({ releaseChannel: 'INVALID' as ReleaseChannel }),
+      );
+      service = new CheckOtaUpdateService(deviceRepo, firmwareRepo, storage);
+
+      await expect(service.run(validInput, context)).rejects.toThrow(
+        DomainError,
+      );
+      await expect(service.run(validInput, context)).rejects.toMatchObject({
+        code: DomainErrorCode.INVALID_DEVICE_STATE,
+      });
     });
   });
 

@@ -5,6 +5,7 @@ export { BoardType } from './lib/types/board-type.enum.js';
 export {
   ReleaseChannel,
   channelsVisibleTo,
+  isReleaseChannel,
 } from './lib/types/release-channel.enum.js';
 
 // Entities
