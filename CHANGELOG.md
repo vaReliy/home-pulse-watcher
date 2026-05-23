@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed: `applyCompileTimeSecrets` empty `OTA_CHANNEL` silently marks NVS as provisioned
+
+- **Guard added** (`credentials.h:215`): `OTA_CHANNEL` block now wrapped with `if (strlen(OTA_CHANNEL) > 0)`, consistent with existing guards on `WIFI_SSID`, `WIFI_PASSWORD`, `DEVICE_SECRET`, and `BACKEND_URL`. An empty `#define OTA_CHANNEL ""` no longer sets `wrote = true`, preventing false provisioning and subsequent backend LIVR rejection of the empty channel string.
+- **Example updated**: `secrets.h.example` (both esp32c3 and esp32c6) now shows `#define OTA_CHANNEL "STABLE"` with inline comment "leave empty ("") to use portal provisioning".
+- **Unit test added** (`test_apply_empty_ota_channel_does_not_set_wrote`): verifies all-empty inputs return `false` and leave `ota_channel` field empty.
+
 ### Fixed: `FirmwareRelease.gcsPath` CHECK Constraint Allows Prerelease Versions
 
 - **Constraint regex corrected**: The DB CHECK constraint on `FirmwareRelease.gcsPath` was rejecting valid semver prerelease versions (e.g. `0.2.0-beta.1`). Old regex: `^firmware/(esp32c3|esp32c6)/[A-Z]+/[0-9]+\.[0-9]+\.[0-9]+/[a-zA-Z0-9._-]+\.bin$`. New regex: `^firmware/(esp32c3|esp32c6)/[A-Z]+/[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?/[a-zA-Z0-9._-]+\.bin$` (added optional prerelease segment `(-[a-zA-Z0-9.]+)?`).

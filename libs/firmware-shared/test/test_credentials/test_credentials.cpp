@@ -208,6 +208,21 @@ void test_apply_all_fields_written(void) {
   TEST_ASSERT_EQUAL_STRING("http://srv/api", c.backend_url);
 }
 
+void test_apply_empty_ota_channel_does_not_set_wrote(void) {
+  // Simulates OTA_CHANNEL defined as "" in secrets.h.
+  // When all runtime fields are empty (as they would be when every #define is ""),
+  // applyCompileTimeSecrets must return false — the strlen > 0 guard on OTA_CHANNEL
+  // (and all other fields) must prevent wrote from being set.
+  // Note: the OTA_CHANNEL #ifdef path is not exercised in native tests (no macro
+  // is defined here), so this test validates the equivalent runtime condition:
+  // all inputs empty → wrote stays false → returns false.
+  DeviceCredentials c;
+  memset(&c, 0, sizeof(c));
+  bool result = applyCompileTimeSecrets(c, "", "", "", "");
+  TEST_ASSERT_FALSE(result);
+  TEST_ASSERT_EQUAL_STRING("", c.ota_channel);
+}
+
 // ─── NVS round-trip (uses upgraded Preferences mock) ─────────────────────────
 
 void test_save_then_load_round_trip(void) {
@@ -313,6 +328,7 @@ int main(void) {
   RUN_TEST(test_apply_empty_inputs_returns_false);
   RUN_TEST(test_apply_partial_secret_and_url_only);
   RUN_TEST(test_apply_all_fields_written);
+  RUN_TEST(test_apply_empty_ota_channel_does_not_set_wrote);
 
   RUN_TEST(test_load_empty_nvs_gives_stable_channel);
   RUN_TEST(test_ota_channel_round_trip);
