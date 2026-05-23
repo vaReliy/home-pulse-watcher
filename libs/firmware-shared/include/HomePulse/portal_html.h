@@ -126,6 +126,7 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
 <script>
 var manualMode = false;
 var storedSsid = '';
+var csrfToken = '';
 var SECRET_PLACEHOLDER = '••••••••';
 
 function togglePw(btn, id) {
@@ -195,6 +196,7 @@ function loadConfig() {
   fetch('/config')
     .then(function(r){ return r.json(); })
     .then(function(c) {
+      if (c.csrf) csrfToken = c.csrf;
       if (c.url) {
         document.getElementById('url').value = c.url;
         document.getElementById('url-clear').style.display = '';
@@ -258,6 +260,7 @@ function doSave(e) {
   showStatus('Saving credentials…', 'status-info');
 
   var data = new URLSearchParams();
+  data.append('_csrf',       csrfToken);
   data.append('ssid',        ssid);
   data.append('password',    document.getElementById('password').value);
   data.append('secret',      secretVal);

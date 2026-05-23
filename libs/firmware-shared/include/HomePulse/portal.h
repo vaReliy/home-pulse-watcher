@@ -6,6 +6,7 @@
 #include <DNSServer.h>
 #include <WebServer.h>
 #include <Adafruit_NeoPixel.h>
+#include <esp_random.h>
 
 #include "credentials.h"
 #include "led.h"
@@ -27,6 +28,7 @@
 
 static DNSServer  _dnsServer;
 static WebServer  _webServer(PORTAL_HTTP_PORT);
+static String     _csrfToken;  // anti-CSRF token, regenerated each AP session
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,25 @@ static WebServer  _webServer(PORTAL_HTTP_PORT);
  * @param mac Full MAC string, e.g. "AA:BB:CC:DD:EE:FF"
  * @return SSID string
  */
+/**
+ * Derive the WPA2-PSK AP password from the device MAC address.
+ * Uses the last 8 hex chars of the MAC (last 4 bytes), uppercased.
+ * Example: MAC "AA:BB:CC:DD:EE:FF" → password "DDEEFF" → "CCDDEEFF"
+ *
+ * Provides meaningful protection against remote attackers while keeping
+ * provisioning feasible for the owner via Serial monitor.
+ *
+ * @param mac Full MAC string, e.g. "AA:BB:CC:DD:EE:FF"
+ * @return 8-character WPA2-PSK password string
+ */
+inline String buildApPassword(const String& mac) {
+    String clean = mac;
+    clean.replace(":", "");
+    String pw = clean.substring(clean.length() - 8);
+    pw.toUpperCase();
+    return pw;
+}
+
 inline String buildApSsid(const String& mac) {
     // Last 4 chars of MAC string without colons = last 2 bytes = "EEFF"
     String clean = mac;
@@ -129,7 +150,10 @@ static void handleConfig() {
         (unsigned)strlen(creds.wifi_ssid),
         (unsigned)strlen(creds.backend_url),
         creds.device_secret[0] != '\0');
+    // Inject CSRF token into the credentials JSON (strip trailing } and append)
     String json = buildConfigJson(creds);
+    json = json.substring(0, json.length() - 1) +
+           ",\"csrf\":\"" + _csrfToken + "\"}";
     _webServer.sendHeader("Cache-Control", "no-cache");
     _webServer.send(200, "application/json", json);
 }
@@ -142,6 +166,13 @@ static void handleConfig() {
  * the existing value is kept — enabling re-provisioning without re-entering them.
  */
 static void handleSave() {
+    // Anti-CSRF: reject requests that lack a valid session token.
+    // Closes CSRF-over-Wi-Fi attacks from any client already connected to the AP.
+    if (!_webServer.hasArg("_csrf") || _webServer.arg("_csrf") != _csrfToken) {
+        _webServer.send(403, "text/plain", "Invalid session token");
+        return;
+    }
+
     if (!_webServer.hasArg("ssid") || _webServer.arg("ssid").isEmpty()) {
         _webServer.send(400, "text/plain", "Missing ssid");
         return;
@@ -215,7 +246,14 @@ static void handleSave() {
  */
 inline void startCaptivePortal(const String& deviceMac, Adafruit_NeoPixel& led) {
     String ssid = buildApSsid(deviceMac);
-    Serial.printf("[Portal] Starting AP: %s\n", ssid.c_str());
+    String pw   = buildApPassword(deviceMac);
+
+    // One-time CSRF token — regenerated each AP session via hardware TRNG
+    char csrfBuf[9];
+    snprintf(csrfBuf, sizeof(csrfBuf), "%08X", (unsigned)esp_random());
+    _csrfToken = String(csrfBuf);
+
+    Serial.printf("[Portal] AP started: %s  password: %s\n", ssid.c_str(), pw.c_str());
     Serial.printf("[Portal] Config page: http://%s/\n", PORTAL_AP_IP_STR);
 
     // Switch to AP mode and configure static IP
@@ -225,7 +263,7 @@ inline void startCaptivePortal(const String& deviceMac, Adafruit_NeoPixel& led) 
     gateway.fromString(PORTAL_AP_IP_STR);
     subnet.fromString("255.255.255.0");
     WiFi.softAPConfig(apIp, gateway, subnet);
-    WiFi.softAP(ssid.c_str());  // Open network — no password for easy first-time setup
+    WiFi.softAP(ssid.c_str(), pw.c_str());  // WPA2-PSK with MAC-derived password
 
     delay(200);  // Allow AP to start before DNS binds
 

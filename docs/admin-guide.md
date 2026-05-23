@@ -98,21 +98,26 @@ See [CLI Reference](./cli-reference.md#deviceregister) for full options.
 
 3. Provision via captive portal:
 
-   On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). Connect to it and open `http://192.168.4.1`. Fill in:
+   On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). The AP is protected by a WPA2 password derived from the device MAC — look for it in the Serial monitor output:
 
-   | Field          | Value                                       |
-   | -------------- | ------------------------------------------- |
-   | Wi-Fi SSID     | Your network name                           |
-   | Wi-Fi Password | Your network password                       |
-   | Device MAC     | `AA:BB:CC:DD:EE:FF` (from Step 1)           |
-   | Device Secret  | 64-char hex string (from Step 1)            |
-   | Backend URL    | `https://your-server.com/api/device/status` |
+   ```
+   [Portal] AP started: HomePulse-Setup-EEFF  password: CCDDEEFF
+   ```
+
+   The password is the **last 8 hex digits of the MAC address**, uppercased (e.g. MAC `AA:BB:CC:DD:EE:FF` → password `CCDDEEFF`). Connect to the AP using that password, then open `http://192.168.4.1`. Fill in:
+
+   | Field          | Value                                     |
+   | -------------- | ----------------------------------------- |
+   | Wi-Fi SSID     | Your network name                         |
+   | Wi-Fi Password | Your network password                     |
+   | Device Secret  | 64-char hex string (from Step 1)          |
+   | Backend URL    | `https://your-server.com` (base URL only) |
 
    After saving, the device reboots and connects automatically. Credentials are stored in NVS (non-volatile flash) and persist across reboots and reflashes.
 
    > **Dev shortcut**: Copy `include/secrets.h.example` to `include/secrets.h`, fill in the values, and rebuild. If `secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty) — the captive portal is skipped. Do **not** commit `secrets.h` to version control.
 
-   > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s. The LED flashes SOS, credentials are cleared, and the captive portal starts again.
+   > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s. The LED flashes SOS, credentials are cleared, and the captive portal restarts with the same MAC-derived password.
 
 See [Flashing Guide](../firmware/docs/FLASHING_GUIDE.md) for detailed PlatformIO setup, USB drivers, and troubleshooting upload issues.
 

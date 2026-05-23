@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Security: Captive portal WPA2 password + anti-CSRF token (I-2)
+
+- `buildApPassword()` added to `portal.h` — derives an 8-char WPA2-PSK password from the last 4 bytes of the device MAC address (uppercased hex). Example: `AA:BB:CC:DD:EE:FF` → password `CCDDEEFF`.
+- `WiFi.softAP()` now passes the derived password — provisioning AP no longer open.
+- Password printed to Serial on AP start: `[Portal] AP started: HomePulse-Setup-EEFF  password: CCDDEEFF`.
+- Anti-CSRF token (8-char uppercase hex, hardware TRNG via `esp_random()`) generated each AP session, exposed via `GET /config` as `"csrf"` field, required in `POST /save` as `_csrf` form field — missing/mismatched token → HTTP 403.
+- Portal JS (`portal_html.h`) updated: captures token from `/config` on load, includes it in every save POST.
+- `docs/admin-guide.md` updated with password derivation rule and updated Serial log example.
+
 ### Security: OTA binary download — replace setInsecure() with GTS Root R1 CA
 
 - `setInsecure()` removed from `applyUpdate()` in `libs/firmware-shared/src/ota.cpp`.
