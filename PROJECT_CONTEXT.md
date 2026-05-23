@@ -340,7 +340,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 **Admin CLI: `firmware:upload` (Task 4, Complete)**
 
 - Command: `node apps/api/dist/cli.js firmware:upload --file <bin> --version <semver> --board <board> --channel <channel> [--critical]`
-- GCS path convention: `firmware/<board>/<channel>/<version>/<filename>`
+- GCS path convention: `firmware/<board>/<version>/<filename>`
 - `CliModule` imports `StorageModule` directly — `ServicesModule` does not re-export the storage token, so direct import is required
 - Best-effort GCS cleanup on DB failure prevents orphaned GCS objects
 - Default binary search path: `./tmp/firmware/` (when `--file` is a bare basename)

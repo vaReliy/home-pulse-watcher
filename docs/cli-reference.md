@@ -519,7 +519,7 @@ node apps/api/dist/cli.js firmware:upload \
 **Output on success:**
 
 ```
-Uploading esp32c6-v0.2.0.bin (156432 bytes) → firmware/esp32c6/BETA/0.2.0/esp32c6-v0.2.0.bin
+Uploading esp32c6-v0.2.0.bin (156432 bytes) → firmware/esp32c6/0.2.0/esp32c6-v0.2.0.bin
 
 === Firmware Release Created ===
 ID:         550e8400-e29b-41d4-a716-446655440000
@@ -528,13 +528,12 @@ Board:      esp32c6
 Channel:    BETA
 Critical:   no
 Checksum:   a3f5...
-GCS Path:   firmware/esp32c6/BETA/0.2.0/esp32c6-v0.2.0.bin
-
-Signed URL (valid 15 min):
-https://storage.googleapis.com/...
+GCS Path:   firmware/esp32c6/0.2.0/esp32c6-v0.2.0.bin
 
 Devices on this channel will discover this release on their next OTA check.
 ```
+
+**Note:** Signed URLs are not printed to stdout to avoid capture in shell history or CI logs — they are authentication credentials. Use the backend `/api/ota/check` endpoint for secure delivery.
 
 **Error cases:**
 
