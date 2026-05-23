@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed: `FirmwareRelease.gcsPath` CHECK Constraint Allows Prerelease Versions
+
+- **Constraint regex corrected**: The DB CHECK constraint on `FirmwareRelease.gcsPath` was rejecting valid semver prerelease versions (e.g. `0.2.0-beta.1`). Old regex: `^firmware/(esp32c3|esp32c6)/[A-Z]+/[0-9]+\.[0-9]+\.[0-9]+/[a-zA-Z0-9._-]+\.bin$`. New regex: `^firmware/(esp32c3|esp32c6)/[A-Z]+/[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?/[a-zA-Z0-9._-]+\.bin$` (added optional prerelease segment `(-[a-zA-Z0-9.]+)?`).
+- **Migration applied**: New Prisma migration `20260523075725_relax_gcs_path_semver_prerelease` relaxes the constraint to accept semver prerelease format per RFC 3440.
+- **Unit tests added**: `libs/application/src/lib/services/ota/firmware-gcs-path.spec.ts` covers stable versions (`0.1.0`), prerelease versions (`0.2.0-beta.1`, `1.0.0-rc.1`), and includes a "bug documentation" block demonstrating the old regex rejection pattern.
+
 ## Phase 5.6 — OTA Security & Code Review Hardening (post-audit)
 
 ### Fixed: Unsafe `releaseChannel` Cast in `CheckOtaUpdateService`
