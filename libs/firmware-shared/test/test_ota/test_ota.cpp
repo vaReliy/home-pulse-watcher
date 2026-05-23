@@ -95,6 +95,47 @@ void test_parse_long_gcs_signed_url_succeeds(void) {
     TEST_ASSERT_TRUE(info.url.length() > 384);
 }
 
+// ─── extractJsonString — escape sequence handling ────────────────────────────
+
+void test_extract_escaped_quote_in_url(void) {
+    // JSON value with \" should unescape to a literal " in the extracted string.
+    // Old strchr-based parser stops at the " inside \", truncating the value.
+    UpdateInfo info;
+    const char* body =
+        "{\"hasUpdate\":true"
+        ",\"version\":\"1.0.0\""
+        ",\"url\":\"https://example.com/path\\\"with-quote\""
+        ",\"checksum\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}";
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::UpdateAvailable, (int)r);
+    TEST_ASSERT_EQUAL_STRING("https://example.com/path\"with-quote", info.url.c_str());
+}
+
+void test_extract_escaped_backslash_in_url(void) {
+    // JSON value with \\ should unescape to a single backslash.
+    UpdateInfo info;
+    const char* body =
+        "{\"hasUpdate\":true"
+        ",\"version\":\"1.0.0\""
+        ",\"url\":\"https://example.com/path\\\\with-backslash\""
+        ",\"checksum\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}";
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::UpdateAvailable, (int)r);
+    TEST_ASSERT_EQUAL_STRING("https://example.com/path\\with-backslash", info.url.c_str());
+}
+
+void test_extract_value_exceeding_buffer_returns_parse_error(void) {
+    // version[] is 32 bytes; a 32-char version string must not fit → ParseError.
+    UpdateInfo info;
+    const char* body =
+        "{\"hasUpdate\":true"
+        ",\"version\":\"1.2.3-this-version-is-way-too-long-for-the-buffer\""
+        ",\"url\":\"https://example.com/fw.bin\""
+        ",\"checksum\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}";
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::ParseError, (int)r);
+}
+
 // ─── Canonical string format (integration with buildOtaSignatureInput) ────────
 
 void test_ota_canonical_string_format(void) {
@@ -132,6 +173,9 @@ int main(void) {
     RUN_TEST(test_parse_long_gcs_signed_url_succeeds);
     RUN_TEST(test_ota_canonical_string_format);
     RUN_TEST(test_ota_canonical_beta_channel);
+    RUN_TEST(test_extract_escaped_quote_in_url);
+    RUN_TEST(test_extract_escaped_backslash_in_url);
+    RUN_TEST(test_extract_value_exceeding_buffer_returns_parse_error);
 
     return UNITY_END();
 }

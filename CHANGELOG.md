@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed: `extractJsonString` truncates values containing `\"` or `\\` escape sequences
+
+- **Root cause** (`ota.cpp:25`): `strchr(found, '"')` stopped at the literal `"` inside a `\"` escape, truncating the value. `strncpy` also copied raw bytes without unescaping `\\`.
+- **Fix**: replaced `strchr`/`strncpy` with a character-by-character loop that unescapes `\"` → `"` and `\\` → `\`; other `\X` sequences copy `X`. Malformed values with no closing quote return `false`.
+- **Tests added** (`test_ota`): `test_extract_escaped_quote_in_url`, `test_extract_escaped_backslash_in_url`, `test_extract_value_exceeding_buffer_returns_parse_error`.
+- **Defensive comment** added to `ota.h` documenting the parser's scope (single-level escapes sufficient for current OTA fields).
+
 ### Fixed: `applyCompileTimeSecrets` empty `OTA_CHANNEL` silently marks NVS as provisioned
 
 - **Guard added** (`credentials.h:215`): `OTA_CHANNEL` block now wrapped with `if (strlen(OTA_CHANNEL) > 0)`, consistent with existing guards on `WIFI_SSID`, `WIFI_PASSWORD`, `DEVICE_SECRET`, and `BACKEND_URL`. An empty `#define OTA_CHANNEL ""` no longer sets `wrote = true`, preventing false provisioning and subsequent backend LIVR rejection of the empty channel string.

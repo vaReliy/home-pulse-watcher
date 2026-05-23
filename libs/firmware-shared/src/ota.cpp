@@ -22,6 +22,8 @@ namespace Ota {
 
 // ─── Portable JSON helpers ────────────────────────────────────────────────────
 
+// Handles \" and \\ escape sequences; other \X sequences copy X (passthrough).
+// Sufficient for OTA response fields — full JSON escape decoding not required.
 static bool extractJsonString(const char* json, const char* key,
                               char* out, size_t outSize) {
     char searchKey[80];
@@ -29,13 +31,21 @@ static bool extractJsonString(const char* json, const char* key,
     const char* found = strstr(json, searchKey);
     if (!found) return false;
     found += strlen(searchKey);
-    const char* end = strchr(found, '"');
-    if (!end) return false;
-    size_t len = (size_t)(end - found);
-    if (len >= outSize) return false;
-    strncpy(out, found, len);
-    out[len] = '\0';
-    return true;
+
+    size_t i = 0;
+    const char* p = found;
+    while (*p && i < outSize - 1) {
+        if (*p == '\\' && *(p + 1) != '\0') {
+            out[i++] = *(p + 1);
+            p += 2;
+            continue;
+        }
+        if (*p == '"') break;
+        out[i++] = *p++;
+    }
+    if (*p != '"') return false;
+    out[i] = '\0';
+    return i > 0 || *found == '"';
 }
 
 static bool extractJsonBool(const char* json, const char* key, bool& out) {

@@ -26,6 +26,11 @@ struct UpdateInfo {
 /**
  * Parse JSON response body from /api/ota/check.
  * Exposed for unit testing; called internally by checkForUpdate.
+ *
+ * The internal JSON parser handles single-level \" and \\ escape sequences.
+ * Sufficient for all current OTA response fields (semver, GCS signed URLs,
+ * hex checksums). Full RFC 8259 escape decoding (\n, \uXXXX, etc.) is not
+ * implemented — add it here if future fields require it.
  */
 CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo);
 
