@@ -356,7 +356,7 @@ describe('CheckOtaUpdateService', () => {
     const signedRelease = makeFirmwareRelease({
       version: '2.0.0',
       checksum: 'sha256checksum',
-      gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+      gcsPath: 'firmware/esp32c3/2.0.0/esp32c3-v2.0.0.bin',
       isCritical: false,
     });
 
@@ -458,12 +458,12 @@ describe('CheckOtaUpdateService', () => {
       const releaseA = makeFirmwareRelease({
         version: '2.0.0',
         checksum: 'checksum-original',
-        gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+        gcsPath: 'firmware/esp32c3/2.0.0/esp32c3-v2.0.0.bin',
       });
       const releaseB = makeFirmwareRelease({
         version: '2.0.0',
         checksum: 'checksum-tampered',
-        gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+        gcsPath: 'firmware/esp32c3/2.0.0/esp32c3-v2.0.0.bin',
       });
 
       firmwareRepo.findLatestForBoard.mockResolvedValueOnce([releaseA]);
@@ -512,7 +512,7 @@ describe('CheckOtaUpdateService', () => {
       const mismatchedRelease = makeFirmwareRelease({
         version: '2.0.0',
         boardType: BoardType.ESP32_C3,
-        gcsPath: 'firmware/esp32c6/STABLE/2.0.0/esp32c6-v2.0.0.bin',
+        gcsPath: 'firmware/esp32c6/2.0.0/esp32c6-v2.0.0.bin',
       });
       firmwareRepo.findLatestForBoard.mockResolvedValue([mismatchedRelease]);
 
@@ -528,7 +528,7 @@ describe('CheckOtaUpdateService', () => {
       const correctRelease = makeFirmwareRelease({
         version: '2.0.0',
         boardType: BoardType.ESP32_C3,
-        gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+        gcsPath: 'firmware/esp32c3/2.0.0/esp32c3-v2.0.0.bin',
       });
       firmwareRepo.findLatestForBoard.mockResolvedValue([correctRelease]);
 

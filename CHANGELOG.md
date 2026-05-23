@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fix: gcsPath channel segment removed from firmware upload
+
+- `upload-firmware.command.ts`: removed `${channel}/` segment from `gcsPath` construction. Path is now `firmware/{board}/{version}/{filename}.bin`, matching the DB CHECK constraint.
+- Test fixtures in `upload-firmware.command.spec.ts` and `check-ota-update.service.spec.ts` updated to use the correct path format (channel was present in 9 fixture strings across both files).
+- All 183 tests pass.
+
 ### Security: Captive portal WPA2 password + anti-CSRF token (I-2)
 
 - `buildApPassword()` added to `portal.h` — derives an 8-char WPA2-PSK password from the last 4 bytes of the device MAC address (uppercased hex). Example: `AA:BB:CC:DD:EE:FF` → password `CCDDEEFF`.

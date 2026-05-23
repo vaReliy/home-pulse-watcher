@@ -32,7 +32,7 @@ const FIXTURE_RELEASE: FirmwareRelease = {
   boardType: 'esp32c3',
   channel: 'ALPHA',
   checksum: FIXTURE_SHA256,
-  gcsPath: 'firmware/esp32c3/ALPHA/0.2.0/esp32c3-v0.2.0.bin',
+  gcsPath: 'firmware/esp32c3/0.2.0/esp32c3-v0.2.0.bin',
   isCritical: false,
   createdAt: new Date('2026-04-29T00:00:00Z'),
 } as FirmwareRelease;
@@ -120,7 +120,7 @@ describe('UploadFirmwareCommand', () => {
       await command.run([], defaultOptions());
 
       expect(storage.uploadBuffer).toHaveBeenCalledWith(
-        'firmware/esp32c3/ALPHA/0.2.0/esp32c3-v0.2.0.bin',
+        'firmware/esp32c3/0.2.0/esp32c3-v0.2.0.bin',
         FIXTURE_BUFFER,
         'application/octet-stream',
       );
@@ -129,7 +129,7 @@ describe('UploadFirmwareCommand', () => {
         boardType: 'esp32c3',
         channel: 'ALPHA',
         checksum: expect.stringMatching(/^[a-f0-9]{64}$/),
-        gcsPath: 'firmware/esp32c3/ALPHA/0.2.0/esp32c3-v0.2.0.bin',
+        gcsPath: 'firmware/esp32c3/0.2.0/esp32c3-v0.2.0.bin',
       });
       // Signed URL is no longer printed to stdout (H1 security fix) — devices fetch it via OTA check endpoint.
       expect(storage.getSignedUrl).not.toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe('UploadFirmwareCommand', () => {
       await command.run([], defaultOptions());
 
       expect(storage.deleteObject).toHaveBeenCalledWith(
-        'firmware/esp32c3/ALPHA/0.2.0/esp32c3-v0.2.0.bin',
+        'firmware/esp32c3/0.2.0/esp32c3-v0.2.0.bin',
       );
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
@@ -237,7 +237,7 @@ describe('UploadFirmwareCommand', () => {
       await command.run([], defaultOptions());
 
       expect(storage.deleteObject).toHaveBeenCalledWith(
-        'firmware/esp32c3/ALPHA/0.2.0/esp32c3-v0.2.0.bin',
+        'firmware/esp32c3/0.2.0/esp32c3-v0.2.0.bin',
       );
       expect(exitSpy).toHaveBeenCalledWith(1);
     });

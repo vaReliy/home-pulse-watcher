@@ -66,7 +66,7 @@ export class UploadFirmwareCommand extends CommandRunner {
 
       const buffer = readFileSync(filePath);
       const checksum = createHash('sha256').update(buffer).digest('hex');
-      const gcsPath = `firmware/${options.board}/${options.channel}/${options.version}/${fileBasename}`;
+      const gcsPath = `firmware/${options.board}/${options.version}/${fileBasename}`;
 
       console.log(
         `Uploading ${fileBasename} (${buffer.length} bytes) → ${gcsPath}`,
