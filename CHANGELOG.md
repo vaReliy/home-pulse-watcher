@@ -2,6 +2,65 @@
 
 ## [Unreleased]
 
+## Phase 5.6 — OTA Updates: Secure Remote Delivery (Complete)
+
+### Summary
+
+Phase 5.6 delivers end-to-end over-the-air firmware updates with cryptographic security. The backend stores firmware releases in GCS (Google Cloud Storage) with signed URLs (15-min TTL) and HMAC-SHA256 response validation. Devices verify certificates against Google Trust Services Root R1, check SHA-256 post-flash, and auto-rollback if validation fails within a 5-minute grace period. Server-side release channels (STABLE/BETA/ALPHA) control which binaries devices can receive, preventing downgrade attacks.
+
+### Features
+
+- **Binary Hosting**: GCS integration with `GcsService` (upload + V4 signed URLs), `StorageModule` DI wiring.
+- **Release Management**: Prisma `FirmwareRelease` DB model with version, boardType, channel, checksum, and gcsPath (CHECK constraint enforcing semver + board prefix).
+- **Secure Service**: `POST /api/ota/check` endpoint with HMAC-signed canonical string (`version|url|checksum|isCritical|expiresAt|ts`). Response authenticated with device secret; firmware verifies signature before download.
+- **Firmware Logic**: `httpUpdate` integration with white LED fast-blink during download. SHA-256 post-flash verification with automatic rollback via `esp_ota_set_boot_partition()` on checksum mismatch.
+- **OTA Hardening**: Grace-period validation (`≥ 3 heartbeats + ≥ 5 min uptime`) gates `markCurrentAppValid()`. Rollback protection: pending-verify bootloader flag auto-reverts to previous firmware if device crashes during grace period.
+- **Admin CLI**: `firmware:upload` command — idempotent binary upload to GCS with DB record creation. Validates semver, board type, and channel; prints signed URL (stderr only, not stdout).
+- **Captive Portal**: WPA2-PSK derived from device MAC (last 4 bytes), anti-CSRF token (8-char hex via hardware TRNG), anti-CSRF token validation on `POST /save`.
+- **TLS**: GTS Root R1 CA embedded in firmware for OTA binary download verification. Cert expires 2036-06-22 with documented rotation procedure.
+
+### Security Boundaries Closed
+
+- **C-1**: MITM cannot substitute OTA response URL/checksum — HMAC-signed response verified by firmware.
+- **I-1**: GTS Root R1 CA pinning for OTA binary download (replaces `setInsecure()`).
+- **I-2**: Captive portal WPA2 password + anti-CSRF token (prevents open AP + CSRF attacks).
+- **C2**: Global rate limiting (60 req/min default, 12 req/min for `/api/ota/check`, 60 req/sec for webhook).
+- **R1**: GCS permission errors typed and return HTTP 403 (not 500).
+- **R2**: Firmware release query bounded (`take: MAX_CANDIDATE_RELEASES`).
+- **I3**: Dead export cleanup (`checkOtaUpdateRules` removed).
+- **I4/I5**: Telegram webhook secret now required at startup; timing-safe secret comparison.
+- **I1/I2**: HMAC guard — MAC format validation + unified `INVALID_CREDENTIALS` error code (prevents MAC enumeration).
+- **C3**: Firmware basename validation (prevents directory traversal); boardType prefix assertion (prevents wrong-board delivery).
+
+### Fixes
+
+- `extractJsonString` buffer overflow: GCS V4 signed URLs exceed 600 chars. Extended buffer to 1024, fixed escape sequence handling (`\"` → `"`, `\\` → `\`).
+- `applyCompileTimeSecrets` empty channel guard: prevents false provisioning when `OTA_CHANNEL` is blank.
+- `FirmwareRelease.gcsPath` CHECK constraint: relaxed regex to accept semver prerelease (`-alpha.1`, `-beta.2`, etc.).
+- Unsafe `releaseChannel` cast: added type guard; invalid channels throw `DomainError(INVALID_DEVICE_STATE)`.
+- GCS signed URL in stdout → stderr: credentials no longer appear in Cloud Logging / terminal history.
+- Telegram webhook fallback: missing `TELEGRAM_WEBHOOK_SECRET` → HTTP 503 (not silent accept).
+- OTA binary truncation: `httpUpdate` + `Update` streaming loop (not buffered) prevents mid-stream `close_notify` cuts.
+- NeoPixel LED starvation: removed `show()` from OTA download callback (WiFi ISR resumption priority).
+- OTA validation grace period: `shouldMarkAppValid()` predicate gates bootloader `markCurrentAppValid()` call (prevents crash-loop validation).
+
+### Infrastructure
+
+- Added `Dockerfile.admin` for containerized CLI (gcloud SDK included).
+- Added `admin` service to `docker-compose.yml` with ADC credential mounts.
+- `firmware:upload` CLI command with file resolution, LIVR validation, idempotency guard (GCS 412).
+- 11 unit tests for firmware upload (success, `--critical`, conflict, cleanup scenarios).
+- 7 integration tests for `POST /api/ota/check` (validation, HMAC, mocking).
+- 9 native tests for OTA rollback (`shouldMarkAppValid` boundary cases).
+
+### Docs
+
+- Updated `README.md` — added Docker admin profile usage.
+- Updated `docs/admin-guide.md` — firmware upload workflow, GTS Root R1 rotation, OTA rollback runbook, containerized CLI docs.
+- `firmware/README.md` — OTA auto-rollback and white LED progress sections.
+
+---
+
 ### Fix: gcsPath channel segment removed from firmware upload
 
 - `upload-firmware.command.ts`: removed `${channel}/` segment from `gcsPath` construction. Path is now `firmware/{board}/{version}/{filename}.bin`, matching the DB CHECK constraint.

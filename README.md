@@ -303,13 +303,14 @@ This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 
     - [x] Modularize remaining concerns: `sendPowerStatus` (HTTP/JSON) and debounce state machine
     - [x] Unit Testing: Implement Unity/Native tests for core logic (no-hardware required tests)
     - [x] Code Parity: Shared via PlatformIO `lib_extra_dirs = ../../libs/firmware-shared`
-  - [ ] 5.6: OTA Updates (Secure Remote Delivery)
+  - [x] 5.6: OTA Updates (Secure Remote Delivery)
     - [x] Binary Hosting: GCS integration — `GcsService` (upload + V4 signed URLs), `StorageModule` DI wiring
     - [x] Release Management: Prisma-based `FirmwareRelease` DB to track versions, checksums, and stability
     - [x] Secure Service: Backend endpoint for update checks with HMAC-signed validation
     - [x] Firmware Logic: `httpUpdate` integration with white LED status and auto-rollback protection
-    - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
+    - [x] Admin Tools: `firmware:upload` CLI command
   - [ ] 5.7: Telegram Admin UI & Role Management
+    - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
     - [ ] Access Control: Implementation of Owner and Editor roles (RBAC)
     - [ ] Remote Control: Commands for remote reboot, OTA triggers, and device settings via bot
     - [ ] Status Reporting: Enhanced status templates with firmware versioning and system health
