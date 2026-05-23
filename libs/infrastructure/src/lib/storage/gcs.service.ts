@@ -1,4 +1,5 @@
 import type { IFirmwareStorageService } from '@home-pulse-watcher/core';
+import { SIGNED_URL_TTL_MS } from '@home-pulse-watcher/core';
 import { withGcsError } from './gcs-error.wrapper.js';
 
 /** Structural logger type compatible with NestJS LoggerService and nestjs-pino. */
@@ -28,9 +29,6 @@ interface GcsBucket {
     delete(): Promise<unknown>;
   };
 }
-
-/** Signed URL validity window in milliseconds (15 minutes). */
-const SIGNED_URL_TTL_MS = 15 * 60 * 1000;
 
 interface GcsServiceDeps {
   bucket: GcsBucket;

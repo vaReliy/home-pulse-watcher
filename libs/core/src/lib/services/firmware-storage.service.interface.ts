@@ -1,3 +1,6 @@
+/** Signed URL validity window in milliseconds (15 minutes). */
+export const SIGNED_URL_TTL_MS = 15 * 60 * 1000;
+
 export interface IFirmwareStorageService {
   uploadBuffer(
     path: string,

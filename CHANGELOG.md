@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Security: OTA-check response HMAC signing
+
+- Backend (`CheckOtaUpdateService`) now signs every `hasUpdate: true` OTA response with HMAC-SHA256 using the device's per-device secret. Response includes `sig` (64-char hex) and `ts` (Unix seconds).
+- Canonical string signed: `version|url|checksum|isCritical|expiresAt|ts`
+- `SIGNED_URL_TTL_MS` extracted to `@home-pulse-watcher/core` (`firmware-storage.service.interface.ts`) — single source of truth shared by `GcsService` and `CheckOtaUpdateService`.
+- Firmware (`libs/firmware-shared/src/ota.cpp`) verifies `sig` before proceeding with any OTA update:
+  - Missing `sig`/`ts` → `ParseError` (fail-closed)
+  - Signature mismatch → `AuthError`
+  - Response older than 5 min or future-dated >1 min → `AuthError` (replay protection)
+- `constantTimeEquals` helper added to `SecurityUtils.h` for constant-time HMAC comparison.
+- Fixes C-1 from the security audit: MITM can no longer substitute OTA response to control firmware download URL + checksum.
+- **Rollout order**: deploy backend sig-emit BEFORE flashing sig-verifying firmware. Old firmware ignores unknown `sig` field safely; new firmware rejects responses without `sig`.
+
 ### Fixed: `extractJsonString` truncates values containing `\"` or `\\` escape sequences
 
 - **Root cause** (`ota.cpp:25`): `strchr(found, '"')` stopped at the literal `"` inside a `\"` escape, truncating the value. `strncpy` also copied raw bytes without unescaping `\\`.

@@ -1,5 +1,6 @@
 #include "HomePulse/ota.h"
 #include <Arduino.h>
+#include <cstdint>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
@@ -46,6 +47,23 @@ static bool extractJsonString(const char* json, const char* key,
     if (*p != '"') return false;
     out[i] = '\0';
     return i > 0 || *found == '"';
+}
+
+// Parses an unsigned decimal integer immediately after "key": in JSON.
+static bool extractJsonUint32(const char* json, const char* key, uint32_t& out) {
+    char searchKey[80];
+    snprintf(searchKey, sizeof(searchKey), "\"%s\":", key);
+    const char* found = strstr(json, searchKey);
+    if (!found) return false;
+    found += strlen(searchKey);
+    // skip optional whitespace
+    while (*found == ' ' || *found == '\t') found++;
+    if (*found < '0' || *found > '9') return false;
+    char* end = nullptr;
+    unsigned long val = strtoul(found, &end, 10);
+    if (end == found) return false;
+    out = (uint32_t)val;
+    return true;
 }
 
 static bool extractJsonBool(const char* json, const char* key, bool& out) {
@@ -134,6 +152,49 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
 
     CheckResult pr = parseOtaResponse(res.body.c_str(), outInfo);
     Serial.printf("[OTA] parseOtaResponse: %d\n", (int)pr);
+
+    if (pr == CheckResult::UpdateAvailable) {
+        // Verify server response signature before trusting update metadata.
+        char sigBuf[65]       = {};
+        char expiresAtBuf[32] = {};
+        uint32_t respTs       = 0;
+
+        if (!extractJsonString(res.body.c_str(), "sig", sigBuf, sizeof(sigBuf)) ||
+            !extractJsonUint32(res.body.c_str(), "ts",  respTs)) {
+            Serial.printf("[OTA] response missing sig/ts field\n");
+            return CheckResult::ParseError;
+        }
+
+        // expiresAt is optional — empty string if absent
+        extractJsonString(res.body.c_str(), "expiresAt", expiresAtBuf, sizeof(expiresAtBuf));
+
+        // Canonical string: version|url|checksum|isCritical|expiresAt|ts
+        char respCanonical[1280];
+        snprintf(respCanonical, sizeof(respCanonical), "%s|%s|%s|%s|%s|%lu",
+            outInfo.version.c_str(),
+            outInfo.url.c_str(),
+            outInfo.checksum.c_str(),
+            outInfo.isCritical ? "true" : "false",
+            expiresAtBuf,
+            (unsigned long)respTs);
+
+        String computed = calculateSignature(String(respCanonical), cred.device_secret);
+        if (!constantTimeEquals(computed.c_str(), sigBuf, 64)) {
+            Serial.printf("[OTA] response signature invalid\n");
+            return CheckResult::AuthError;
+        }
+
+        // Freshness check — skip if NTP not yet synced (time() returns 0 or -1)
+        time_t now = time(nullptr);
+        if (now > 0) {
+            long drift = (long)now - (long)respTs;
+            if (drift > 300 || drift < -60) {
+                Serial.printf("[OTA] response timestamp out of window (drift=%ld)\n", drift);
+                return CheckResult::AuthError;
+            }
+        }
+    }
+
     return pr;
 }
 

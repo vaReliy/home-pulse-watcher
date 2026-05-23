@@ -1,12 +1,7 @@
-import * as crypto from 'node:crypto';
-import * as http from 'node:http';
-import type { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { Reflector } from '@nestjs/core';
 import { CheckOtaUpdateService } from '@home-pulse-watcher/application';
 import type {
-  IDeviceRepository,
   Device,
+  IDeviceRepository,
   IFirmwareReleaseRepository,
   IFirmwareStorageService,
 } from '@home-pulse-watcher/core';
@@ -15,12 +10,17 @@ import {
   encryptDeviceSecret,
   livrValidatorFactory,
 } from '@home-pulse-watcher/shared';
-import { HmacAuthGuard } from '../../guards/hmac-auth.guard.js';
-import { ServiceExceptionFilter } from '../../filters/service-exception.filter.js';
+import type { INestApplication } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { Test } from '@nestjs/testing';
+import * as crypto from 'node:crypto';
+import * as http from 'node:http';
 import { AllExceptionsFilter } from '../../filters/all-exceptions.filter.js';
+import { ServiceExceptionFilter } from '../../filters/service-exception.filter.js';
+import { HmacAuthGuard } from '../../guards/hmac-auth.guard.js';
 import { REPOSITORY_TOKENS } from '../../modules/repositories/repository.tokens.js';
-import { STORAGE_TOKENS } from '../../modules/storage/storage.tokens.js';
 import { SERVICE_TOKENS } from '../../modules/services/service.tokens.js';
+import { STORAGE_TOKENS } from '../../modules/storage/storage.tokens.js';
 import { OtaController } from './ota.controller.js';
 
 /** Test HMAC secrets (64-char hex = 32 bytes) */
@@ -163,6 +163,7 @@ describe('OtaController (integration)', () => {
       mockDeviceRepository,
       mockFirmwareRepo,
       mockStorageService,
+      TEST_ENCRYPTION_KEY,
     );
 
     const moduleRef = await Test.createTestingModule({
@@ -349,13 +350,15 @@ describe('OtaController (integration)', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         hasUpdate: true,
         version: '2.0.0',
-        url: fixtureUrl,
         checksum: 'sha256checksum',
         isCritical: false,
       });
+      expect(typeof (response.body['sig'] as string)).toBe('string');
+      expect(typeof (response.body['ts'] as number)).toBe('number');
+      expect(typeof (response.body['expiresAt'] as string)).toBe('string');
     });
   });
 });

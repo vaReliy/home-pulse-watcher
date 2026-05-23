@@ -1,17 +1,23 @@
-import semver from 'semver';
 import type {
+  BoardType,
   IDeviceRepository,
   IFirmwareReleaseRepository,
   IFirmwareStorageService,
-  BoardType,
 } from '@home-pulse-watcher/core';
 import {
   BoardType as BoardTypeConst,
   channelsVisibleTo,
   isReleaseChannel,
+  SIGNED_URL_TTL_MS,
 } from '@home-pulse-watcher/core';
 import type { LivrRules, ServiceContext } from '@home-pulse-watcher/shared';
-import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
+import {
+  decryptDeviceSecret,
+  DomainError,
+  DomainErrorCode,
+} from '@home-pulse-watcher/shared';
+import * as crypto from 'node:crypto';
+import semver from 'semver';
 import { BaseService } from '../../base-service.js';
 import { firmwareGcsPathPrefix } from './firmware-gcs-path.js';
 
@@ -28,6 +34,9 @@ export type CheckOtaUpdateOutput =
       url: string;
       checksum: string;
       isCritical: boolean;
+      expiresAt: string;
+      ts: number;
+      sig: string;
     };
 
 /**
@@ -49,6 +58,7 @@ export class CheckOtaUpdateService extends BaseService<
     private readonly deviceRepo: IDeviceRepository,
     private readonly firmwareRepo: IFirmwareReleaseRepository,
     private readonly storage: IFirmwareStorageService,
+    private readonly encryptionKey: string,
   ) {
     super();
   }
@@ -127,7 +137,21 @@ export class CheckOtaUpdateService extends BaseService<
       );
     }
 
+    const ts = Math.floor(Date.now() / 1000);
+    const expiresAt = new Date(Date.now() + SIGNED_URL_TTL_MS).toISOString();
+
     const url = await this.storage.getSignedUrl(latest.gcsPath);
+
+    const deviceSecret = decryptDeviceSecret(
+      device.encryptedSecret,
+      this.encryptionKey,
+    );
+
+    const canonical = `${latest.version}|${url}|${latest.checksum}|${latest.isCritical}|${expiresAt}|${ts}`;
+    const sig = crypto
+      .createHmac('sha256', deviceSecret)
+      .update(canonical)
+      .digest('hex');
 
     return {
       hasUpdate: true,
@@ -135,6 +159,9 @@ export class CheckOtaUpdateService extends BaseService<
       url,
       checksum: latest.checksum,
       isCritical: latest.isCritical,
+      expiresAt,
+      ts,
+      sig,
     };
   }
 }

@@ -14,7 +14,9 @@ import {
   DomainError,
   DomainErrorCode,
   ValidationError,
+  encryptDeviceSecret,
 } from '@home-pulse-watcher/shared';
+import * as crypto from 'node:crypto';
 import { CheckOtaUpdateService } from './check-ota-update.service.js';
 
 const makeFirmwareRelease = (
@@ -31,11 +33,18 @@ const makeFirmwareRelease = (
   ...overrides,
 });
 
+const TEST_ENCRYPTION_KEY = 'a'.repeat(64);
+const TEST_DEVICE_SECRET = 'b'.repeat(64);
+const TEST_ENCRYPTED_SECRET = encryptDeviceSecret(
+  TEST_DEVICE_SECRET,
+  TEST_ENCRYPTION_KEY,
+);
+
 const makeDevice = (overrides: Partial<Device> = {}): Device =>
   ({
     id: 'device-1',
     macAddress: 'AA:BB:CC:DD:EE:FF',
-    encryptedSecret: 'iv:tag:cipher',
+    encryptedSecret: TEST_ENCRYPTED_SECRET,
     label: null,
     lastStatus: PowerStatus.ON,
     lastSeenAt: new Date(),
@@ -88,7 +97,12 @@ describe('CheckOtaUpdateService', () => {
     deviceRepo = createMockDeviceRepo();
     firmwareRepo = createMockFirmwareRepo();
     storage = createMockStorage();
-    service = new CheckOtaUpdateService(deviceRepo, firmwareRepo, storage);
+    service = new CheckOtaUpdateService(
+      deviceRepo,
+      firmwareRepo,
+      storage,
+      TEST_ENCRYPTION_KEY,
+    );
   });
 
   const validInput = {
@@ -155,7 +169,7 @@ describe('CheckOtaUpdateService', () => {
         context,
       );
 
-      expect(result.data).toEqual({
+      expect(result.data).toMatchObject({
         hasUpdate: true,
         version: '2.0.0',
         url: 'https://cdn.example.com/firmware.bin',
@@ -186,7 +200,12 @@ describe('CheckOtaUpdateService', () => {
       deviceRepo = createMockDeviceRepo(
         makeDevice({ releaseChannel: ReleaseChannel.BETA }),
       );
-      service = new CheckOtaUpdateService(deviceRepo, firmwareRepo, storage);
+      service = new CheckOtaUpdateService(
+        deviceRepo,
+        firmwareRepo,
+        storage,
+        TEST_ENCRYPTION_KEY,
+      );
 
       const stableRelease = makeFirmwareRelease({
         version: '2.0.0',
@@ -226,7 +245,12 @@ describe('CheckOtaUpdateService', () => {
       deviceRepo = createMockDeviceRepo(
         makeDevice({ releaseChannel: ReleaseChannel.ALPHA }),
       );
-      service = new CheckOtaUpdateService(deviceRepo, firmwareRepo, storage);
+      service = new CheckOtaUpdateService(
+        deviceRepo,
+        firmwareRepo,
+        storage,
+        TEST_ENCRYPTION_KEY,
+      );
 
       const alphaRelease = makeFirmwareRelease({
         version: '3.0.0-alpha.1',
@@ -312,7 +336,12 @@ describe('CheckOtaUpdateService', () => {
       deviceRepo = createMockDeviceRepo(
         makeDevice({ releaseChannel: 'INVALID' as ReleaseChannel }),
       );
-      service = new CheckOtaUpdateService(deviceRepo, firmwareRepo, storage);
+      service = new CheckOtaUpdateService(
+        deviceRepo,
+        firmwareRepo,
+        storage,
+        TEST_ENCRYPTION_KEY,
+      );
 
       await expect(service.run(validInput, context)).rejects.toThrow(
         DomainError,
@@ -320,6 +349,160 @@ describe('CheckOtaUpdateService', () => {
       await expect(service.run(validInput, context)).rejects.toMatchObject({
         code: DomainErrorCode.INVALID_DEVICE_STATE,
       });
+    });
+  });
+
+  describe('response signing', () => {
+    const signedRelease = makeFirmwareRelease({
+      version: '2.0.0',
+      checksum: 'sha256checksum',
+      gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+      isCritical: false,
+    });
+
+    it('includes non-empty sig in hasUpdate: true response', async () => {
+      firmwareRepo.findLatestForBoard.mockResolvedValue([signedRelease]);
+      storage.getSignedUrl.mockResolvedValue(
+        'https://cdn.example.com/firmware.bin',
+      );
+
+      const result = await service.run(
+        { ...validInput, currentVersion: '1.0.0' },
+        context,
+      );
+
+      expect(result.data).toMatchObject({ hasUpdate: true });
+      if (result.data.hasUpdate) {
+        expect(typeof result.data.sig).toBe('string');
+        expect(result.data.sig.length).toBe(64);
+        expect(typeof result.data.ts).toBe('number');
+        expect(result.data.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      }
+    });
+
+    it('different url produces different sig', async () => {
+      firmwareRepo.findLatestForBoard.mockResolvedValue([signedRelease]);
+
+      storage.getSignedUrl.mockResolvedValueOnce(
+        'https://cdn.example.com/firmware-a.bin',
+      );
+      const resultA = await service.run(
+        { ...validInput, currentVersion: '1.0.0' },
+        context,
+      );
+
+      storage.getSignedUrl.mockResolvedValueOnce(
+        'https://cdn.example.com/firmware-b.bin',
+      );
+      const resultB = await service.run(
+        { ...validInput, currentVersion: '1.0.0' },
+        context,
+      );
+
+      expect(resultA.data.hasUpdate).toBe(true);
+      expect(resultB.data.hasUpdate).toBe(true);
+      if (resultA.data.hasUpdate && resultB.data.hasUpdate) {
+        expect(resultA.data.sig).not.toBe(resultB.data.sig);
+      }
+    });
+
+    it('sig matches manually computed HMAC over canonical string', async () => {
+      const url = 'https://cdn.example.com/firmware.bin';
+      firmwareRepo.findLatestForBoard.mockResolvedValue([signedRelease]);
+      storage.getSignedUrl.mockResolvedValue(url);
+
+      const before = Math.floor(Date.now() / 1000);
+      const result = await service.run(
+        { ...validInput, currentVersion: '1.0.0' },
+        context,
+      );
+      const after = Math.floor(Date.now() / 1000);
+
+      expect(result.data.hasUpdate).toBe(true);
+      if (!result.data.hasUpdate) return;
+
+      const { sig, ts, expiresAt } = result.data;
+      expect(ts).toBeGreaterThanOrEqual(before);
+      expect(ts).toBeLessThanOrEqual(after);
+
+      const canonical = `2.0.0|${url}|sha256checksum|false|${expiresAt}|${ts}`;
+      const expected = crypto
+        .createHmac('sha256', TEST_DEVICE_SECRET)
+        .update(canonical)
+        .digest('hex');
+
+      expect(sig).toBe(expected);
+    });
+
+    it('does not include sig in hasUpdate: false response', async () => {
+      firmwareRepo.findLatestForBoard.mockResolvedValue([]);
+
+      const result = await service.run(validInput, context);
+
+      expect(result.data).toEqual({ hasUpdate: false });
+      expect(result.data).not.toHaveProperty('sig');
+    });
+
+    it('does not include ts in hasUpdate: false response', async () => {
+      firmwareRepo.findLatestForBoard.mockResolvedValue([]);
+
+      const result = await service.run(validInput, context);
+
+      expect(result.data).not.toHaveProperty('ts');
+    });
+
+    it('tampered checksum produces different sig', async () => {
+      const url = 'https://cdn.example.com/firmware.bin';
+      storage.getSignedUrl.mockResolvedValue(url);
+
+      const releaseA = makeFirmwareRelease({
+        version: '2.0.0',
+        checksum: 'checksum-original',
+        gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+      });
+      const releaseB = makeFirmwareRelease({
+        version: '2.0.0',
+        checksum: 'checksum-tampered',
+        gcsPath: 'firmware/esp32c3/STABLE/2.0.0/esp32c3-v2.0.0.bin',
+      });
+
+      firmwareRepo.findLatestForBoard.mockResolvedValueOnce([releaseA]);
+      const resultA = await service.run(
+        { ...validInput, currentVersion: '1.0.0' },
+        context,
+      );
+
+      firmwareRepo.findLatestForBoard.mockResolvedValueOnce([releaseB]);
+      const resultB = await service.run(
+        { ...validInput, currentVersion: '1.0.0' },
+        context,
+      );
+
+      expect(resultA.data.hasUpdate).toBe(true);
+      expect(resultB.data.hasUpdate).toBe(true);
+      if (resultA.data.hasUpdate && resultB.data.hasUpdate) {
+        expect(resultA.data.sig).not.toBe(resultB.data.sig);
+      }
+    });
+
+    it('wrong encryption key causes service to throw (decryption auth tag fails)', async () => {
+      const url = 'https://cdn.example.com/firmware.bin';
+      storage.getSignedUrl.mockResolvedValue(url);
+      firmwareRepo.findLatestForBoard.mockResolvedValue([signedRelease]);
+
+      const wrongKeyService = new CheckOtaUpdateService(
+        deviceRepo,
+        firmwareRepo,
+        storage,
+        'f'.repeat(64),
+      );
+
+      await expect(
+        wrongKeyService.run(
+          { ...validInput, currentVersion: '1.0.0' },
+          context,
+        ),
+      ).rejects.toThrow();
     });
   });
 

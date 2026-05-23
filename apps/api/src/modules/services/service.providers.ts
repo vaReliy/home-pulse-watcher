@@ -138,7 +138,18 @@ export const serviceProviders: Provider[] = [
       deviceRepo: IDeviceRepository,
       firmwareRepo: IFirmwareReleaseRepository,
       storage: IFirmwareStorageService,
-    ) => new CheckOtaUpdateService(deviceRepo, firmwareRepo, storage),
+    ) => {
+      const encryptionKey = process.env['DEVICE_SECRET_ENCRYPTION_KEY'];
+      if (!encryptionKey) {
+        throw new Error('DEVICE_SECRET_ENCRYPTION_KEY not configured');
+      }
+      return new CheckOtaUpdateService(
+        deviceRepo,
+        firmwareRepo,
+        storage,
+        encryptionKey,
+      );
+    },
     inject: [
       REPOSITORY_TOKENS.DEVICE,
       REPOSITORY_TOKENS.FIRMWARE_RELEASE,

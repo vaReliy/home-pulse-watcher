@@ -384,6 +384,14 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - **Telegram webhook returns 503 when secret is missing** — `TELEGRAM_WEBHOOK_SECRET` is in `REQUIRED_VARS` (app exits on startup if absent). If it's somehow nil at runtime in the webhook controller, return 403 (or 401) **not** a silent accept. Any guard that depends on a secret should fail closed (deny by default).
 - **HMAC guard catches canonical builder exceptions** (`hmac-auth.guard.ts`): All throws from `@HmacCanonical()` builder → `AuthenticationError(INVALID_CREDENTIALS)` → 401. Builders can validate fields explicitly (`throw` if missing/unparseable) without risk of unhandled 500s.
 
+**OTA Response Authentication (C-1 fix)**
+
+- Response signed with HMAC-SHA256; canonical string: `version|url|checksum|isCritical|expiresAt|ts`
+- Backend: `CheckOtaUpdateService` → `sig` (hex) + `ts` (Unix s) added to every `hasUpdate: true` response
+- Firmware: verifies sig + freshness (±5 min window) before proceeding; fails closed
+- Secret: per-device NVS secret (no new key material)
+- Rollout constraint: backend MUST be deployed before sig-verifying firmware
+
 **Still pending:**
 
 - Device → Release linking for tracking upgrade status per-device (deferred to 5.7)
