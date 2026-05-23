@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Security: OTA binary download — replace setInsecure() with GTS Root R1 CA
+
+- `setInsecure()` removed from `applyUpdate()` in `libs/firmware-shared/src/ota.cpp`.
+- `libs/firmware-shared/include/HomePulse/gts_root_ca.h` added — embeds Google Trust Services Root R1 PEM (expires 2036-06-22) as a `PROGMEM` string constant.
+- `client.setCACert(GTS_ROOT_CA)` used instead — mbedTLS now verifies the full certificate chain for `storage.googleapis.com` during OTA binary download.
+- `docs/admin-guide.md` updated with cert expiry date and rotation procedure.
+- Closes I-1 from the security audit; combined with C-1 (signed OTA-check response), the full OTA binary-download attack surface is now closed.
+
 ### Security: OTA-check response HMAC signing
 
 - Backend (`CheckOtaUpdateService`) now signs every `hasUpdate: true` OTA response with HMAC-SHA256 using the device's per-device secret. Response includes `sig` (64-char hex) and `ts` (Unix seconds).

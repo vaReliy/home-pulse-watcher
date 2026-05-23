@@ -10,6 +10,7 @@
 #include "HomePulse/telemetry.h"
 #include "HomePulse/telemetry_http.h"
 #include "HomePulse/SecurityUtils.h"
+#include "HomePulse/gts_root_ca.h"
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -202,7 +203,7 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     // LED contract: caller (main loop) reclaims LED state via setPowerStatusLed() on next iteration.
 
     WiFiClientSecure client;
-    client.setInsecure();
+    client.setCACert(GTS_ROOT_CA);
     client.setTimeout(60);
 
     HTTPClient http;

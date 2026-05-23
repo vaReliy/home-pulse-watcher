@@ -65,7 +65,7 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
                            UpdateInfo& outInfo);
 
 /**
- * Downloads and flashes binary from outInfo.url via HTTPS (setInsecure).
+ * Downloads and flashes binary from outInfo.url via HTTPS (GTS Root R1 CA verified).
  * Verifies SHA-256 via esp_partition_get_sha256 post-flash.
  * Returns true only if flash OK AND checksum matches.
  * Does NOT call ESP.restart() — caller decides.

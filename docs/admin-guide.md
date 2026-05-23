@@ -476,6 +476,25 @@ See the Docker admin profile docs (task 05) for running `firmware:upload` inside
 - Uploading the same version + board combination twice is rejected (GCS 412 + DB unique constraint).
 - To re-publish, use a new version tag or delete the existing GCS object and DB row manually.
 
+## OTA TLS Certificate
+
+OTA binary downloads verify the server certificate against the **Google Trust Services Root R1** CA. The PEM is embedded in `libs/firmware-shared/include/HomePulse/gts_root_ca.h`.
+
+| Field   | Value                                   |
+| ------- | --------------------------------------- |
+| Subject | GTS Root R1 (Google Trust Services LLC) |
+| Source  | https://pki.goog/roots.pem              |
+| Expires | **2036-06-22**                          |
+
+### Rotation procedure
+
+If TLS handshake fails after expiry (or if Google rotates the root early):
+
+1. Download the replacement PEM from https://pki.goog/repository/.
+2. Replace the cert string in `libs/firmware-shared/include/HomePulse/gts_root_ca.h`.
+3. Update the `Expires` line in this table.
+4. Build and release new firmware via the standard `firmware:upload` pipeline.
+
 ## OTA Rollback Flow
 
 ### How it works

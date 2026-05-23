@@ -163,7 +163,7 @@ On first boot the device starts a `HomePulse-Setup-XXXX` Wi-Fi AP. Connect to it
 
 OTA updates require a dual-partition flash layout. Both ESP32-C3 and ESP32-C6 builds use the `min_spiffs` partition table (configured in `platformio.ini` via `board_build.partitions`), which provides two equal OTA partitions on a 4 MB flash chip.
 
-> **TLS note**: OTA binary downloads use `setInsecure()` (no certificate verification) for the current phase. The download URL is a short-lived GCS signed URL returned by the backend, so the attack surface is limited. Certificate pinning or a CA bundle is planned for a future hardening phase.
+> **TLS note**: OTA binary downloads verify the server certificate against the **Google Trust Services Root R1** CA (`storage.googleapis.com` is issued under this root). The embedded CA cert expires 2036-06-22; see `docs/admin-guide.md` for the rotation procedure.
 
 See [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 

@@ -4,7 +4,8 @@ export { DeviceRole } from './lib/types/device-role.enum.js';
 export { PowerStatus } from './lib/types/power-status.enum.js';
 export {
   channelsVisibleTo,
-  isReleaseChannel, ReleaseChannel
+  isReleaseChannel,
+  ReleaseChannel,
 } from './lib/types/release-channel.enum.js';
 
 // Entities
@@ -21,11 +22,12 @@ export type { IFirmwareStorageService } from './lib/services/index.js';
 // Repository Interfaces
 export type { IDeviceRepository } from './lib/repositories/device.repository.interface.js';
 export type {
-  CreateFirmwareReleaseInput, IFirmwareReleaseRepository
+  CreateFirmwareReleaseInput,
+  IFirmwareReleaseRepository,
 } from './lib/repositories/firmware-release.repository.interface.js';
 export type {
   IPowerEventRepository,
-  PowerEventQueryOptions
+  PowerEventQueryOptions,
 } from './lib/repositories/power-event.repository.interface.js';
 export type { IUserDeviceRepository } from './lib/repositories/user-device.repository.interface.js';
 export type { IUserRepository } from './lib/repositories/user.repository.interface.js';
