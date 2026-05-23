@@ -494,7 +494,7 @@ node apps/api/dist/cli.js firmware:upload \
 **GCS object path** (convention used for all releases):
 
 ```
-firmware/<board>/<channel>/<version>/<filename>
+firmware/<board>/<version>/<filename>
 ```
 
 **Examples:**

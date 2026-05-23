@@ -468,7 +468,7 @@ Use the `firmware:upload` CLI command to publish a new firmware binary. It uploa
      --channel STABLE
    ```
 
-4. Confirm output shows the GCS path and signed URL preview.
+4. Confirm output shows the GCS path (e.g. `firmware/esp32c6/0.2.0/esp32c6-v0.2.0.bin`).
 
 Devices set to the same channel will download and apply the release on their next OTA check without any additional action.
 

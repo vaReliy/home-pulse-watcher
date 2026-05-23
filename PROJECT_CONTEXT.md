@@ -33,6 +33,13 @@
 | Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                                                                                               |
 | AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher                                                                                |
 
+**GitHub PR access (AI sessions):** `gh` CLI is not authenticated and GitHub MCP is not configured. Use `WebFetch` against the public GitHub REST API instead:
+
+- PR metadata: `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>`
+- Changed files + diffs: `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>/files`
+- Review comments: `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>/comments`
+- Reviews (top-level): `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>/reviews`
+
 ---
 
 ## Architecture
@@ -332,7 +339,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - `IFirmwareStorageService` interface (core port) + `GcsService` adapter (infrastructure) wired via NestJS DI
 - Methods: `uploadBuffer`, `getSignedUrl`, `deleteObject` (used for best-effort cleanup on DB failure)
 - Authentication: `GCP_SERVICE_ACCOUNT_KEY` env var (JSON) or application default credentials fallback (Cloud Run Workload Identity)
-- Bucket: `GCS_BUCKET_NAME` env var (required)
+- Bucket: `GCS_BUCKET_NAME` env var (optional — omit to disable OTA via `NullFirmwareStorageService` fallback)
 - Binary upload: buffer-based with `ifGenerationMatch: 0` (prevents silent overwrites — GCS 412 = already exists)
 - Signed URLs: V4 format, 15-minute TTL
 - Error translation: GCS 404 → `NotFoundError`, 403 → permission denied, etc.
@@ -379,9 +386,9 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 **OTA Security Boundaries (Post-Audit)**
 
-- **`Device.releaseChannel` controls firmware tier** — Prisma schema: `releaseChannel String @db.Char(6) @default("STABLE")` with CHECK constraint. Backend **never** uses the request body `channel` field for security decisions. The field is included only in the HMAC canonical string for backward compat with V3.x firmware that transmits it; `CheckOtaUpdateService` always reads `device.releaseChannel` from DB. Prevents device downgrade via tampering.
+- **`Device.releaseChannel` controls firmware tier** — Prisma schema: `releaseChannel String @default("STABLE")` with CHECK constraint (enforced via raw SQL CHECK in migration, not `@db.Char(6)`). Backend **never** uses the request body `channel` field for security decisions. The field is included only in the HMAC canonical string for backward compat with V3.x firmware that transmits it; `CheckOtaUpdateService` always reads `device.releaseChannel` from DB. Prevents device downgrade via tampering.
 - **GCS signed URLs never in stdout/logs** — `IFirmwareStorageService.getSignedUrl()` is for internal use only (backend response to `/api/ota/check`). Must never be printed to stdout or stderr in CLI commands. URLs are time-limited credentials (15 min) and appear in Cloud Logging otherwise. The CLI `firmware:upload` summary prints only the GCS path (not the URL), with a note to use the backend endpoint.
-- **Telegram webhook returns 503 when secret is missing** — `TELEGRAM_WEBHOOK_SECRET` is in `REQUIRED_VARS` (app exits on startup if absent). If it's somehow nil at runtime in the webhook controller, return 403 (or 401) **not** a silent accept. Any guard that depends on a secret should fail closed (deny by default).
+- **Telegram webhook returns 503 when secret is missing** — `TELEGRAM_WEBHOOK_SECRET` is in `REQUIRED_VARS` (app exits on startup if absent). If it's somehow nil at runtime, the controller returns **503 SERVICE_UNAVAILABLE** (`{ error: 'Webhook not configured' }`), not 401/403 — 503 signals misconfiguration rather than an auth failure, which is semantically correct. Wrong secret returns 401.
 - **HMAC guard catches canonical builder exceptions** (`hmac-auth.guard.ts`): All throws from `@HmacCanonical()` builder → `AuthenticationError(INVALID_CREDENTIALS)` → 401. Builders can validate fields explicitly (`throw` if missing/unparseable) without risk of unhandled 500s.
 
 **OTA Response Authentication (C-1 fix)**

@@ -19,7 +19,7 @@ Phase 5.6 delivers end-to-end over-the-air firmware updates with cryptographic s
 - **Secure Service**: `POST /api/ota/check` endpoint with HMAC-signed canonical string (`version|url|checksum|isCritical|expiresAt|ts`). Response authenticated with device secret; firmware verifies signature before download.
 - **Firmware Logic**: `httpUpdate` integration with white LED fast-blink during download. SHA-256 post-flash verification with automatic rollback via `esp_ota_set_boot_partition()` on checksum mismatch.
 - **OTA Hardening**: Grace-period validation (`≥ 3 heartbeats + ≥ 5 min uptime`) gates `markCurrentAppValid()`. Rollback protection: pending-verify bootloader flag auto-reverts to previous firmware if device crashes during grace period.
-- **Admin CLI**: `firmware:upload` command — idempotent binary upload to GCS with DB record creation. Validates semver, board type, and channel; prints signed URL (stderr only, not stdout).
+- **Admin CLI**: `firmware:upload` command — idempotent binary upload to GCS with DB record creation. Validates semver, board type, and channel; prints the GCS object path to stdout (signed URLs are never exposed to stdout/stderr — retrieve via the `/api/ota/check` endpoint).
 - **Captive Portal**: WPA2-PSK derived from device MAC (last 4 bytes), anti-CSRF token (8-char hex via hardware TRNG), anti-CSRF token validation on `POST /save`.
 - **TLS**: GTS Root R1 CA embedded in firmware for OTA binary download verification. Cert expires 2036-06-22 with documented rotation procedure.
 
