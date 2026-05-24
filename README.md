@@ -15,14 +15,14 @@
 
 Two editions are supported:
 
-**Standard Edition (V2.1)**
+**Standard Edition (V3.x.x)**
 
 - MCU: ESP32-C3 or ESP32-C6 SuperMini (RISC-V)
 - Sensor: Non-contact monitoring via 220V → 5V USB adapter logic
 - Power: USB adapter only (no battery backup)
 - Wiring: [`docs/hardware/standard.md`](docs/hardware/standard.md)
 
-**UPS Edition (V2.3)**
+**UPS Edition (V3.x.x)**
 
 - MCU: ESP32-C3 or ESP32-C6 SuperMini (RISC-V)
 - Sensor: Same USB adapter logic (10k/10k voltage divider on GPIO2)
@@ -30,8 +30,6 @@ Two editions are supported:
 - Battery monitoring: GPIO3 ADC with SOS alert at 3400 mV
 - Dual-diode OR-gate ensures outage detection even when battery-powered
 - Wiring: [`docs/hardware/ups.md`](docs/hardware/ups.md)
-
-![UPS Schematic](./docs/assets/ups-schematic-v2.3.png)
 
 ### Software
 
@@ -112,6 +110,34 @@ node apps/api/dist/cli.js device:list --telegram-id 123456789
 node apps/api/dist/cli.js device:link --telegram-id 123456789 --mac AA:BB:CC:DD:EE:FF --role OWNER
 ```
 
+#### Running Admin CLI in a Container
+
+If you don't have Node.js or gcloud SDK installed locally, run the CLI inside a Docker container with bundled gcloud:
+
+```bash
+# one-time: authenticate with your GCP account
+gcloud auth application-default login
+
+# build application artifacts
+npx nx build api
+
+# build admin container image
+docker compose --profile admin build admin
+
+# run any CLI command (examples)
+docker compose --profile admin run --rm admin user:list
+docker compose --profile admin run --rm admin user:create --telegram-id 123456789 --username johndoe
+docker compose --profile admin run --rm admin device:register --mac AA:BB:CC:DD:EE:FF --label "Kitchen"
+docker compose --profile admin run --rm admin device:link --telegram-id 123456789 --mac AA:BB:CC:DD:EE:FF --role OWNER
+
+# upload firmware to GCS (via gcloud ADC)
+docker compose --profile admin run --rm admin firmware:upload \
+  --file /firmware/esp32c3-v0.2.0.bin --version 0.2.0 \
+  --board esp32c3 --channel BETA
+```
+
+**Authentication note:** gcloud inside the container uses Application Default Credentials (ADC) from `~/.config/gcloud` on the host. Leave `GCP_SERVICE_ACCOUNT_KEY` empty in `.env` — ADC automatically kicks in when the environment variable is not set.
+
 See [CLI Reference](./docs/cli-reference.md) for full documentation and the [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 
 ### 7. ESP32 Firmware
@@ -137,7 +163,7 @@ On first boot the device starts a `HomePulse-Setup-XXXX` Wi-Fi AP. Connect to it
 
 OTA updates require a dual-partition flash layout. Both ESP32-C3 and ESP32-C6 builds use the `min_spiffs` partition table (configured in `platformio.ini` via `board_build.partitions`), which provides two equal OTA partitions on a 4 MB flash chip.
 
-> **TLS note**: OTA binary downloads use `setInsecure()` (no certificate verification) for the current phase. The download URL is a short-lived GCS signed URL returned by the backend, so the attack surface is limited. Certificate pinning or a CA bundle is planned for a future hardening phase.
+> **TLS note**: OTA binary downloads verify the server certificate against the **Google Trust Services Root R1** CA (`storage.googleapis.com` is issued under this root). The embedded CA cert expires 2036-06-22; see `docs/admin-guide.md` for the rotation procedure.
 
 See [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 
@@ -277,13 +303,14 @@ This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 
     - [x] Modularize remaining concerns: `sendPowerStatus` (HTTP/JSON) and debounce state machine
     - [x] Unit Testing: Implement Unity/Native tests for core logic (no-hardware required tests)
     - [x] Code Parity: Shared via PlatformIO `lib_extra_dirs = ../../libs/firmware-shared`
-  - [ ] 5.6: OTA Updates (Secure Remote Delivery)
+  - [x] 5.6: OTA Updates (Secure Remote Delivery)
     - [x] Binary Hosting: GCS integration — `GcsService` (upload + V4 signed URLs), `StorageModule` DI wiring
     - [x] Release Management: Prisma-based `FirmwareRelease` DB to track versions, checksums, and stability
     - [x] Secure Service: Backend endpoint for update checks with HMAC-signed validation
     - [x] Firmware Logic: `httpUpdate` integration with white LED status and auto-rollback protection
-    - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
+    - [x] Admin Tools: `firmware:upload` CLI command
   - [ ] 5.7: Telegram Admin UI & Role Management
+    - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
     - [ ] Access Control: Implementation of Owner and Editor roles (RBAC)
     - [ ] Remote Control: Commands for remote reboot, OTA triggers, and device settings via bot
     - [ ] Status Reporting: Enhanced status templates with firmware versioning and system health

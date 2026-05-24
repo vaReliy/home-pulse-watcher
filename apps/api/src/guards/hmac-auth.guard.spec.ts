@@ -253,8 +253,73 @@ describe('HmacAuthGuard', () => {
     });
   });
 
+  describe('MAC address validation', () => {
+    it('should throw INVALID_CREDENTIALS for MAC that is too short', async () => {
+      const repo = createMockRepository();
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'AA:BB:CC:DD:EE', // only 5 octets
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
+      });
+      expect(repo.findByMacAddress).not.toHaveBeenCalled();
+    });
+
+    it('should throw INVALID_CREDENTIALS for MAC with wrong separator (dashes)', async () => {
+      const repo = createMockRepository();
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'AA-BB-CC-DD-EE-FF', // dashes instead of colons
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
+      });
+      expect(repo.findByMacAddress).not.toHaveBeenCalled();
+    });
+
+    it('should throw INVALID_CREDENTIALS for MAC that is lowercase', async () => {
+      const repo = createMockRepository();
+      // Repository will NOT be called — MAC fails format check after normalization is impossible
+      // (lowercase normalizes to uppercase, so this passes format check — see normalize test below)
+      // This test verifies a truly invalid lowercase+bad-format MAC is rejected
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'gg:hh:ii:jj:kk:ll', // invalid hex chars even after uppercasing
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
+      });
+      expect(repo.findByMacAddress).not.toHaveBeenCalled();
+    });
+  });
+
   describe('device lookup', () => {
-    it('should throw DEVICE_NOT_FOUND if device does not exist', async () => {
+    it('should throw INVALID_CREDENTIALS (not DEVICE_NOT_FOUND) if device does not exist', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(null);
       const guard = new HmacAuthGuard(repo, createMissingReflector());
@@ -270,6 +335,30 @@ describe('HmacAuthGuard', () => {
       const context = createMockContext(request);
 
       await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
+      });
+    });
+
+    it('should NOT expose DEVICE_NOT_FOUND code for unknown MAC (prevents enumeration)', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(null);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'AA:BB:CC:DD:EE:FF',
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      const error = await guard.canActivate(context).catch((e: unknown) => e);
+      expect(error).toMatchObject({
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
+      });
+      expect(error).not.toMatchObject({
         code: AuthenticationErrorCode.DEVICE_NOT_FOUND,
       });
     });
@@ -300,7 +389,7 @@ describe('HmacAuthGuard', () => {
   });
 
   describe('signature verification', () => {
-    it('should throw INVALID_SIGNATURE if signature is wrong', async () => {
+    it('should throw INVALID_CREDENTIALS (not INVALID_SIGNATURE) if signature is wrong', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
       const guard = new HmacAuthGuard(repo, createStatusReflector());
@@ -317,11 +406,36 @@ describe('HmacAuthGuard', () => {
       const context = createMockContext(request);
 
       await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
+      });
+    });
+
+    it('should NOT expose INVALID_SIGNATURE code (prevents oracle attacks)', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(mockDevice);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'AA:BB:CC:DD:EE:FF',
+          'x-timestamp': timestamp,
+          'x-signature': 'b'.repeat(64),
+        },
+        body: { status: 1 },
+      });
+      const context = createMockContext(request);
+
+      const error = await guard.canActivate(context).catch((e: unknown) => e);
+      expect(error).toMatchObject({
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
+      });
+      expect(error).not.toMatchObject({
         code: AuthenticationErrorCode.INVALID_SIGNATURE,
       });
     });
 
-    it('should throw INVALID_SIGNATURE for different status value', async () => {
+    it('should throw INVALID_CREDENTIALS for tampered status value in body', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
       const guard = new HmacAuthGuard(repo, createStatusReflector());
@@ -346,11 +460,11 @@ describe('HmacAuthGuard', () => {
       const context = createMockContext(request);
 
       await expect(guard.canActivate(context)).rejects.toMatchObject({
-        code: AuthenticationErrorCode.INVALID_SIGNATURE,
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
       });
     });
 
-    it('should throw INVALID_SIGNATURE for different MAC in payload', async () => {
+    it('should throw INVALID_CREDENTIALS for different MAC in payload', async () => {
       const repo = createMockRepository();
       repo.findByMacAddress.mockResolvedValue(mockDevice);
       const guard = new HmacAuthGuard(repo, createStatusReflector());
@@ -375,7 +489,7 @@ describe('HmacAuthGuard', () => {
       const context = createMockContext(request);
 
       await expect(guard.canActivate(context)).rejects.toMatchObject({
-        code: AuthenticationErrorCode.INVALID_SIGNATURE,
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
       });
     });
   });
@@ -600,7 +714,7 @@ describe('HmacAuthGuard', () => {
       const context = createMockContext(request);
 
       await expect(guard.canActivate(context)).rejects.toMatchObject({
-        code: AuthenticationErrorCode.INVALID_SIGNATURE,
+        code: AuthenticationErrorCode.INVALID_CREDENTIALS,
       });
     });
   });

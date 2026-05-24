@@ -1,4 +1,5 @@
 import { PowerStatus } from '../types/power-status.enum.js';
+import { ReleaseChannel } from '../types/release-channel.enum.js';
 
 /**
  * Device domain entity.
@@ -16,6 +17,8 @@ export class Device {
   readonly firmwareVersion: string | null;
   /** Latest battery voltage in millivolts. Present only for UPS Edition devices. */
   readonly batteryVoltage: number | null;
+  /** OTA release channel this device is enrolled in. Defaults to STABLE. */
+  readonly releaseChannel: ReleaseChannel;
 
   constructor(props: {
     id: string;
@@ -27,6 +30,7 @@ export class Device {
     statusChangedAt: Date | null;
     firmwareVersion: string | null;
     batteryVoltage: number | null;
+    releaseChannel: ReleaseChannel;
   }) {
     this.id = props.id;
     this.macAddress = props.macAddress;
@@ -37,6 +41,7 @@ export class Device {
     this.statusChangedAt = props.statusChangedAt;
     this.firmwareVersion = props.firmwareVersion;
     this.batteryVoltage = props.batteryVoltage;
+    this.releaseChannel = props.releaseChannel;
   }
 
   /** Returns true if this device has a UPS battery module (batteryVoltage is not null). */

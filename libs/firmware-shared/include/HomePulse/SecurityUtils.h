@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <mbedtls/md.h>
+#include <cstdint>
+#include <cstddef>
 
 namespace HomePulse {
 
@@ -34,6 +36,13 @@ inline String calculateSignature(const String& payload, const char* secret) {
     hex[kHmacHexLength] = '\0';
 
     return String(hex);
+}
+
+/** Constant-time byte comparison — prevents timing side-channel on HMAC verify. */
+inline bool constantTimeEquals(const char* a, const char* b, size_t len) {
+    uint8_t diff = 0;
+    for (size_t i = 0; i < len; ++i) diff |= (uint8_t)a[i] ^ (uint8_t)b[i];
+    return diff == 0;
 }
 
 }  // namespace HomePulse

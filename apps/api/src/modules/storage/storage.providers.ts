@@ -1,6 +1,8 @@
 import type { Provider } from '@nestjs/common';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { Storage } from '@google-cloud/storage';
 import { Logger } from 'nestjs-pino';
+import type { IFirmwareStorageService } from '@home-pulse-watcher/core';
 import { GcsService } from '@home-pulse-watcher/infrastructure';
 import { STORAGE_TOKENS } from './storage.tokens.js';
 import { normalizePemKey } from './pem-key.util.js';
@@ -45,14 +47,41 @@ function parseServiceAccountKey(raw: string): ServiceAccountKey {
   return parsed;
 }
 
+/**
+ * No-op storage implementation used when GCS_BUCKET_NAME is not configured.
+ * All methods throw 503 so that OTA endpoints degrade gracefully instead of
+ * crashing the server at bootstrap.
+ */
+class NullFirmwareStorageService implements IFirmwareStorageService {
+  uploadBuffer(
+    _path: string,
+    _buffer: Buffer,
+    _contentType: string,
+  ): Promise<void> {
+    throw new ServiceUnavailableException(
+      'OTA storage is not configured (GCS_BUCKET_NAME missing)',
+    );
+  }
+
+  getSignedUrl(_gcsPath: string): Promise<string> {
+    throw new ServiceUnavailableException(
+      'OTA storage is not configured (GCS_BUCKET_NAME missing)',
+    );
+  }
+
+  deleteObject(_gcsPath: string): Promise<void> {
+    throw new ServiceUnavailableException(
+      'OTA storage is not configured (GCS_BUCKET_NAME missing)',
+    );
+  }
+}
+
 export const storageProvider: Provider = {
   provide: STORAGE_TOKENS.FIRMWARE_STORAGE,
-  useFactory: (logger: Logger): GcsService => {
+  useFactory: (logger: Logger): IFirmwareStorageService => {
     const bucketName = process.env['GCS_BUCKET_NAME'];
     if (!bucketName) {
-      throw new Error(
-        'GCS_BUCKET_NAME environment variable is required but not set.',
-      );
+      return new NullFirmwareStorageService();
     }
 
     const rawKey = process.env['GCP_SERVICE_ACCOUNT_KEY'];

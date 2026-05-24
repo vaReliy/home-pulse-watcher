@@ -1,6 +1,6 @@
+import { timingSafeEqual } from 'crypto';
 import {
   Controller,
-  Get,
   Post,
   Req,
   Res,
@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { Telegraf } from 'telegraf';
 import { TELEGRAM_TOKENS } from './telegram.tokens.js';
@@ -35,7 +36,9 @@ export class TelegramController {
 
   /**
    * Receives Telegram webhook POST updates and delegates to Telegraf.
+   * 60 req/sec/IP — matches Telegram's max update delivery rate per bot.
    */
+  @Throttle({ default: { ttl: 1_000, limit: 60 } })
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   async handleWebhook(
@@ -48,14 +51,26 @@ export class TelegramController {
       return;
     }
 
-    // Validate webhook secret if configured
-    if (this.config?.webhookSecret) {
-      const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
-      if (headerSecret !== this.config.webhookSecret) {
-        this.logger.warn('Webhook request with invalid secret token');
-        res.sendStatus(HttpStatus.UNAUTHORIZED);
-        return;
-      }
+    // Require webhook secret — reject all requests if secret is absent at runtime.
+    // env.validation.ts marks TELEGRAM_WEBHOOK_SECRET required, but guard defensively here
+    // to prevent unsigned requests if that validation is ever bypassed.
+    if (!this.config?.webhookSecret || this.config.webhookSecret.length === 0) {
+      this.logger.error(
+        'Webhook secret not configured — rejecting request to prevent unsigned update acceptance',
+      );
+      res
+        .status(HttpStatus.SERVICE_UNAVAILABLE)
+        .json({ error: 'Webhook not configured' });
+      return;
+    }
+
+    const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
+    const a = Buffer.from(typeof headerSecret === 'string' ? headerSecret : '');
+    const b = Buffer.from(this.config.webhookSecret);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      this.logger.warn('Webhook request with invalid secret token');
+      res.sendStatus(HttpStatus.UNAUTHORIZED);
+      return;
     }
 
     try {
@@ -71,81 +86,5 @@ export class TelegramController {
       );
       res.sendStatus(HttpStatus.OK);
     }
-  }
-
-  /**
-   * [DIAGNOSTIC] Returns current Telegram webhook state for debugging.
-   * TODO: protect with auth or remove after debugging.
-   */
-  @Get('debug-webhook')
-  async debugWebhook(): Promise<Record<string, unknown>> {
-    if (!this.bot || !this.config) {
-      return {
-        error: 'Bot or config not available',
-        botConfigured: !!this.bot,
-        configLoaded: !!this.config,
-      };
-    }
-
-    const info = await this.bot.telegram.getWebhookInfo();
-    const expectedUrl = this.config.webhookDomain
-      ? `${this.config.webhookDomain}/api/telegram/webhook`
-      : null;
-
-    return {
-      currentUrl: info.url || null,
-      expectedUrl,
-      urlMatch: !!expectedUrl && info.url === expectedUrl,
-      hasCustomCertificate: info.has_custom_certificate,
-      pendingUpdateCount: info.pending_update_count,
-      lastErrorDate: info.last_error_date
-        ? new Date(info.last_error_date * 1000).toISOString()
-        : null,
-      lastErrorMessage: info.last_error_message ?? null,
-      lastSynchronizationErrorDate: info.last_synchronization_error_date
-        ? new Date(info.last_synchronization_error_date * 1000).toISOString()
-        : null,
-      maxConnections: info.max_connections,
-      ipAddress: info.ip_address ?? null,
-    };
-  }
-
-  /**
-   * [DIAGNOSTIC] Re-registers the webhook with Telegram.
-   * TODO: protect with auth or remove after debugging.
-   */
-  @Post('reset-webhook')
-  async resetWebhook(): Promise<Record<string, unknown>> {
-    if (!this.bot || !this.config) {
-      return {
-        success: false,
-        error: 'Bot or config not available',
-        botConfigured: !!this.bot,
-        configLoaded: !!this.config,
-      };
-    }
-
-    if (!this.config.webhookDomain) {
-      return {
-        success: false,
-        error: 'No webhookDomain configured (TELEGRAM_WEBHOOK_DOMAIN env var)',
-      };
-    }
-
-    const webhookUrl = `${this.config.webhookDomain}/api/telegram/webhook`;
-
-    await this.bot.telegram.setWebhook(webhookUrl, {
-      secret_token: this.config.webhookSecret,
-    });
-
-    const info = await this.bot.telegram.getWebhookInfo();
-
-    return {
-      success: info.url === webhookUrl,
-      registeredUrl: info.url || null,
-      expectedUrl: webhookUrl,
-      pendingUpdateCount: info.pending_update_count,
-      lastErrorMessage: info.last_error_message ?? null,
-    };
   }
 }

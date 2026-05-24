@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { ProcessPowerStatusService } from '@home-pulse-watcher/application';
 import { HmacAuthGuard } from '../../guards/hmac-auth.guard.js';
 import { DeviceId } from '../../decorators/device-context.decorator.js';
@@ -37,6 +38,8 @@ export class DeviceStatusController {
    * @param dto - Power status (0 = OFF, 1 = ON)
    * @param deviceId - Verified device ID from guard
    */
+  /** 60 req/min/IP — matches normal device polling cadence */
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
   @Post('status')
   @HttpCode(HttpStatus.OK)
   @HmacCanonical((b) => String(b['status'] ?? ''))

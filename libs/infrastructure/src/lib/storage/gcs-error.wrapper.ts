@@ -39,6 +39,19 @@ export class StorageUnavailableError extends BaseError {
   }
 }
 
+/**
+ * Thrown when GCS returns HTTP 403 (e.g. service account missing storage.objects.get).
+ * Maps to HTTP 403 Forbidden via ServiceExceptionFilter.
+ */
+export class StoragePermissionError extends BaseError {
+  readonly code = 'STORAGE_PERMISSION_DENIED';
+  readonly httpStatus = 403;
+
+  constructor(operation: string) {
+    super(`GCS permission denied during "${operation}"`);
+  }
+}
+
 function isGcsError(err: unknown): err is GcsError {
   return typeof err === 'object' && err !== null && 'code' in err;
 }
@@ -84,11 +97,7 @@ export async function withGcsError<T>(
       }
 
       if (err.code === 403) {
-        const permissionError = new Error('GCS permission denied') as Error & {
-          code: string;
-        };
-        permissionError.code = 'STORAGE_PERMISSION_DENIED';
-        throw permissionError;
+        throw new StoragePermissionError(operation);
       }
     } else {
       logger.error('GCS operation failed with unexpected error', {

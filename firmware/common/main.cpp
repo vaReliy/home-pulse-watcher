@@ -85,6 +85,7 @@ static unsigned long lastHeartbeatTime = 0; // Last heartbeat send
 // OTA state
 static bool bootWasPendingValidation = false;
 static bool otaValidated = false;
+static uint32_t heartbeatsSinceBoot = 0;  // counts successful backend contacts for grace-period validation
 static unsigned long lastOtaCheckTime = 0;
 
 // WS2812B RGB LED
@@ -362,7 +363,11 @@ void setup() {
         if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
             lastSendTime = millis();
             initialSendOk = true;
-            if (bootWasPendingValidation && !otaValidated) {
+            heartbeatsSinceBoot++;
+            if (HomePulse::Ota::shouldMarkAppValid(bootWasPendingValidation && !otaValidated,
+                                                   heartbeatsSinceBoot, millis(),
+                                                   OTA_VALIDATION_MIN_HEARTBEATS,
+                                                   OTA_VALIDATION_MIN_UPTIME_MS)) {
                 HomePulse::Ota::markCurrentAppValid();
                 otaValidated = true;
                 Serial.println("[OTA] App validated, rollback cancelled.");
@@ -513,7 +518,11 @@ void loop() {
         if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
             lastSendTime = currentTime;
             Serial.println("Heartbeat sent");
-            if (bootWasPendingValidation && !otaValidated) {
+            heartbeatsSinceBoot++;
+            if (HomePulse::Ota::shouldMarkAppValid(bootWasPendingValidation && !otaValidated,
+                                                   heartbeatsSinceBoot, millis(),
+                                                   OTA_VALIDATION_MIN_HEARTBEATS,
+                                                   OTA_VALIDATION_MIN_UPTIME_MS)) {
                 HomePulse::Ota::markCurrentAppValid();
                 otaValidated = true;
                 Serial.println("[OTA] App validated, rollback cancelled.");

@@ -213,9 +213,11 @@ inline bool applyCompileTimeSecrets(DeviceCredentials& creds,
         wrote = true;
     }
 #ifdef OTA_CHANNEL
-    strncpy(creds.ota_channel, OTA_CHANNEL, CRED_OTA_CHAN_MAX - 1);
-    creds.ota_channel[CRED_OTA_CHAN_MAX - 1] = '\0';
-    wrote = true;
+    if (strlen(OTA_CHANNEL) > 0) {
+        strncpy(creds.ota_channel, OTA_CHANNEL, CRED_OTA_CHAN_MAX - 1);
+        creds.ota_channel[CRED_OTA_CHAN_MAX - 1] = '\0';
+        wrote = true;
+    }
 #endif
     return wrote;
 }

@@ -1,5 +1,9 @@
 import { NotFoundError } from '@home-pulse-watcher/shared';
-import { withGcsError, StorageUnavailableError } from './gcs-error.wrapper.js';
+import {
+  withGcsError,
+  StorageUnavailableError,
+  StoragePermissionError,
+} from './gcs-error.wrapper.js';
 
 function makeLogger() {
   return {
@@ -93,10 +97,18 @@ describe('withGcsError — GCS HTTP error classification', () => {
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  it('translates 403 into a STORAGE_PERMISSION_DENIED error (not StorageUnavailableError)', async () => {
-    await expect(
-      withGcsError('fetch', () => Promise.reject(gcsError(403)), logger),
-    ).rejects.toMatchObject({ code: 'STORAGE_PERMISSION_DENIED' });
+  it('translates 403 into StoragePermissionError (httpStatus 403)', async () => {
+    let thrown: unknown;
+    try {
+      await withGcsError('fetch', () => Promise.reject(gcsError(403)), logger);
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(StoragePermissionError);
+    expect((thrown as StoragePermissionError).httpStatus).toBe(403);
+    expect((thrown as StoragePermissionError).code).toBe(
+      'STORAGE_PERMISSION_DENIED',
+    );
   });
 
   it('404 error is not classified as StorageUnavailableError', async () => {
@@ -137,6 +149,22 @@ describe('withGcsError — success path', () => {
     const logger = makeLogger();
     const result = await withGcsError('op', () => Promise.resolve(42), logger);
     expect(result).toBe(42);
+  });
+});
+
+describe('StoragePermissionError', () => {
+  it('has code STORAGE_PERMISSION_DENIED', () => {
+    expect(new StoragePermissionError('upload').code).toBe(
+      'STORAGE_PERMISSION_DENIED',
+    );
+  });
+
+  it('has httpStatus 403', () => {
+    expect(new StoragePermissionError('upload').httpStatus).toBe(403);
+  });
+
+  it('is an instance of Error', () => {
+    expect(new StoragePermissionError('upload')).toBeInstanceOf(Error);
   });
 });
 

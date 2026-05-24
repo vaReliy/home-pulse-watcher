@@ -1,4 +1,5 @@
 import type { IFirmwareStorageService } from '@home-pulse-watcher/core';
+import { SIGNED_URL_TTL_MS } from '@home-pulse-watcher/core';
 import { withGcsError } from './gcs-error.wrapper.js';
 
 /** Structural logger type compatible with NestJS LoggerService and nestjs-pino. */
@@ -25,11 +26,9 @@ interface GcsBucket {
       action: 'read' | 'write' | 'delete' | 'resumable';
       expires: number;
     }): Promise<[string]>;
+    delete(): Promise<unknown>;
   };
 }
-
-/** Signed URL validity window in milliseconds (15 minutes). */
-const SIGNED_URL_TTL_MS = 15 * 60 * 1000;
 
 interface GcsServiceDeps {
   bucket: GcsBucket;
@@ -89,5 +88,18 @@ export class GcsService implements IFirmwareStorageService {
       this.logger,
     );
     return url;
+  }
+
+  /**
+   * Deletes a GCS object at the given path.
+   * Used for best-effort cleanup after a failed DB write.
+   */
+  async deleteObject(gcsPath: string): Promise<void> {
+    await withGcsError(
+      `deleteObject:${gcsPath}`,
+      () => this.bucket.file(gcsPath).delete(),
+      this.logger,
+    );
+    this.logger.log('GCS object deleted', { path: gcsPath });
   }
 }

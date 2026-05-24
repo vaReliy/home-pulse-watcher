@@ -38,6 +38,8 @@ Create User (CLI) -> Register Device (CLI) -> Flash ESP32 -> Link Device (CLI) -
    export $(grep -v '^#' .env | xargs)
    ```
 
+> **Docker alternative:** If you don't have Node.js installed locally, all CLI commands can run inside the Docker admin container (includes gcloud SDK). See [Running Admin CLI in a Container](#running-admin-cli-in-a-container) at the end of this guide.
+
 ## Step 1: Create User Account
 
 Create the user who will receive Telegram notifications.
@@ -96,21 +98,26 @@ See [CLI Reference](./cli-reference.md#deviceregister) for full options.
 
 3. Provision via captive portal:
 
-   On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). Connect to it and open `http://192.168.4.1`. Fill in:
+   On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). The AP is protected by a WPA2 password derived from the device MAC — look for it in the Serial monitor output:
 
-   | Field          | Value                                       |
-   | -------------- | ------------------------------------------- |
-   | Wi-Fi SSID     | Your network name                           |
-   | Wi-Fi Password | Your network password                       |
-   | Device MAC     | `AA:BB:CC:DD:EE:FF` (from Step 1)           |
-   | Device Secret  | 64-char hex string (from Step 1)            |
-   | Backend URL    | `https://your-server.com/api/device/status` |
+   ```
+   [Portal] AP started: HomePulse-Setup-EEFF  password: CCDDEEFF
+   ```
+
+   The password is the **last 8 hex digits of the MAC address**, uppercased (e.g. MAC `AA:BB:CC:DD:EE:FF` → password `CCDDEEFF`). Connect to the AP using that password, then open `http://192.168.4.1`. Fill in:
+
+   | Field          | Value                                     |
+   | -------------- | ----------------------------------------- |
+   | Wi-Fi SSID     | Your network name                         |
+   | Wi-Fi Password | Your network password                     |
+   | Device Secret  | 64-char hex string (from Step 1)          |
+   | Backend URL    | `https://your-server.com` (base URL only) |
 
    After saving, the device reboots and connects automatically. Credentials are stored in NVS (non-volatile flash) and persist across reboots and reflashes.
 
    > **Dev shortcut**: Copy `include/secrets.h.example` to `include/secrets.h`, fill in the values, and rebuild. If `secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty) — the captive portal is skipped. Do **not** commit `secrets.h` to version control.
 
-   > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s. The LED flashes SOS, credentials are cleared, and the captive portal starts again.
+   > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s. The LED flashes SOS, credentials are cleared, and the captive portal restarts with the same MAC-derived password.
 
 See [Flashing Guide](../firmware/docs/FLASHING_GUIDE.md) for detailed PlatformIO setup, USB drivers, and troubleshooting upload issues.
 
@@ -298,12 +305,78 @@ The Telegram bot uses webhooks in production. If commands like `/status` get no 
 
 4. **Webhook security:** Set `TELEGRAM_WEBHOOK_SECRET` in GCP Secret Manager to validate that incoming webhook requests originate from Telegram (via the `X-Telegram-Bot-Api-Secret-Token` header).
 
-### No Notifications
+## Running Admin CLI in a Container
 
-- Verify user has `/start`ed the bot
-- Check device is linked to user via `/devices` bot command
-- Verify device is sending status updates (check backend logs)
-- Ensure `TELEGRAM_BOT_TOKEN` is set correctly
+If you don't have Node.js or gcloud SDK installed locally, all CLI commands can run inside the Docker admin container.
+
+### Prerequisites
+
+1. **gcloud authenticated** (one-time):
+
+   ```bash
+   gcloud auth application-default login
+   ```
+
+   This creates credentials at `~/.config/gcloud`, which the container mounts as read-only.
+
+2. **Application built**:
+
+   ```bash
+   npx nx build api
+   ```
+
+3. **Admin container image built**:
+
+   ```bash
+   docker compose --profile admin build admin
+   ```
+
+### Usage
+
+Run any CLI command with `docker compose --profile admin run --rm admin`:
+
+```bash
+# Create a user
+docker compose --profile admin run --rm admin user:create \
+  --telegram-id 123456789 \
+  --username johndoe
+
+# List users
+docker compose --profile admin run --rm admin user:list
+
+# Register a device
+docker compose --profile admin run --rm admin device:register \
+  --mac AA:BB:CC:DD:EE:FF \
+  --label "Kitchen Sensor"
+
+# Link device to user
+docker compose --profile admin run --rm admin device:link \
+  --telegram-id 123456789 \
+  --mac AA:BB:CC:DD:EE:FF \
+  --role OWNER
+
+# Upload firmware to GCS
+docker compose --profile admin run --rm admin firmware:upload \
+  --file /firmware/esp32c3-v0.2.0.bin \
+  --version 0.2.0 \
+  --board esp32c3 \
+  --channel BETA
+```
+
+**Firmware files:** Place binary files in `./tmp/firmware/` — the container has this mounted at `/firmware`. Reference them in commands as `/firmware/<name>.bin`.
+
+### Authentication
+
+The container uses **Application Default Credentials (ADC)** from your host's gcloud installation. Leave `GCP_SERVICE_ACCOUNT_KEY` empty in `.env` for ADC to activate automatically.
+
+If you need to use a specific GCP service account instead:
+
+```bash
+export GCP_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
+docker compose --profile admin run --rm admin firmware:upload ...
+```
+
+See [CLI Reference](./cli-reference.md) for all available commands.
 
 ## Post-Deploy Setup (GCP Console)
 
@@ -350,6 +423,137 @@ Using the same bot token for local development and production can cause the prod
 2. Send `/newbot` and follow the prompts to create a development bot (e.g. `HomePulse Dev`)
 3. Copy the token and set it as `TELEGRAM_BOT_TOKEN` in your local `.env` file
 4. Keep the production bot token only in GCP Secret Manager
+
+## Publishing a Firmware Release
+
+Use the `firmware:upload` CLI command to publish a new firmware binary. It uploads the file to GCS and creates a `FirmwareRelease` DB record in one step. Devices discover the new release on their next OTA check (every 6 hours, or on boot).
+
+### Prerequisites
+
+- GCS bucket configured (`GCS_BUCKET_NAME` env var).
+- GCS credentials available — one of:
+  - `GCP_SERVICE_ACCOUNT_KEY` in `.env` (production service account JSON), or
+  - Application Default Credentials via `gcloud auth application-default login` (local dev).
+- Database running and `DATABASE_URL` set.
+- Firmware binary built with PlatformIO (`pio run -d firmware/esp32c6`).
+
+### Workflow
+
+1. Build the firmware binary:
+
+   ```bash
+   cd firmware/esp32c6   # or esp32c3
+   pio run
+   # output: .pio/build/esp32c6/firmware.bin
+   ```
+
+2. Copy the binary to `./tmp/firmware/` and rename it with the version:
+
+   ```bash
+   mkdir -p tmp/firmware
+   cp firmware/esp32c6/.pio/build/esp32c6/firmware.bin \
+      tmp/firmware/esp32c6-v0.2.0.bin
+   ```
+
+3. Upload and register:
+
+   ```bash
+   # Load environment
+   export $(grep -v '^#' .env | xargs)
+
+   node apps/api/dist/cli.js firmware:upload \
+     --file esp32c6-v0.2.0.bin \
+     --version 0.2.0 \
+     --board esp32c6 \
+     --channel STABLE
+   ```
+
+4. Confirm output shows the GCS path (e.g. `firmware/esp32c6/0.2.0/esp32c6-v0.2.0.bin`).
+
+Devices set to the same channel will download and apply the release on their next OTA check without any additional action.
+
+### Using Docker (admin profile)
+
+See the Docker admin profile docs (task 05) for running `firmware:upload` inside a container with ADC credentials mounted from the host.
+
+### Idempotency
+
+- Uploading the same version + board combination twice is rejected (GCS 412 + DB unique constraint).
+- To re-publish, use a new version tag or delete the existing GCS object and DB row manually.
+
+## OTA TLS Certificate
+
+OTA binary downloads verify the server certificate against the **Google Trust Services Root R1** CA. The PEM is embedded in `libs/firmware-shared/include/HomePulse/gts_root_ca.h`.
+
+| Field   | Value                                   |
+| ------- | --------------------------------------- |
+| Subject | GTS Root R1 (Google Trust Services LLC) |
+| Source  | https://pki.goog/roots.pem              |
+| Expires | **2036-06-22**                          |
+
+### Rotation procedure
+
+If TLS handshake fails after expiry (or if Google rotates the root early):
+
+1. Download the replacement PEM from https://pki.goog/repository/.
+2. Replace the cert string in `libs/firmware-shared/include/HomePulse/gts_root_ca.h`.
+3. Update the `Expires` line in this table.
+4. Build and release new firmware via the standard `firmware:upload` pipeline.
+
+## OTA Rollback Flow
+
+### How it works
+
+1. A new firmware binary is flashed over-the-air.
+2. The ESP32 bootloader boots the new image in `ESP_OTA_IMG_PENDING_VERIFY` state.
+3. The firmware counts successful heartbeats (HMAC-signed POSTs to `/api/device/status`).
+4. After **≥ 3 heartbeats AND ≥ 5 minutes uptime**, it calls `esp_ota_mark_app_valid_cancel_rollback()`.
+5. If the firmware crashes, reboots, or fails to reach the backend within the grace period, the bootloader detects the uncleared `PENDING_VERIFY` flag and **automatically boots the previous firmware** on the next restart.
+
+> The grace period ensures a firmware with a memory leak, WiFi regression, or crash-loop cannot survive long enough to mark itself valid.
+
+### Monitoring validation in serial logs
+
+Connect to the device serial port (115200 baud). Key log lines:
+
+```
+[OTA] Checking for update...
+[OTA] Update available: 3.6.0
+[OTA] Flash OK, rebooting.
+... (device reboots into new firmware) ...
+Heartbeat sent          ← count 1
+Heartbeat sent          ← count 2
+Heartbeat sent          ← count 3 + uptime ≥ 5 min
+[OTA] App validated, rollback cancelled.
+```
+
+If validation does **not** complete within the grace period, the next reboot will restore the previous firmware. No manual action required.
+
+### Detecting a rollback
+
+After a suspected rollback, check the serial log on the next boot. If the reported `FIRMWARE_VERSION` is lower than the deployed version, the rollback triggered. Common causes:
+
+- Firmware crashes early (check for exception/backtrace in serial output)
+- WiFi or backend unreachable during the first 5 minutes (transient network issue)
+- New firmware introduced a regression that prevents heartbeat sends
+
+### Abort events during flash
+
+All flash-abort events log `[OTA][ABORT]` to serial output. To grep:
+
+```bash
+# If using pio device monitor piped to a log file:
+grep '\[OTA\]\[ABORT\]' serial.log
+```
+
+Causes logged: stream stall (>30 s), short read, flash write failure, SHA-256 mismatch.
+
+### Manual rollback (emergency)
+
+If the new firmware boots and marks itself valid (logged as `[OTA] App validated`) but later proves defective, the bootloader auto-revert is no longer available. Options:
+
+1. **Re-deploy previous version** via the `firmware:upload` CLI command (creates a new `FirmwareRelease`) — the device will pick it up on the next OTA check (every 6 hours) or on next boot.
+2. **USB re-flash** using PlatformIO: `pio run -t upload -d firmware/esp32c3` (or `esp32c6`).
 
 ## Related Guides
 

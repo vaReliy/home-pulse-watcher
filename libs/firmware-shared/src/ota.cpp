@@ -1,13 +1,16 @@
 #include "HomePulse/ota.h"
 #include <Arduino.h>
+#include <cstdint>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
 
 #ifndef UNIT_TEST
+#include "HomePulse/led.h"
 #include "HomePulse/telemetry.h"
 #include "HomePulse/telemetry_http.h"
 #include "HomePulse/SecurityUtils.h"
+#include "HomePulse/gts_root_ca.h"
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -21,6 +24,8 @@ namespace Ota {
 
 // ─── Portable JSON helpers ────────────────────────────────────────────────────
 
+// Handles \" and \\ escape sequences; other \X sequences copy X (passthrough).
+// Sufficient for OTA response fields — full JSON escape decoding not required.
 static bool extractJsonString(const char* json, const char* key,
                               char* out, size_t outSize) {
     char searchKey[80];
@@ -28,12 +33,37 @@ static bool extractJsonString(const char* json, const char* key,
     const char* found = strstr(json, searchKey);
     if (!found) return false;
     found += strlen(searchKey);
-    const char* end = strchr(found, '"');
-    if (!end) return false;
-    size_t len = (size_t)(end - found);
-    if (len >= outSize) return false;
-    strncpy(out, found, len);
-    out[len] = '\0';
+
+    size_t i = 0;
+    const char* p = found;
+    while (*p && i < outSize - 1) {
+        if (*p == '\\' && *(p + 1) != '\0') {
+            out[i++] = *(p + 1);
+            p += 2;
+            continue;
+        }
+        if (*p == '"') break;
+        out[i++] = *p++;
+    }
+    if (*p != '"') return false;
+    out[i] = '\0';
+    return i > 0 || *found == '"';
+}
+
+// Parses an unsigned decimal integer immediately after "key": in JSON.
+static bool extractJsonUint32(const char* json, const char* key, uint32_t& out) {
+    char searchKey[80];
+    snprintf(searchKey, sizeof(searchKey), "\"%s\":", key);
+    const char* found = strstr(json, searchKey);
+    if (!found) return false;
+    found += strlen(searchKey);
+    // skip optional whitespace
+    while (*found == ' ' || *found == '\t') found++;
+    if (*found < '0' || *found > '9') return false;
+    char* end = nullptr;
+    unsigned long val = strtoul(found, &end, 10);
+    if (end == found) return false;
+    out = (uint32_t)val;
     return true;
 }
 
@@ -62,6 +92,12 @@ CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo) {
 
     if (!extractJsonString(body, "version",  version,  sizeof(version)))  return CheckResult::ParseError;
     if (!extractJsonString(body, "url",      url,      sizeof(url)))      return CheckResult::ParseError;
+    if (strlen(url) == sizeof(url) - 1) {
+#ifndef UNIT_TEST
+        Serial.printf("[OTA] URL buffer full — possible truncation, aborting\n");
+#endif
+        return CheckResult::ParseError;
+    }
     if (!extractJsonString(body, "checksum", checksum, sizeof(checksum))) return CheckResult::ParseError;
     extractJsonBool(body, "isCritical", isCritical);  // optional; defaults to false
 
@@ -70,6 +106,19 @@ CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo) {
     outInfo.checksum   = String(checksum);
     outInfo.isCritical = isCritical;
     return CheckResult::UpdateAvailable;
+}
+
+// ─── Grace-period predicate (always compiled — native-testable) ──────────────
+
+bool shouldMarkAppValid(bool pendingValidation,
+                        uint32_t heartbeatsSinceBoot,
+                        uint32_t uptimeMs,
+                        uint32_t minHeartbeats,
+                        uint32_t minUptimeMs) {
+    if (!pendingValidation) return false;
+    if (heartbeatsSinceBoot < minHeartbeats) return false;
+    if (uptimeMs < minUptimeMs) return false;
+    return true;
 }
 
 // ─── Device-only implementation ───────────────────────────────────────────────
@@ -110,14 +159,61 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
 
     CheckResult pr = parseOtaResponse(res.body.c_str(), outInfo);
     Serial.printf("[OTA] parseOtaResponse: %d\n", (int)pr);
+
+    if (pr == CheckResult::UpdateAvailable) {
+        // Verify server response signature before trusting update metadata.
+        char sigBuf[65]       = {};
+        char expiresAtBuf[32] = {};
+        uint32_t respTs       = 0;
+
+        if (!extractJsonString(res.body.c_str(), "sig", sigBuf, sizeof(sigBuf)) ||
+            !extractJsonUint32(res.body.c_str(), "ts",  respTs)) {
+            Serial.printf("[OTA] response missing sig/ts field\n");
+            return CheckResult::ParseError;
+        }
+
+        // expiresAt is optional — empty string if absent
+        extractJsonString(res.body.c_str(), "expiresAt", expiresAtBuf, sizeof(expiresAtBuf));
+
+        // Canonical string: version|url|checksum|isCritical|expiresAt|ts
+        char respCanonical[1280];
+        int canonLen = snprintf(respCanonical, sizeof(respCanonical), "%s|%s|%s|%s|%s|%lu",
+            outInfo.version.c_str(),
+            outInfo.url.c_str(),
+            outInfo.checksum.c_str(),
+            outInfo.isCritical ? "true" : "false",
+            expiresAtBuf,
+            (unsigned long)respTs);
+        if (canonLen < 0 || (size_t)canonLen >= sizeof(respCanonical)) {
+            Serial.printf("[OTA] canonical string buffer overflow, aborting\n");
+            return CheckResult::ParseError;
+        }
+
+        String computed = calculateSignature(String(respCanonical), cred.device_secret);
+        if (!constantTimeEquals(computed.c_str(), sigBuf, 64)) {
+            Serial.printf("[OTA] response signature invalid\n");
+            return CheckResult::AuthError;
+        }
+
+        // Freshness check — skip if NTP not yet synced (time() returns 0 or -1)
+        time_t now = time(nullptr);
+        if (now > 0) {
+            long drift = (long)now - (long)respTs;
+            if (drift > 300 || drift < -60) {
+                Serial.printf("[OTA] response timestamp out of window (drift=%ld)\n", drift);
+                return CheckResult::AuthError;
+            }
+        }
+    }
+
     return pr;
 }
 
 bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
-    (void)statusLed;
+    // LED contract: caller (main loop) reclaims LED state via setPowerStatusLed() on next iteration.
 
     WiFiClientSecure client;
-    client.setInsecure();
+    client.setCACert(GTS_ROOT_CA);
     client.setTimeout(60);
 
     HTTPClient http;
@@ -180,13 +276,15 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
 
         size_t written = Update.write(buf, (size_t)n);
         if (written != (size_t)n) {
-            Serial.printf("[OTA] Flash write failed at offset %u\n", downloaded);
+            Serial.printf("[OTA][ABORT] Flash write failed at offset %u\n", downloaded);
             Update.abort();
             http.end();
             return false;
         }
         downloaded += (size_t)n;
         remaining  -= (size_t)n;
+
+        tickFastWhiteLed(statusLed);
 
         size_t prevChunk = (downloaded - (size_t)n) / (64 * 1024);
         size_t currChunk = downloaded / (64 * 1024);
@@ -198,7 +296,7 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     http.end();
 
     if (downloaded < (size_t)contentLength) {
-        Serial.printf("[OTA] Incomplete download: %u / %d bytes\n",
+        Serial.printf("[OTA][ABORT] Incomplete download: %u / %d bytes\n",
                       downloaded, contentLength);
         Update.abort();
         return false;
@@ -213,6 +311,7 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     if (!updated) return false;
 
     uint8_t sha256[32];
+    tickFastWhiteLed(statusLed);  // tick before blocking SHA-256 partition read
     if (esp_partition_get_sha256(updated, sha256) != ESP_OK) return false;
 
     char hexBuf[65];
@@ -223,8 +322,11 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
 
     bool checksumOk = (info.checksum == String(hexBuf));
     if (!checksumOk) {
-        Serial.printf("[OTA] Checksum mismatch: expected %s got %s\n",
+        Serial.printf("[OTA][ABORT] Checksum mismatch: expected %s got %s\n",
                       info.checksum.c_str(), hexBuf);
+        // Update.end() already committed the partition; revert next-boot selection
+        // to the currently running partition so the bad build never boots.
+        esp_ota_set_boot_partition(esp_ota_get_running_partition());
     }
     return checksumOk;
 }

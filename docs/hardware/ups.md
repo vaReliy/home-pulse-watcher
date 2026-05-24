@@ -1,4 +1,4 @@
-# Hardware V2.3 — UPS Edition (Battery Backup)
+# Hardware V3.x.x — UPS Edition (Battery Backup)
 
 ## Overview
 
@@ -10,46 +10,7 @@ Use this variant when you need immediate outage detection rather than inferring 
 
 ## Wiring Diagram
 
-```
-================================================================================
-                 HOME_PULSE WATCHER V2.3 — WIRING SCHEMATIC
-================================================================================
-
-[ ADAPTER 5V ] (Input Source)
-      |
-      +--- (A) MAINS SENSING (Detecting AC Power) ------------------------------+
-      |    [ R1 10k ]                                                           |
-      |       |------> GPIO 2 (Sense Pin)                                       |
-      |    [ R2 10k ]                                                           |
-      |       |                                                                 |
-      |    [ C1 0.1uF ] (Noise Filter)                                          |
-      |       |                                                                 |
-      |    [ GND ]                                                              |
-      |                                                                         |
-      +--- (B) UPS & POWER PATH (Charging & Or-Gate) ---------------------------+
-      |                                                                         |
-      +--[ DIODE 1 ]--+--> [ TP4056 SHIELD ]                                    |
-         (1N4007)     |    |    (5V IN)    |                                    |
-                      |    |               |                                    |
-                      |    |    (5V OUT)   |--[ DIODE 2 ]--+                    |
-                      |    |               |  (1N4007)     |                    |
-                      |    +-------+-------+               |      [ ESP32 ]     |
-                      |            |                       |      (C3 / C6)     |
-                      |       (C) BATTERY SENSE            |    +-----------+   |
-                      |            |                       +--> |   5V IN   |   |
-                      |         [ BAT+ ]                        |           |   |
-                      |            |                            |   GPIO 2  | <---+
-                      |         [ R3 100k ]--+                  |   GPIO 3  | <---+
-                      |                      |------> GPIO 3    |           |   |
-                      |         [ R4 100k ]--+                  |   GND     | --+
-                      |                      |                  +-----------+   |
-                      |                    [GND]                      |         |
-                      |                                               |         |
-                      +-----------------------------------------------+---------+
-                                               |
-                                        [ COMMON GND ]
-================================================================================
-```
+![UPS Edition Schematic v3.x.x](../assets/hpw-ups-schematic-v3.x.x.png)
 
 **Power paths:**
 
@@ -123,10 +84,6 @@ The UPS Edition supports real-time battery voltage monitoring via a dedicated AD
 - **Power Lost** notifications include battery level when available
 - `/status` command shows `🔋 Battery: X.XXV (YY%)` for UPS devices
 - Battery percentage uses linear mapping: 3000 mV = 0%, 4200 mV = 100%
-
-## Visual Reference
-
-> **TODO**: Add photo of assembled UPS Edition hardware and annotated wiring diagram showing component placement on the board.
 
 ## Future Optimizations (TODO)
 

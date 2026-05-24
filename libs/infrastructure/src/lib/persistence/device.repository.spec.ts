@@ -12,6 +12,14 @@ const mockPrismaClient = {
   },
 };
 
+/** Minimal Prisma device shape with required fields including releaseChannel. */
+const basePrismaDevice = {
+  encryptedSecret: 'iv:tag:cipher',
+  firmwareVersion: null,
+  batteryVoltage: null,
+  releaseChannel: 'STABLE',
+};
+
 describe('PrismaDeviceRepository', () => {
   let repository: PrismaDeviceRepository;
 
@@ -23,9 +31,9 @@ describe('PrismaDeviceRepository', () => {
   describe('findById', () => {
     it('should return device when found', async () => {
       const prismaDevice = {
+        ...basePrismaDevice,
         id: 'device-1',
         macAddress: 'AA:BB:CC:DD:EE:FF',
-        secretHash: 'hashed',
         label: 'Kitchen',
         lastStatus: 1,
         lastSeenAt: new Date(),
@@ -51,9 +59,9 @@ describe('PrismaDeviceRepository', () => {
   describe('findByMacAddress', () => {
     it('should find device by MAC address', async () => {
       const prismaDevice = {
+        ...basePrismaDevice,
         id: 'device-1',
         macAddress: 'AA:BB:CC:DD:EE:FF',
-        secretHash: 'hashed',
         label: null,
         lastStatus: null,
         lastSeenAt: null,
@@ -74,9 +82,9 @@ describe('PrismaDeviceRepository', () => {
     it('should update device status', async () => {
       const now = new Date();
       const prismaDevice = {
+        ...basePrismaDevice,
         id: 'device-1',
         macAddress: 'AA:BB:CC:DD:EE:FF',
-        secretHash: 'hashed',
         label: null,
         lastStatus: 1,
         lastSeenAt: now,
@@ -99,9 +107,9 @@ describe('PrismaDeviceRepository', () => {
     it('should include statusChangedAt when provided', async () => {
       const now = new Date();
       const prismaDevice = {
+        ...basePrismaDevice,
         id: 'device-1',
         macAddress: 'AA:BB:CC:DD:EE:FF',
-        secretHash: 'hashed',
         label: null,
         lastStatus: 1,
         lastSeenAt: now,
@@ -130,18 +138,18 @@ describe('PrismaDeviceRepository', () => {
     it('should find all devices for a user', async () => {
       const devices = [
         {
+          ...basePrismaDevice,
           id: 'device-1',
           macAddress: 'AA:BB:CC:DD:EE:FF',
-          secretHash: 'hashed',
           label: 'Kitchen',
           lastStatus: 1,
           lastSeenAt: new Date(),
           statusChangedAt: null,
         },
         {
+          ...basePrismaDevice,
           id: 'device-2',
           macAddress: '11:22:33:44:55:66',
-          secretHash: 'hashed2',
           label: 'Garage',
           lastStatus: 0,
           lastSeenAt: new Date(),

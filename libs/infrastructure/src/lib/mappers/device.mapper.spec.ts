@@ -1,5 +1,5 @@
 import { mapPrismaDeviceToEntity } from './device.mapper.js';
-import { Device, PowerStatus } from '@home-pulse-watcher/core';
+import { Device, PowerStatus, ReleaseChannel } from '@home-pulse-watcher/core';
 
 describe('mapPrismaDeviceToEntity', () => {
   it('should map Prisma Device to Domain Device', () => {
@@ -14,6 +14,7 @@ describe('mapPrismaDeviceToEntity', () => {
       statusChangedAt,
       firmwareVersion: '3.1.0',
       batteryVoltage: null,
+      releaseChannel: 'STABLE',
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -27,6 +28,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.lastSeenAt).toEqual(new Date('2024-01-01'));
     expect(result.statusChangedAt).toEqual(statusChangedAt);
     expect(result.firmwareVersion).toBe('3.1.0');
+    expect(result.releaseChannel).toBe(ReleaseChannel.STABLE);
   });
 
   it('should handle null optional fields', () => {
@@ -40,6 +42,7 @@ describe('mapPrismaDeviceToEntity', () => {
       statusChangedAt: null,
       firmwareVersion: null,
       batteryVoltage: null,
+      releaseChannel: 'BETA',
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -49,6 +52,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.lastSeenAt).toBeNull();
     expect(result.statusChangedAt).toBeNull();
     expect(result.firmwareVersion).toBeNull();
+    expect(result.releaseChannel).toBe(ReleaseChannel.BETA);
   });
 
   it('should map lastStatus 0 to PowerStatus.OFF', () => {
@@ -62,6 +66,7 @@ describe('mapPrismaDeviceToEntity', () => {
       statusChangedAt: null,
       firmwareVersion: null,
       batteryVoltage: null,
+      releaseChannel: 'STABLE',
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);

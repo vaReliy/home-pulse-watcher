@@ -1,5 +1,5 @@
 import { Device } from './device.entity.js';
-import { PowerStatus } from '../types/power-status.enum.js';
+import { PowerStatus, ReleaseChannel } from '../types/index.js';
 
 describe('Device', () => {
   const createDevice = (
@@ -15,6 +15,7 @@ describe('Device', () => {
       statusChangedAt: null,
       firmwareVersion: null,
       batteryVoltage: null,
+      releaseChannel: ReleaseChannel.STABLE,
       ...overrides,
     });
 

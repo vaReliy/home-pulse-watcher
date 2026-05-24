@@ -26,8 +26,29 @@ struct UpdateInfo {
 /**
  * Parse JSON response body from /api/ota/check.
  * Exposed for unit testing; called internally by checkForUpdate.
+ *
+ * The internal JSON parser handles single-level \" and \\ escape sequences.
+ * Sufficient for all current OTA response fields (semver, GCS signed URLs,
+ * hex checksums). Full RFC 8259 escape decoding (\n, \uXXXX, etc.) is not
+ * implemented — add it here if future fields require it.
  */
 CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo);
+
+/**
+ * Returns true when all grace-period conditions are satisfied for marking the
+ * current OTA boot as valid. Pure function — testable natively without hardware.
+ *
+ * @param pendingValidation  true if this boot is an unvalidated OTA boot (and not yet marked)
+ * @param heartbeatsSinceBoot  number of successful backend contacts since boot
+ * @param uptimeMs  current millis() value (time since boot)
+ * @param minHeartbeats  minimum successful contacts required before mark-valid
+ * @param minUptimeMs  minimum uptime required before mark-valid
+ */
+bool shouldMarkAppValid(bool pendingValidation,
+                        uint32_t heartbeatsSinceBoot,
+                        uint32_t uptimeMs,
+                        uint32_t minHeartbeats,
+                        uint32_t minUptimeMs);
 
 #ifndef UNIT_TEST
 
@@ -44,7 +65,7 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
                            UpdateInfo& outInfo);
 
 /**
- * Downloads and flashes binary from outInfo.url via HTTPS (setInsecure).
+ * Downloads and flashes binary from outInfo.url via HTTPS (GTS Root R1 CA verified).
  * Verifies SHA-256 via esp_partition_get_sha256 post-flash.
  * Returns true only if flash OK AND checksum matches.
  * Does NOT call ESP.restart() — caller decides.

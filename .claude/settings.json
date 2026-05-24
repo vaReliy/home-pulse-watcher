@@ -2,11 +2,6 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
-  "enabledPlugins": {
-    "nx@nx-claude-plugins": true,
-    "superpowers@superpowers-marketplace": true
-  },
-  "enabledMcpjsonServers": ["context7", "github"],
   "permissions": {
     "deny": [
       "Read(./.env)",
@@ -15,6 +10,7 @@
     ]
   },
   "model": "opusplan",
+  "enabledMcpjsonServers": ["context7", "github"],
   "hooks": {
     "Stop": [
       {
@@ -32,6 +28,10 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "nx@nx-claude-plugins": true,
+    "superpowers@superpowers-marketplace": true
   },
   "extraKnownMarketplaces": {
     "nx-claude-plugins": {

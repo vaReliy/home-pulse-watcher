@@ -9,6 +9,13 @@ import type {
 import { mapPrismaFirmwareReleaseToEntity } from '../mappers/firmware-release.mapper.js';
 import { withPrismaError } from './prisma-error.wrapper.js';
 
+/**
+ * Upper bound for candidate rows fetched by findLatestForBoard.
+ * 50 is well beyond any realistic number of releases per board+channel
+ * combination; semver max-selection happens in memory after this fetch.
+ */
+const MAX_CANDIDATE_RELEASES = 50;
+
 export class PrismaFirmwareReleaseRepository
   implements IFirmwareReleaseRepository
 {
@@ -55,6 +62,8 @@ export class PrismaFirmwareReleaseRepository
     const rows = await withPrismaError('FirmwareRelease', () =>
       this.prisma.firmwareRelease.findMany({
         where: { boardType, channel: { in: channels } },
+        orderBy: { createdAt: 'desc' },
+        take: MAX_CANDIDATE_RELEASES,
       }),
     );
     return rows.map(mapPrismaFirmwareReleaseToEntity);

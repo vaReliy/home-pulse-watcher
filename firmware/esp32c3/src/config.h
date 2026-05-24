@@ -119,4 +119,9 @@
 #define BOARD_TYPE "esp32c3"
 #define OTA_CHECK_INTERVAL_MS (6UL * 60UL * 60UL * 1000UL)
 
+/// Minimum successful backend contacts before an OTA boot is marked valid.
+#define OTA_VALIDATION_MIN_HEARTBEATS 3U
+/// Minimum uptime (ms) before an OTA boot is marked valid (~5 minutes).
+#define OTA_VALIDATION_MIN_UPTIME_MS  (5UL * 60UL * 1000UL)
+
 #endif // CONFIG_H

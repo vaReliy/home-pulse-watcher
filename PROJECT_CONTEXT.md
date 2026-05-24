@@ -33,6 +33,13 @@
 | Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                                                                                               |
 | AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher                                                                                |
 
+**GitHub PR access (AI sessions):** `gh` CLI is not authenticated and GitHub MCP is not configured. Use `WebFetch` against the public GitHub REST API instead:
+
+- PR metadata: `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>`
+- Changed files + diffs: `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>/files`
+- Review comments: `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>/comments`
+- Reviews (top-level): `https://api.github.com/repos/vaReliy/home-pulse-watcher/pulls/<N>/reviews`
+
 ---
 
 ## Architecture
@@ -296,7 +303,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
 
-### OTA Release Metadata (Phase 5.6 — in progress)
+### OTA Release Metadata (Phase 5.6)
 
 **Prisma Model: `FirmwareRelease`**
 
@@ -325,16 +332,36 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 **Cloud Storage**
 
 - Bucket: `home-pulse-ota-releases` (Always Free tier)
-- Metadata only — binary upload and device→release linking not yet implemented
+- Binary upload and release registration: use `firmware:upload` CLI command (see Admin CLI section below)
 
 **Storage Layer (Task 2, Complete)**
 
 - `IFirmwareStorageService` interface (core port) + `GcsService` adapter (infrastructure) wired via NestJS DI
+- Methods: `uploadBuffer`, `getSignedUrl`, `deleteObject` (used for best-effort cleanup on DB failure)
 - Authentication: `GCP_SERVICE_ACCOUNT_KEY` env var (JSON) or application default credentials fallback (Cloud Run Workload Identity)
-- Bucket: `GCS_BUCKET_NAME` env var (required)
-- Binary upload: buffer-based with `ifGenerationMatch: 0` (prevents silent overwrites)
+- Bucket: `GCS_BUCKET_NAME` env var (optional — omit to disable OTA via `NullFirmwareStorageService` fallback)
+- Binary upload: buffer-based with `ifGenerationMatch: 0` (prevents silent overwrites — GCS 412 = already exists)
 - Signed URLs: V4 format, 15-minute TTL
 - Error translation: GCS 404 → `NotFoundError`, 403 → permission denied, etc.
+
+**Admin CLI: `firmware:upload` (Task 4, Complete)**
+
+- Command: `node apps/api/dist/cli.js firmware:upload --file <bin> --version <semver> --board <board> --channel <channel> [--critical]`
+- GCS path convention: `firmware/<board>/<version>/<filename>`
+- `CliModule` imports `StorageModule` directly — `ServicesModule` does not re-export the storage token, so direct import is required
+- Best-effort GCS cleanup on DB failure prevents orphaned GCS objects
+- Default binary search path: `./tmp/firmware/` (when `--file` is a bare basename)
+
+**Docker Admin Profile (Task 5, Complete)**
+
+- `Dockerfile.admin` at repo root — multi-stage: `google/cloud-sdk:alpine` → `node:22-alpine`; copies pre-built `apps/api/dist/`, `prisma/`, and `prisma.config.ts`; runs `npx prisma generate`; runs as `USER node` (non-root)
+- docker-compose `admin` profile: `docker compose --profile admin run --rm admin <command>`
+  - Mounts `~/.config/gcloud:/home/node/.config/gcloud:ro` for ADC (Application Default Credentials)
+  - Mounts `./tmp/firmware:/firmware:ro` so `--file /firmware/<name>.bin` works without absolute host paths
+  - `env_file: .env` — leave `GCP_SERVICE_ACCOUNT_KEY` empty; ADC from mounted gcloud config takes precedence
+  - `depends_on: postgres: condition: service_healthy`
+- **One-time host setup**: `gcloud auth application-default login` + `npx nx build api` + `docker compose --profile admin build admin`
+- `prisma.config.ts` must be copied into the admin image (Prisma 7.x reads DB URL from config, not schema)
 
 **OTA Discovery API (Task 3, Complete)**
 
@@ -347,8 +374,9 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 **Firmware OTA Client (Task 4, Complete + Hardened)**
 
 - `HomePulse::Ota::checkForUpdate()` — HMAC-signed POST to `/api/ota/check`, 5-field canonical (`MAC:TS:boardType:version:channel`); logs HTTP code, body preview, and `CheckResult` to serial
-- `HomePulse::Ota::applyUpdate()` — HTTPS download via `HTTPClient` + `Update` (direct stream, not `httpUpdate.h`); `client.setTimeout(60)`, `HTTPC_FORCE_FOLLOW_REDIRECTS`; SHA-256 post-flash verify via `esp_partition_get_sha256`; LED animation removed (was starving WiFi ISR)
-- Passive rollback: `markCurrentAppValid()` deferred until first heartbeat; bootloader auto-reverts if device never validates
+- `HomePulse::Ota::applyUpdate()` — HTTPS download via `HTTPClient` + `Update` (direct stream, not `httpUpdate.h`); `client.setTimeout(60)`, `HTTPC_FORCE_FOLLOW_REDIRECTS`; SHA-256 post-flash verify via `esp_partition_get_sha256`
+- **Rollback grace period**: `markCurrentAppValid()` fires only after **≥ 3 heartbeats AND ≥ 5 minutes uptime** (`OTA_VALIDATION_MIN_HEARTBEATS`, `OTA_VALIDATION_MIN_UPTIME_MS`). Controlled by pure predicate `shouldMarkAppValid()` (natively tested). Bootloader auto-reverts if validation never completes.
+- **Partial-flash abort**: `Update.abort()` on stream stall, short read, write error. SHA mismatch after `Update.end()` calls `esp_ota_set_boot_partition(running)` to revert next-boot selection. All abort events tagged `[OTA][ABORT]` in serial logs.
 - Boot-time check (after WiFi+NTP, before watchdog fires) + periodic check every 6 h in `loop()`; all `CheckResult` branches explicitly logged
 - Shared source: both envs use `firmware/common/main.cpp` — OTA logic lives once
 - `BACKEND_URL` in NVS/`secrets.h` is the base origin only (`https://your-server.com`); firmware appends `/api/device/status` and `/api/ota/check` at call sites
@@ -356,7 +384,22 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 
 **Firmware shared-library boundary:** `libs/firmware-shared` must not include board-specific headers (`config.h`). LED helpers in `ota.cpp` are now suppressed (`(void)statusLed`) to preserve this boundary. The shared sketch (`firmware/common/main.cpp`) consumes `config.h` from each env's `src/` via the implicit `src_dir` include path — zero `#ifdef` in the shared source.
 
+**OTA Security Boundaries (Post-Audit)**
+
+- **`Device.releaseChannel` controls firmware tier** — Prisma schema: `releaseChannel String @default("STABLE")` with CHECK constraint (enforced via raw SQL CHECK in migration, not `@db.Char(6)`). Backend **never** uses the request body `channel` field for security decisions. The field is included only in the HMAC canonical string for backward compat with V3.x firmware that transmits it; `CheckOtaUpdateService` always reads `device.releaseChannel` from DB. Prevents device downgrade via tampering.
+- **GCS signed URLs never in stdout/logs** — `IFirmwareStorageService.getSignedUrl()` is for internal use only (backend response to `/api/ota/check`). Must never be printed to stdout or stderr in CLI commands. URLs are time-limited credentials (15 min) and appear in Cloud Logging otherwise. The CLI `firmware:upload` summary prints only the GCS path (not the URL), with a note to use the backend endpoint.
+- **Telegram webhook returns 503 when secret is missing** — `TELEGRAM_WEBHOOK_SECRET` is in `REQUIRED_VARS` (app exits on startup if absent). If it's somehow nil at runtime, the controller returns **503 SERVICE_UNAVAILABLE** (`{ error: 'Webhook not configured' }`), not 401/403 — 503 signals misconfiguration rather than an auth failure, which is semantically correct. Wrong secret returns 401.
+- **HMAC guard catches canonical builder exceptions** (`hmac-auth.guard.ts`): All throws from `@HmacCanonical()` builder → `AuthenticationError(INVALID_CREDENTIALS)` → 401. Builders can validate fields explicitly (`throw` if missing/unparseable) without risk of unhandled 500s.
+
+**OTA Response Authentication (C-1 fix)**
+
+- Response signed with HMAC-SHA256; canonical string: `version|url|checksum|isCritical|expiresAt|ts`
+- Backend: `CheckOtaUpdateService` → `sig` (hex) + `ts` (Unix s) added to every `hasUpdate: true` response
+- Firmware: verifies sig + freshness (±5 min window) before proceeding; fails closed
+- Secret: per-device NVS secret (no new key material)
+- Rollout constraint: backend MUST be deployed before sig-verifying firmware
+
 **Still pending:**
 
-- Task 5: Admin Tools — `device:upgrade` CLI command
-- Device → Release linking for tracking upgrade status per-device
+- Device → Release linking for tracking upgrade status per-device (deferred to 5.7)
+- `firmware:list`, `firmware:promote` admin commands (deferred)

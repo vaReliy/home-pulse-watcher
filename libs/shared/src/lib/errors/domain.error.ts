@@ -12,6 +12,8 @@ export const DomainErrorCode = {
   DEVICE_ALREADY_LINKED: 'DEVICE_ALREADY_LINKED',
   DEVICE_NOT_LINKED: 'DEVICE_NOT_LINKED',
   UNAUTHORIZED_ACTION: 'UNAUTHORIZED_ACTION',
+  BOARD_MISMATCH: 'BOARD_MISMATCH',
+  INVALID_DEVICE_STATE: 'INVALID_DEVICE_STATE',
 } as const;
 
 export type DomainErrorCodeType =
@@ -47,8 +49,15 @@ export class DomainError extends BaseError {
       DomainErrorCode.DEVICE_NOT_OWNED,
     ];
 
+    /** Data-integrity violations that indicate a server-side bug, not a client error. */
+    const internalCodes: DomainErrorCodeType[] = [
+      DomainErrorCode.BOARD_MISMATCH,
+      DomainErrorCode.INVALID_DEVICE_STATE,
+    ];
+
     if (conflictCodes.includes(code)) return 409;
     if (forbiddenCodes.includes(code)) return 403;
+    if (internalCodes.includes(code)) return 500;
     return 422;
   }
 }

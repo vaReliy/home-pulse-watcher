@@ -185,3 +185,30 @@ The serial output shows the error code from the backend (e.g. `HTTP 401: {"code"
 - Ensure router allows new connections
 
 For HMAC signature and backend errors, see [Admin Guide - Troubleshooting](../docs/admin-guide.md#troubleshooting).
+
+### OTA Auto-Rollback
+
+Every OTA update boots in an **unvalidated** state (`ESP_OTA_IMG_PENDING_VERIFY`). The firmware must prove stability before marking itself as the new permanent image.
+
+**Validation grace period** (configured in `config.h`):
+
+| Constant                        | Default | Meaning                                              |
+| ------------------------------- | ------- | ---------------------------------------------------- |
+| `OTA_VALIDATION_MIN_HEARTBEATS` | 3       | Minimum successful backend contacts since boot       |
+| `OTA_VALIDATION_MIN_UPTIME_MS`  | 300000  | Minimum uptime (5 minutes) before mark-valid allowed |
+
+Both conditions must be satisfied on the same heartbeat before `markCurrentAppValid()` is called.
+
+**Auto-revert flow:**
+
+1. OTA flash completes → `ESP.restart()` → new firmware boots in `PENDING_VERIFY` state
+2. Firmware counts successful heartbeats to the backend
+3. After ≥ 3 heartbeats **and** ≥ 5 minutes uptime → `esp_ota_mark_app_valid_cancel_rollback()`
+4. If the firmware crashes, hangs, or fails heartbeats before step 3, the IDF watchdog reboots the device
+5. On next boot, the bootloader detects `PENDING_VERIFY` was never cleared → **automatically reverts to the previous firmware**
+
+**Partial-flash / checksum protection:**
+
+- `Update.abort()` is called explicitly on stream stall, short read, or `Update.write()` short return
+- If `Update.end()` succeeds but SHA-256 checksum mismatches the server record, `esp_ota_set_boot_partition()` reverts the next-boot selection to the currently running partition — the bad build will never boot even if the device power-cycles
+- All abort events are logged with the `[OTA][ABORT]` tag for easy serial-log grepping

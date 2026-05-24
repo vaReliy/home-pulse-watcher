@@ -2,5 +2,6 @@
 export class CheckOtaUpdateDto {
   boardType!: string;
   currentVersion!: string;
-  channel!: string;
+  /** channel is accepted for HMAC canonical string compatibility with existing firmware but ignored for channel selection. */
+  channel?: string;
 }

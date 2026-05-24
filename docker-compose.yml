@@ -42,5 +42,22 @@ services:
     profiles:
       - full
 
+  # Admin CLI container with gcloud SDK. Run with: docker-compose --profile admin run --rm admin user:list
+  # env_file loads the full .env — CLI uses DATABASE_URL, GCS_BUCKET_NAME, DEVICE_SECRET_ENCRYPTION_KEY.
+  # Leave GCP_SERVICE_ACCOUNT_KEY empty; ADC via mounted ~/.config/gcloud takes precedence.
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+    env_file: .env
+    volumes:
+      - ${HOME}/.config/gcloud:/home/node/.config/gcloud:ro
+      - ./tmp/firmware:/firmware:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - admin
+
 volumes:
   postgres_data:
