@@ -30,7 +30,7 @@
 | Testing    | Jest 30 + SWC compiler                                                                                                                                                                                                          |
 | CLI        | nest-commander                                                                                                                                                                                                                  |
 | Firmware   | PlatformIO + Arduino, ESP32-C3 and ESP32-C6; shared sketch at `firmware/common/main.cpp` (both envs via `build_src_filter`); shared headers in `libs/firmware-shared/` (8 modules); Unity/Native tests via `pio test -e native` |
-| Bundler    | Webpack (all deps bundled; Prisma externals only)                                                                                                                                                                               |
+| Bundler    | Webpack (all deps bundled; Prisma + pino + `@google-cloud/storage` kept external)                                                                                                                                               |
 | AI Tooling | [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 18 agents, 23 skills, 9 rules via `.claude/`; Claude acts as orchestrator/dispatcher                                                                                |
 
 **GitHub PR access (AI sessions):** `gh` CLI is not authenticated and GitHub MCP is not configured. Use `WebFetch` against the public GitHub REST API instead:
@@ -213,6 +213,16 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 ---
 
 ## Technical Standards
+
+### Adding a New Webpack External Dependency
+
+When a new npm package must NOT be bundled (native binaries, worker threads, dynamic requires, GCS-style GCP SDKs), three files must be updated together or the Cloud Run build will fail:
+
+1. **`apps/api/webpack.config.js`** — add the package name to `EXTERNAL_PACKAGES`. Webpack emits a bare `require()` instead of bundling.
+2. **`apps/api/src/assets/package.json`** — add the package + version to `dependencies`. This minimal file is copied to `dist/` and is what the production Docker stage runs `npm install` against.
+3. **Root `package.json`** — only if the package is a direct declared dep (most infra SDKs are NOT needed here; they only need to be in `assets/package.json` for runtime). Do **not** add purely runtime infra deps to root.
+
+> **Phase 5.6 lesson**: `@google-cloud/storage` was added to source but omitted from all three files, causing Cloud Run builds to fail silently (`Build failed; check build logs for details`). The fix: add to `webpack.config.js` `EXTERNAL_PACKAGES` + `assets/package.json` only (root `package.json` not needed).
 
 ### Structured Logging (Pino)
 

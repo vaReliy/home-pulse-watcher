@@ -19,6 +19,7 @@ const EXTERNAL_PACKAGES = [
   'pino-pretty',
   'thread-stream',
   'nestjs-pino',
+  '@google-cloud/storage',
 ];
 
 /**
