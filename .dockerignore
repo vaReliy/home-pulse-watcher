@@ -35,7 +35,7 @@ libs/*/out-tsc
 apps/api-e2e
 
 # Firmware (not needed for API deployment)
-firmware
+/firmware
 
 # Documentation (not needed in image)
 docs
