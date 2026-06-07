@@ -1,18 +1,18 @@
+import {
+  POWER_STATUS_CHANGED_EVENT,
+  PowerStatusChangedEvent,
+} from '@home-pulse-watcher/application';
+import type {
+  IDeviceRepository,
+  IUserDeviceRepository,
+  IUserRepository,
+} from '@home-pulse-watcher/core';
+import { PowerStatus } from '@home-pulse-watcher/core';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import type { Telegraf } from 'telegraf';
-import type {
-  IUserRepository,
-  IUserDeviceRepository,
-  IDeviceRepository,
-} from '@home-pulse-watcher/core';
-import { PowerStatus } from '@home-pulse-watcher/core';
-import {
-  PowerStatusChangedEvent,
-  POWER_STATUS_CHANGED_EVENT,
-} from '@home-pulse-watcher/application';
 import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
-import { TELEGRAM_TOKENS } from '../telegram.tokens.js';
+import type { PowerEventMessageParams } from '../formatters/message.formatter.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
 import { TranslationService } from '../i18n/index.js';
 import { DEFAULT_LOCALE, DEFAULT_TIMEZONE } from '../i18n/locale.config.js';
@@ -20,6 +20,7 @@ import {
   buildCheckStatusButton,
   buildViewHistoryButton,
 } from '../keyboards/index.js';
+import { TELEGRAM_TOKENS } from '../telegram.tokens.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /** Rate limiting constants for Telegram API */
@@ -209,22 +210,25 @@ export class PowerStatusListener {
   ): string {
     if (event.isPowerLost) {
       return this.messageFormatter.formatPowerLost(
-        deviceLabel,
-        event.timestamp,
-        locale,
-        timezone,
-        event.batteryVoltage,
+        this.buildPowerEventMessageParams(
+          event,
+          deviceLabel,
+          durationSeconds,
+          locale,
+          timezone,
+        ),
       );
     }
 
     if (event.isPowerRestored) {
       return this.messageFormatter.formatPowerRestored(
-        deviceLabel,
-        event.timestamp,
-        durationSeconds,
-        locale,
-        timezone,
-        event.batteryVoltage,
+        this.buildPowerEventMessageParams(
+          event,
+          deviceLabel,
+          durationSeconds,
+          locale,
+          timezone,
+        ),
       );
     }
 
@@ -234,5 +238,22 @@ export class PowerStatusListener {
     }
 
     return this.messageFormatter.formatDeviceOffline(deviceLabel, locale);
+  }
+
+  private buildPowerEventMessageParams(
+    event: PowerStatusChangedEvent,
+    deviceLabel: string,
+    durationSeconds: number | null,
+    locale: string,
+    timezone: string,
+  ): PowerEventMessageParams {
+    return {
+      deviceLabel,
+      timestamp: event.timestamp,
+      locale,
+      timezone,
+      batteryVoltage: event.batteryVoltage,
+      durationSeconds,
+    };
   }
 }

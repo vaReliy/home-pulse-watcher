@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Refactoring
+
+- **Telegram bot**: Applied "Introduce Parameter Object" to `MessageFormatter.formatPowerLost`/`formatPowerRestored` and `PowerStatusListener.formatNotificationMessage`, replacing repeated 5–6 positional params (including adjacent same-typed `locale?`/`timezone?` strings — a transposition risk) with a shared `PowerEventMessageParams` interface. Pure structural change; no behavior or null-check semantics altered.
+
 ### Fixes
 
 - **Telegram bot**: UPS devices now show battery percentage in "power restored" notifications, matching "power lost" output. Root cause: `power-status.listener.ts` dropped `event.batteryVoltage` when invoking `formatPowerRestored`, and the formatter had no battery parameter. Fixed by extracting a shared `appendBatteryLine` helper used by both `formatPowerLost` and `formatPowerRestored`.

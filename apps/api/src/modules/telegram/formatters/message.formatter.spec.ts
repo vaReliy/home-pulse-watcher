@@ -290,24 +290,26 @@ describe('MessageFormatter', () => {
 
   describe('formatPowerLost with battery', () => {
     it('should not include battery info when batteryVoltage is null', () => {
-      const result = formatter.formatPowerLost(
-        'Kitchen',
-        new Date('2026-02-10T08:00:00Z'),
-        'en',
-        'Europe/Kyiv',
-        null,
-      );
+      const result = formatter.formatPowerLost({
+        deviceLabel: 'Kitchen',
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+        durationSeconds: null,
+        locale: 'en',
+        timezone: 'Europe/Kyiv',
+        batteryVoltage: null,
+      });
       expect(result).not.toContain('🔋');
     });
 
     it('should append battery info when batteryVoltage is provided', () => {
-      const result = formatter.formatPowerLost(
-        'Kitchen',
-        new Date('2026-02-10T08:00:00Z'),
-        'en',
-        'Europe/Kyiv',
-        3850,
-      );
+      const result = formatter.formatPowerLost({
+        deviceLabel: 'Kitchen',
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+        durationSeconds: null,
+        locale: 'en',
+        timezone: 'Europe/Kyiv',
+        batteryVoltage: 3850,
+      });
       expect(result).toContain('🔋');
       expect(result).toContain('3\\.85');
     });
@@ -315,26 +317,26 @@ describe('MessageFormatter', () => {
 
   describe('formatPowerRestored with battery', () => {
     it('should not include battery info when batteryVoltage is null', () => {
-      const result = formatter.formatPowerRestored(
-        'Kitchen',
-        new Date('2026-02-10T08:00:00Z'),
-        3600,
-        'en',
-        'Europe/Kyiv',
-        null,
-      );
+      const result = formatter.formatPowerRestored({
+        deviceLabel: 'Kitchen',
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+        durationSeconds: 3600,
+        locale: 'en',
+        timezone: 'Europe/Kyiv',
+        batteryVoltage: null,
+      });
       expect(result).not.toContain('🔋');
     });
 
     it('should append battery info when batteryVoltage is provided', () => {
-      const result = formatter.formatPowerRestored(
-        'Kitchen',
-        new Date('2026-02-10T08:00:00Z'),
-        3600,
-        'en',
-        'Europe/Kyiv',
-        4200,
-      );
+      const result = formatter.formatPowerRestored({
+        deviceLabel: 'Kitchen',
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+        durationSeconds: 3600,
+        locale: 'en',
+        timezone: 'Europe/Kyiv',
+        batteryVoltage: 4200,
+      });
       expect(result).toContain('🔋');
       expect(result).toContain('4\\.20');
       expect(result).toContain('100');

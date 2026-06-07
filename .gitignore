@@ -3,6 +3,9 @@
 # Session memory
 .remember/
 
+# Claude Code scheduler runtime lock
+.claude/scheduled_tasks.lock
+
 # compiled output
 dist
 tmp

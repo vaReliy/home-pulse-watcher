@@ -21,6 +21,25 @@ const TELEGRAM_MESSAGE_MAX_LENGTH = 4096;
 const TRUNCATION_SAFE_LENGTH = 3900;
 
 /**
+ * Shared field cluster for power-event notification formatting
+ * (`formatPowerLost`, `formatPowerRestored`). Grouping these avoids a long
+ * parameter list and the transposition risk of adjacent `locale`/`timezone`
+ * string params.
+ *
+ * Note: `durationSeconds` is only meaningful for `formatPowerRestored`
+ * (`formatPowerLost` ignores it) — bundled here for a single shared shape
+ * rather than per-method param lists.
+ */
+export interface PowerEventMessageParams {
+  deviceLabel: string;
+  timestamp: Date;
+  locale?: string;
+  timezone?: string;
+  batteryVoltage?: number | null;
+  durationSeconds: number | null;
+}
+
+/**
  * Formats messages for Telegram with MarkdownV2 formatting.
  */
 @Injectable()
@@ -92,13 +111,13 @@ export class MessageFormatter {
    * Format power lost notification.
    * Optionally appends battery level if the device has a UPS module.
    */
-  formatPowerLost(
-    deviceLabel: string,
-    timestamp: Date,
-    locale?: string,
-    timezone?: string,
-    batteryVoltage?: number | null,
-  ): string {
+  formatPowerLost({
+    deviceLabel,
+    timestamp,
+    locale,
+    timezone,
+    batteryVoltage,
+  }: PowerEventMessageParams): string {
     const msgs = this.translationService.getMessages(locale);
     const label = escapeMarkdownV2(deviceLabel);
     const message = msgs.POWER_LOST(
@@ -133,14 +152,14 @@ export class MessageFormatter {
    * Format power restored notification.
    * Optionally appends battery level if the device has a UPS module.
    */
-  formatPowerRestored(
-    deviceLabel: string,
-    timestamp: Date,
-    durationSeconds: number | null,
-    locale?: string,
-    timezone?: string,
-    batteryVoltage?: number | null,
-  ): string {
+  formatPowerRestored({
+    deviceLabel,
+    timestamp,
+    durationSeconds,
+    locale,
+    timezone,
+    batteryVoltage,
+  }: PowerEventMessageParams): string {
     const msgs = this.translationService.getMessages(locale);
     const label = escapeMarkdownV2(deviceLabel);
     const duration =
