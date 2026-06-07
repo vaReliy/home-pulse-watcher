@@ -16,7 +16,9 @@ COPY libs/shared/package.json ./libs/shared/
 COPY libs/application/package.json ./libs/application/
 COPY libs/infrastructure/package.json ./libs/infrastructure/
 
-RUN npm ci
+# Skip postinstall script (prisma generate) — Prisma schema not yet available
+# Will generate client explicitly in build stage after schema is copied
+RUN npm ci --ignore-scripts
 
 # ============================================
 # Stage 2: Build application

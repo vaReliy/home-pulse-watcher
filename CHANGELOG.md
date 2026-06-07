@@ -8,6 +8,7 @@
 
 ### Fixes
 
+- **Docker build**: Production image build (Cloud Run) failed at `npm ci` in the `deps` stage with `Error: Could not find Prisma Schema that is required for this command`. Root cause: the `postinstall` script (`prisma generate`, added in `64a223a`) ran during dependency installation, before `prisma/schema.prisma` was copied into the image (that happens later, in the `build` stage via `COPY . .`). Fixed by running `npm ci --ignore-scripts` in the `deps` stage; `prisma generate` still runs explicitly in the `build` stage once the schema is present.
 - **Telegram bot**: UPS devices now show battery percentage in "power restored" notifications, matching "power lost" output. Root cause: `power-status.listener.ts` dropped `event.batteryVoltage` when invoking `formatPowerRestored`, and the formatter had no battery parameter. Fixed by extracting a shared `appendBatteryLine` helper used by both `formatPowerLost` and `formatPowerRestored`.
 - **Database migrations**: Removed two pre-existing `FirmwareRelease` rows with legacy `gcsPath` format (`esp32c6/3.5.1.bin`) that violated the Phase 5.6 CHECK constraint regex. Resolved failed migration ledger entry so `20260505000002_fix_firmware_release_gcs_path_constraint` reapplies cleanly (no migration files modified).
 
