@@ -224,6 +224,7 @@ export class PowerStatusListener {
         durationSeconds,
         locale,
         timezone,
+        event.batteryVoltage,
       );
     }
 

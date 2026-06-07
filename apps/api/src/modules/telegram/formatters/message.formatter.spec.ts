@@ -313,6 +313,34 @@ describe('MessageFormatter', () => {
     });
   });
 
+  describe('formatPowerRestored with battery', () => {
+    it('should not include battery info when batteryVoltage is null', () => {
+      const result = formatter.formatPowerRestored(
+        'Kitchen',
+        new Date('2026-02-10T08:00:00Z'),
+        3600,
+        'en',
+        'Europe/Kyiv',
+        null,
+      );
+      expect(result).not.toContain('🔋');
+    });
+
+    it('should append battery info when batteryVoltage is provided', () => {
+      const result = formatter.formatPowerRestored(
+        'Kitchen',
+        new Date('2026-02-10T08:00:00Z'),
+        3600,
+        'en',
+        'Europe/Kyiv',
+        4200,
+      );
+      expect(result).toContain('🔋');
+      expect(result).toContain('4\\.20');
+      expect(result).toContain('100');
+    });
+  });
+
   describe('formatBatteryLowAlert', () => {
     it('should format SOS alert with device label and battery info', () => {
       const event = new BatteryLowEvent({

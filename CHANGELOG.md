@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- **Telegram bot**: UPS devices now show battery percentage in "power restored" notifications, matching "power lost" output. Root cause: `power-status.listener.ts` dropped `event.batteryVoltage` when invoking `formatPowerRestored`, and the formatter had no battery parameter. Fixed by extracting a shared `appendBatteryLine` helper used by both `formatPowerLost` and `formatPowerRestored`.
+- **Database migrations**: Removed two pre-existing `FirmwareRelease` rows with legacy `gcsPath` format (`esp32c6/3.5.1.bin`) that violated the Phase 5.6 CHECK constraint regex. Resolved failed migration ledger entry so `20260505000002_fix_firmware_release_gcs_path_constraint` reapplies cleanly (no migration files modified).
+
 ### Security
 
 - **firmware/ota**: Detect silent URL buffer truncation in `parseOtaResponse` — if `url[1024]` fills to capacity (strlen == 1023), return `ParseError` and abort OTA rather than proceeding with a truncated signed URL. Added `snprintf` return-value guard on `respCanonical[1280]` in `checkForUpdate` as a secondary defence.

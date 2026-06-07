@@ -101,18 +101,12 @@ export class MessageFormatter {
   ): string {
     const msgs = this.translationService.getMessages(locale);
     const label = escapeMarkdownV2(deviceLabel);
-    let message = msgs.POWER_LOST(
+    const message = msgs.POWER_LOST(
       label,
       escapeMarkdownV2(this.formatDateTime(timestamp, locale, timezone)),
     );
 
-    if (batteryVoltage != null) {
-      const voltage = escapeMarkdownV2(formatVoltage(batteryVoltage));
-      const pct = escapeMarkdownV2(String(batteryPercentage(batteryVoltage)));
-      message += `\n${msgs.BATTERY_LEVEL(voltage, pct)}`;
-    }
-
-    return message;
+    return this.appendBatteryLine(message, batteryVoltage, msgs);
   }
 
   /**
@@ -137,6 +131,7 @@ export class MessageFormatter {
 
   /**
    * Format power restored notification.
+   * Optionally appends battery level if the device has a UPS module.
    */
   formatPowerRestored(
     deviceLabel: string,
@@ -144,6 +139,7 @@ export class MessageFormatter {
     durationSeconds: number | null,
     locale?: string,
     timezone?: string,
+    batteryVoltage?: number | null,
   ): string {
     const msgs = this.translationService.getMessages(locale);
     const label = escapeMarkdownV2(deviceLabel);
@@ -151,11 +147,13 @@ export class MessageFormatter {
       durationSeconds !== null
         ? escapeMarkdownV2(this.formatDuration(durationSeconds, locale))
         : msgs.DURATION_UNKNOWN;
-    return msgs.POWER_RESTORED(
+    const message = msgs.POWER_RESTORED(
       label,
       escapeMarkdownV2(this.formatDateTime(timestamp, locale, timezone)),
       duration,
     );
+
+    return this.appendBatteryLine(message, batteryVoltage, msgs);
   }
 
   /**
@@ -319,6 +317,24 @@ export class MessageFormatter {
     if (parts.length === 0) parts.push(`${secs}${msgs.DURATION_SECONDS}`);
 
     return parts.join(' ');
+  }
+
+  /**
+   * Append a battery level line to a message when battery voltage is present.
+   * Returns the message unchanged for devices without a UPS module (null voltage).
+   */
+  private appendBatteryLine(
+    message: string,
+    batteryVoltage: number | null | undefined,
+    msgs: Messages,
+  ): string {
+    if (batteryVoltage == null) {
+      return message;
+    }
+
+    const voltage = escapeMarkdownV2(formatVoltage(batteryVoltage));
+    const pct = escapeMarkdownV2(String(batteryPercentage(batteryVoltage)));
+    return `${message}\n${msgs.BATTERY_LEVEL(voltage, pct)}`;
   }
 
   private getIntlLocale(locale?: string): string {
