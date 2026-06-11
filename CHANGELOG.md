@@ -5,6 +5,7 @@
 ### Chore
 
 - **AI config**: CLAUDE.md slimmed to a self-contained dispatcher core (no `@` force-loads); rules now read on-demand. Quality gate is now conditional (`tester`+`reviewer` always, `security-scanner`/`qa` only when relevant); `.claude/rules/workflow.md` updated to match and frontend-agent references removed (none installed in this repo).
+- **AI config**: Slimmed `.claude/agents/*.md` frontmatter `description:` fields (removed `<example>` blocks, compressed UA trigger keyword lists to 4–5 terms) — these are loaded into every message, so smaller is cheaper. Downgraded `ba`, `devil`, `security-scanner` from `opus` to `sonnet` (kept `opus` for `ddd-architect` and `debugger`, where wrong answers/retries are costlier). Added a mandatory "Report Format" section to every agent body for terse, structured reports back to the orchestrator.
 
 ### Refactoring
 

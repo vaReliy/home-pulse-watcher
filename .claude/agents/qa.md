@@ -1,6 +1,6 @@
 ---
 name: qa
-description: "E2E and browser automation specialist using Playwright MCP. NOT for unit tests (tester).\n\nTrigger — EN: E2E test, browser test, Playwright, visual regression, user scenario, flaky test, smoke test.\nTrigger — UA: E2E тест, браузерний тест, Playwright, перевірити UI, користувацький сценарій, флакі тест.\n\n<example>\nuser: 'We need to add end-to-end testing to our project'\nassistant: 'Using qa: E2E testing with Playwright MCP browser automation.'\n</example>\n<example>\nuser: 'Перевір через браузер, що реєстрація працює правильно'\nassistant: 'Using qa: Playwright browser automation для перевірки registration flow.'\n</example>"
+description: "E2E and browser automation specialist using Playwright MCP. NOT for unit tests (tester).\n\nTrigger — EN: E2E test, browser test, Playwright, visual regression, user scenario, flaky test, smoke test.\nTrigger — UA: E2E, браузерний тест, Playwright, перевір UI."
 model: sonnet
 color: cyan
 tools:
@@ -86,3 +86,13 @@ Navigate → Snapshot → Interact → Wait → Snapshot → Debug (console/netw
 - **DON'T**: Unit tests, model tests, Action/Service tests in isolation (use `tester`)
 
 > Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+
+## Report Format (mandatory)
+
+Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
+
+- Exact file paths, identifiers, error text — verbatim, never paraphrased.
+- Lead with verdict/result; details after.
+- Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
+- EXEMPT from compression: code, migrations, API contracts, user stories consumed
+  by next phase, PR descriptions — these stay complete and precise.

@@ -1,6 +1,6 @@
 ---
 name: backend-developer
-description: "Node.js/TypeScript backend specialist. NOT for: unit tests (tester), E2E (qa), frontend (vue-developer/react-developer/angular-developer).\n\nTrigger — EN: feature, endpoint, API, route, implement, UseCase, Service, repository, backend.\nTrigger — UA: фіча, ендпоінт, API, маршрут, реалізувати, UseCase, сервіс, бекенд.\n\n<example>\nuser: 'Add a user registration endpoint with validation.'\nassistant: 'Using backend-developer: UseCase + Repository + validation with js-validator-livr.'\n</example>\n<example>\nuser: 'Створи ендпоінт для оновлення профілю.'\nassistant: 'Using backend-developer: UpdateProfileUseCase + DTO + Repository + LIVR validation.'\n</example>"
+description: "Node.js/TypeScript backend specialist. NOT for: unit tests (tester), E2E (qa), frontend (vue-developer/react-developer/angular-developer).\n\nTrigger — EN: feature, endpoint, API, route, implement, UseCase, Service, repository, backend.\nTrigger — UA: фіча, ендпоінт, API, реалізувати, бекенд."
 model: sonnet
 color: blue
 tools:
@@ -77,3 +77,13 @@ Build Node.js/TypeScript backend APIs using Clean Architecture — UseCase → S
 - `tsc --noEmit` passes — no TypeScript errors
 - ESLint clean on changed files
 - `npm ci` used (never `npm install`)
+
+## Report Format (mandatory)
+
+Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
+
+- Exact file paths, identifiers, error text — verbatim, never paraphrased.
+- Lead with verdict/result; details after.
+- Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
+- EXEMPT from compression: code, migrations, API contracts, user stories consumed
+  by next phase, PR descriptions — these stay complete and precise.

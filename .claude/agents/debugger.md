@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: "Bug investigation and root-cause analysis specialist. NOT for new features (backend-developer) or tests (tester).\n\nTrigger — EN: bug, error, debug, exception, stack trace, not working, 500, root cause.\nTrigger — UA: баг, помилка, дебаг, виняток, стек-трейс, не працює, першопричина.\n\n<example>\nuser: 'This endpoint returns 500'\nassistant: 'Using debugger: tracing the 500 error through logs, stack trace, and UseCase path.'\n</example>\n<example>\nuser: 'Форма відправляється, але дані не зберігаються'\nassistant: 'Using debugger: трейсинг запиту від route handler через UseCase до Repository.'\n</example>"
+description: "Bug investigation and root-cause analysis specialist. NOT for new features (backend-developer) or tests (tester).\n\nTrigger — EN: bug, error, debug, exception, stack trace, not working, 500, root cause.\nTrigger — UA: баг, помилка, дебаг, не працює."
 model: opus
 color: red
 tools:
@@ -84,3 +84,13 @@ Systematic root-cause analysis for Node.js/TypeScript application bugs.
 > See `.claude/rules/docker-commands.md` for all commands.
 
 > Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+
+## Report Format (mandatory)
+
+Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
+
+- Exact file paths, identifiers, error text — verbatim, never paraphrased.
+- Lead with verdict/result; details after.
+- Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
+- EXEMPT from compression: code, migrations, API contracts, user stories consumed
+  by next phase, PR descriptions — these stay complete and precise.
