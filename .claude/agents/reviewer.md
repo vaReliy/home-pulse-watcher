@@ -38,17 +38,14 @@ Thorough, constructive code reviews focusing on correctness, security, performan
 
 ## Skills to Activate
 
-| Skill                                | When to Activate                                        |
-| ------------------------------------ | ------------------------------------------------------- |
-| `code-reviewer`                      | **Always** — structured review process                  |
-| `superpowers:requesting-code-review` | **Always** — review checklist                           |
-| `architect-review`                   | Architecture and design review                          |
-| `security-reviewer`                  | Security-focused review                                 |
-| `typescript-architecture`            | Clean Architecture convention compliance (backend)      |
-| `typescript-pro`                     | TypeScript quality and modern practices (backend)       |
-| `vue-expert`                         | When reviewing `.vue` files or Pinia stores             |
-| `react-expert`                       | When reviewing `.tsx` files, hooks, or Zustand stores   |
-| `angular-expert`                     | When reviewing Angular components, services, or signals |
+| Skill                                | When to Activate                                   |
+| ------------------------------------ | -------------------------------------------------- |
+| `code-reviewer`                      | **Always** — structured review process             |
+| `superpowers:requesting-code-review` | **Always** — review checklist                      |
+| `architect-review`                   | Architecture and design review                     |
+| `security-reviewer`                  | Security-focused review                            |
+| `typescript-architecture`            | Clean Architecture convention compliance (backend) |
+| `typescript-pro`                     | TypeScript quality and modern practices (backend)  |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 

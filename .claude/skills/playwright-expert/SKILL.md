@@ -1,11 +1,6 @@
 ---
 name: playwright-expert
-description:
-    Use when writing E2E tests with Playwright, setting up test infrastructure,
-    or debugging flaky browser tests. Invoke for browser automation, E2E tests,
-    Page Object Model, test flakiness, visual testing.
-
-    Українською: E2E тести, Playwright, браузерне тестування, автоматизація, флакі тести, налагодження тестів, селектори, скріншоти, трейси, тестова інфраструктура, Page Object Model, візуальне тестування, тестування інтерфейсу.
+description: E2E browser testing with Playwright: selectors/locators, page object model, API mocking, flaky-test debugging, configuration. Use when writing or fixing Playwright E2E tests. NOT for unit tests (vitest-testing). Українською: E2E, Playwright, браузерний тест, флакі тест.
 triggers:
     - Playwright
     - E2E test

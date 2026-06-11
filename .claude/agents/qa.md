@@ -53,13 +53,12 @@ End-to-end testing, browser automation, and integration testing from the user's 
 
 ## Skills to Activate
 
-| Skill               | When to Activate                                     |
-| ------------------- | ---------------------------------------------------- |
-| `playwright-expert` | **Always** for any E2E or browser automation         |
-| `playwright-skill`  | **Always** — browser automation scripts and patterns |
-| `security-reviewer` | For security testing and vulnerability assessment    |
-| `debugging-wizard`  | When debugging flaky tests or complex failures       |
-| `test-master`       | When planning overall test strategy                  |
+| Skill               | When to Activate                                  |
+| ------------------- | ------------------------------------------------- |
+| `playwright-expert` | **Always** for any E2E or browser automation      |
+| `security-reviewer` | For security testing and vulnerability assessment |
+| `debugging-wizard`  | When debugging flaky tests or complex failures    |
+| `test-master`       | When planning overall test strategy               |
 
 ## Core Competencies
 

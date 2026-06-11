@@ -199,8 +199,6 @@ runs:
 
 For stack-specific workflow templates and advanced patterns:
 
-- **`references/php-workflows.md`** — Laravel (Pest, Pint, PHPStan), Symfony, NativePHP CI patterns
-- **`references/dotnet-workflows.md`** — .NET/C# build, test, publish patterns
 - **`references/node-workflows.md`** — Node.js, TypeScript, JavaScript CI patterns
 - **`references/advanced-patterns.md`** — OIDC deployments, Docker multi-stage builds, monorepo strategies, environment promotion
 
@@ -208,7 +206,5 @@ For stack-specific workflow templates and advanced patterns:
 
 Working examples in `examples/`:
 
-- **`examples/laravel-ci.yml`** — Laravel CI with Pest, Pint, PHPStan, PostgreSQL, Redis
-- **`examples/dotnet-ci.yml`** — .NET build + test + publish
 - **`examples/node-ci.yml`** — Node.js/TypeScript lint + test + build
 - **`examples/docker-deploy.yml`** — Docker build, push, and deploy

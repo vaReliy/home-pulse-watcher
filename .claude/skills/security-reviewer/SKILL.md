@@ -1,11 +1,6 @@
 ---
 name: security-reviewer
-description:
-    Use when conducting security audits, reviewing code for vulnerabilities, or
-    analyzing infrastructure security. Invoke for SAST scans, penetration
-    testing, DevSecOps practices, cloud security reviews.
-
-    Українською: безпека коду, аудит безпеки, вразливості, XSS, SQL ін'єкція, авторизація, автентифікація, CSRF, шифрування, перевір безпеку, знайди вразливість, DevSecOps, пентест
+description: Application security review: OWASP Top 10, auth/authz flaws, input validation, secrets handling, dependency and infrastructure security. Use when auditing code or configs for vulnerabilities. Українською: безпека, вразливості, аудит безпеки, OWASP.
 triggers:
     - security review
     - vulnerability scan

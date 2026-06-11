@@ -30,11 +30,10 @@ Design and optimize PostgreSQL schemas, Prisma migrations, indexes, and ORM rela
 
 ## Skills to Activate
 
-| Skill                                    | When to Activate                            |
-| ---------------------------------------- | ------------------------------------------- |
-| `database-optimizer`                     | **Always** — query and schema optimization  |
-| `postgresql` / `postgres-best-practices` | **Always** — PostgreSQL-specific patterns   |
-| `typescript-pro`                         | Prisma schema and migration TypeScript code |
+| Skill                     | When to Activate                                                        |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `postgres-best-practices` | **Always** — PostgreSQL-specific patterns and query/schema optimization |
+| `typescript-pro`          | Prisma schema and migration TypeScript code                             |
 
 > See `.claude/rules/mcp-stack.md` for MCP tool reference.
 
