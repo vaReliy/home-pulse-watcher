@@ -74,14 +74,14 @@ If none apply (e.g. typo fix, config value) — skip the pipeline.
 ## Standard Feature Pipeline
 
 ```
-                                          ╔═══ backend-developer
-ba → ddd-architect? → impl-{slug} team ══╣
-                                          ╚═══ vue/react/angular-developer (if UI change)
+ba → ddd-architect? → impl-{slug} (backend-developer)
                               ║
               ╔═══════════════╩═══════════════╗
-              ║         Quality Gate Team      ║
-              ║  tester | reviewer |           ║
-              ║  security-scanner | qa         ║
+              ║   Quality Gate (conditional)  ║
+              ║  tester | reviewer            ║
+              ║  + security-scanner if auth/  ║
+              ║    validation/secrets/HMAC    ║
+              ║  + qa if user-visible flow    ║
               ╚═══════════════╤═══════════════╝
                               ║
                         docs-writer
@@ -89,33 +89,20 @@ ba → ddd-architect? → impl-{slug} team ══╣
                      knowledge capture  ← orchestrator (mandatory)
 ```
 
-| Phase                | Mode                                    | Agent(s)                                       | Output                            |
-| -------------------- | --------------------------------------- | ---------------------------------------------- | --------------------------------- |
-| 1. Requirements      | sequential                              | `ba`                                           | User stories, scope, API contract |
-| 2. Architecture      | sequential _(skip if no arch decision)_ | `ddd-architect`                                | Domain model, placement           |
-| 3. Implementation    | **team** `impl-{slug}`                  | `backend-developer` + frontend agent(s) if UI  | Code + ESLint + tsc               |
-| 4. Quality Gate      | **team** `qg-{slug}`                    | `tester`, `reviewer`, `security-scanner`, `qa` | Parallel reports                  |
-| 5. Documentation     | sequential                              | `docs-writer`                                  | PR description + `gh pr create`   |
-| 6. Knowledge Capture | orchestrator (mandatory — never skip)   | —                                              | Updated docs + auto-memory        |
+| Phase                | Mode                                    | Agent(s)                           | Output                            |
+| -------------------- | --------------------------------------- | ---------------------------------- | --------------------------------- |
+| 1. Requirements      | sequential                              | `ba`                               | User stories, scope, API contract |
+| 2. Architecture      | sequential _(skip if no arch decision)_ | `ddd-architect`                    | Domain model, placement           |
+| 3. Implementation    | sequential                              | `backend-developer`                | Code + ESLint + tsc               |
+| 4. Quality Gate      | **team** `qg-{slug}` (conditional)      | `tester`, `reviewer` + conditional | Parallel reports                  |
+| 5. Documentation     | sequential                              | `docs-writer`                      | PR description + `gh pr create`   |
+| 6. Knowledge Capture | orchestrator (mandatory — never skip)   | —                                  | Updated docs + auto-memory        |
 
-### Implementation Team (Phase 3)
+### Implementation Phase (Phase 3)
 
-Team name: `impl-{feature-slug}` (e.g. `impl-user-registration`)
+Backend-only change → run `backend-developer` sequentially (no team needed).
 
-**When to run as a team vs sequential:**
-
-- Backend-only change (no UI) → run `backend-developer` sequentially (no team needed)
-- Backend + UI change → TeamCreate with `backend-developer` + the relevant frontend agent(s)
-- Frontend-only change → run the relevant frontend agent sequentially (no team needed)
-
-**Frontend agent selection:**
-| Project framework | Agent |
-|-------------------|-------|
-| Vue 3 | `vue-developer` |
-| React 18+ | `react-developer` |
-| Angular 17+ | `angular-developer` |
-
-The `ba` output must include an **API contract** (endpoint, request/response shape) when both backend and frontend are in scope — this is the interface between the two parallel agents.
+> **Note**: no frontend agents installed in this repo — re-add `vue-developer`/`react-developer`/`angular-developer` from claude-ts if a UI appears.
 
 ### Planning Team
 
@@ -135,25 +122,29 @@ Spawn 3 teammates: `ba`, `ddd-architect`, `devil`.
 - `devil` accepts response → silent on that point
 - `devil` escalates ignored challenge → orchestrator decides before proceeding to implementation phase
 
-### Quality Gate Team
+### Quality Gate Team (Conditional)
 
 Team name: `qg-{feature-slug}` (e.g. `qg-user-registration`)
 
-Spawn 4 teammates. Each works independently — no inter-agent messages needed.
-Wait for all 4 to complete, then collect reports.
+Always spawn: `tester`, `reviewer`.
+Conditionally add:
+
+- `security-scanner` — change touches auth/validation/secrets/HMAC/endpoints accepting external input
+- `qa` — a user-visible flow changed
+
+Each works independently — no inter-agent messages needed.
+Wait for all to complete, then collect reports.
 
 **Resolution:**
 
 - All pass → proceed to phase 5
-- ANY 🔴 Critical or 🟡 Important → shutdown team → route findings to the responsible implementation agent (backend or frontend) → re-run quality gate
+- ANY 🔴 Critical or 🟡 Important → shutdown team → route findings to `backend-developer` → re-run quality gate
 - **Max 2 retry cycles.** If quality gate fails after 2 fix cycles, stop and escalate to user.
 
 ## Bug Fix Pipeline
 
 ```
-debugger → responsible agent ══╗
-  (backend-developer OR         ║
-   vue/react/angular-developer) ║
+debugger → backend-developer ══╗
                        ╔════════╩════════╗
                        ║   Verify Team   ║
                        ║tester|reviewer  ║
@@ -162,16 +153,13 @@ debugger → responsible agent ══╗
                               done
 ```
 
-| Phase        | Mode                     | Agent(s)                                       | Output                                 |
-| ------------ | ------------------------ | ---------------------------------------------- | -------------------------------------- |
-| 1. Diagnosis | sequential               | `debugger`                                     | Root cause analysis + layer identified |
-| 2. Fix       | sequential               | `backend-developer` OR relevant frontend agent | Minimal fix                            |
-| 3. Verify    | **team** `verify-{slug}` | `tester`, `reviewer`                           | Regression test + fix review           |
+| Phase        | Mode                     | Agent(s)             | Output                                 |
+| ------------ | ------------------------ | -------------------- | -------------------------------------- |
+| 1. Diagnosis | sequential               | `debugger`           | Root cause analysis + layer identified |
+| 2. Fix       | sequential               | `backend-developer`  | Minimal fix                            |
+| 3. Verify    | **team** `verify-{slug}` | `tester`, `reviewer` | Regression test + fix review           |
 
-**Phase 2 routing:** `debugger` output must identify the layer. Route to:
-
-- `backend-developer` — bug in UseCase / Service / Repository / route handler
-- `vue-developer` / `react-developer` / `angular-developer` — bug in frontend component / store / composable
+**Phase 2 routing:** `debugger` output identifies the layer (UseCase / Service / Repository / route handler) → `backend-developer` fixes it.
 
 Same resolution rule: Critical/Important → back to phase 2. Max 2 retries.
 
@@ -251,9 +239,6 @@ How to apply: Any char[] buffer holding a GCS signed URL must be ≥ 1024 bytes.
 | Need                                    | Agent                   |
 | --------------------------------------- | ----------------------- |
 | Node.js backend (API, services, queues) | `backend-developer`     |
-| Vue 3 component/page                    | `vue-developer`         |
-| React component/page                    | `react-developer`       |
-| Angular component/page                  | `angular-developer`     |
 | Unit/integration tests                  | `tester`                |
 | E2E browser tests                       | `qa`                    |
 | Database schema + migrations            | `dba`                   |

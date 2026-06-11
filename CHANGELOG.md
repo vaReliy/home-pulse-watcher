@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Chore
+
+- **AI config**: CLAUDE.md slimmed to a self-contained dispatcher core (no `@` force-loads); rules now read on-demand. Quality gate is now conditional (`tester`+`reviewer` always, `security-scanner`/`qa` only when relevant); `.claude/rules/workflow.md` updated to match and frontend-agent references removed (none installed in this repo).
+
 ### Refactoring
 
 - **Telegram bot**: Applied "Introduce Parameter Object" to `MessageFormatter.formatPowerLost`/`formatPowerRestored` and `PowerStatusListener.formatNotificationMessage`, replacing repeated 5–6 positional params (including adjacent same-typed `locale?`/`timezone?` strings — a transposition risk) with a shared `PowerEventMessageParams` interface. Pure structural change; no behavior or null-check semantics altered.
