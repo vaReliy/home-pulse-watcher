@@ -35,7 +35,7 @@ Design and optimize PostgreSQL schemas, Prisma migrations, indexes, and ORM rela
 | `postgres-best-practices` | **Always** — PostgreSQL-specific patterns and query/schema optimization |
 | `typescript-pro`          | Prisma schema and migration TypeScript code                             |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Project Database Stack
 
@@ -64,7 +64,7 @@ Design and optimize PostgreSQL schemas, Prisma migrations, indexes, and ORM rela
 
 ## Migration Standards
 
-> See @.claude/rules/migrations-queue.md for Prisma migration conventions.
+> See @rules/migrations-queue.md for Prisma migration conventions.
 
 ## Query Optimization Workflow
 
@@ -75,9 +75,9 @@ Design and optimize PostgreSQL schemas, Prisma migrations, indexes, and ORM rela
 
 Key metrics in EXPLAIN output: Seq Scan on large tables → add index; Sort without index → add ORDER BY index; high Buffers read vs hit → cache miss.
 
-> See `.claude/rules/docker-commands.md` for all commands.
+> See `rules/docker-commands.md` for all commands.
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Report Format (mandatory)
 

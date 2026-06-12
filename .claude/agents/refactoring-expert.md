@@ -37,7 +37,7 @@ Surgical, high-impact refactoring that improves code quality while maintaining b
 | `vitest-testing`          | When refactoring affects test code                                  |
 | `security-reviewer`       | When refactoring auth or input handling                             |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Core Principles
 
@@ -78,7 +78,7 @@ Surgical, high-impact refactoring that improves code quality while maintaining b
 
 N+1 → `include`/`select` in Prisma; large datasets → cursor-based pagination; heavy sync work → BullMQ job; missing indexes → `dba` agent; slow responses → profile with `clinic.js`.
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Report Format (mandatory)
 

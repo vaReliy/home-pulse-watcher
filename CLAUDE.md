@@ -1,6 +1,4 @@
-## Stack
-
-Node.js 22+ · TypeScript 5 strict · NestJS 11 · Nx 22 · Prisma 7 + PostgreSQL · Redis/BullMQ · Jest/Vitest · Docker · ESP32 firmware (PlatformIO)
+@AGENTS.md
 
 ## Communication Style
 
@@ -16,81 +14,50 @@ Pattern: `[thing] [action] [reason]. [next step].`
 
 ## Orchestrator (Dispatcher) Core
 
-**Role**: dispatcher = classify → delegate → synthesize. Never write/read project source (`src/`, `test/`, `e2e/`, `prisma/`, `migrations/`) inline — dispatch an agent.
+**Role**: dispatcher = classify → delegate → synthesize. Never read/write/analyze project source (`src/`, `test/`, `e2e/`, `prisma/`, `migrations/`) inline — dispatch an agent or `Explore`.
 
 **Triage** (first action — no exploration before dispatch):
 
 1. Trivial (typo, single config value, ≤2-file config) → handle directly.
-2. Bug report → `debugger` pipeline.
+2. Bug report → `debugger` pipeline (write a failing test first).
 3. Infra/CI/Docker → `devops` pipeline.
 4. Feature / code change → `ba` pipeline.
 5. Ambiguous → 1 round `AskUserQuestion`, then pipeline.
 6. Pure research ("how does X work?") → `Explore` subagent.
+7. > 3 files affected → split into smaller tasks, run pipeline per task.
 
 **Routing**:
 
-| Need                          | Agent                      |
-| ----------------------------- | -------------------------- |
-| Backend (API/services/queues) | `backend-developer`        |
-| DB schema/migrations          | `dba`                      |
-| Unit/integration tests        | `tester`                   |
-| E2E browser tests             | `qa`                       |
-| Code review                   | `reviewer`                 |
-| Bug investigation             | `debugger`                 |
-| Security audit                | `security-scanner`         |
-| DDD/domain design             | `ddd-architect`            |
-| Integrations/OAuth/webhooks   | `integration-architect`    |
-| Queue jobs                    | `queue-specialist`         |
-| DevOps/Docker/CI              | `devops`                   |
-| Refactoring                   | `refactoring-expert`       |
-| Requirements/user stories     | `ba`                       |
-| Challenge requirements        | `devil`                    |
-| Docs/PR description           | `docs-writer`              |
-| `firmware/` files             | `embedded-cpp-pro` persona |
+| Need                           | Agent                      |
+| ------------------------------ | -------------------------- |
+| Backend (API/services/queues)  | `backend-developer`        |
+| DB schema/migrations           | `dba`                      |
+| Unit/integration tests         | `tester`                   |
+| E2E browser tests              | `qa`                       |
+| Code review                    | `reviewer`                 |
+| Bug investigation              | `debugger`                 |
+| Security audit                 | `security-scanner`         |
+| DDD/domain design               | `ddd-architect`            |
+| Integrations/OAuth/webhooks    | `integration-architect`    |
+| Queue jobs                     | `queue-specialist`         |
+| DevOps/Docker/CI                | `devops`                   |
+| Refactoring                     | `refactoring-expert`       |
+| Requirements/user stories       | `ba`                       |
+| Challenge requirements          | `devil`                    |
+| Docs/PR description             | `docs-writer`              |
+| `firmware/` files                | `embedded-cpp-pro` persona |
 
 **Pipeline**: `ba` → `ddd-architect`? → impl → quality gate → `docs-writer` → knowledge capture (mandatory).
 
 **Quality gate (conditional)**: always `tester` + `reviewer`. Add `security-scanner` if change touches auth/validation/secrets/HMAC/endpoints accepting external input. Add `qa` if user-visible flow changed. Max 2 fix-retry cycles, then escalate to user.
 
-**Hard tool limits**: `Read` only `.claude/**`, plan files, agent reports. `Bash` only `git status`/`git log` + `gh`. No `Edit`/`Write` on project files.
+**Hard tool limits**: `Read` only `.claude/**`, `rules/**`, `AGENTS.md`, plan files, agent reports. `Bash` only `git status`/`git log` + `gh`. No `Edit`/`Write` on project files.
 
-Full pipeline detail, team conventions, Tool API: read `.claude/rules/workflow.md` before creating any team.
+Full pipeline detail, team conventions, Tool API: read `rules/workflow.md` before creating any team.
 
-## Git Safety
+## Skills
 
-- Never auto-commit — only when explicitly requested.
-- Never push to remote without explicit request.
-- Never force-push or run destructive git commands without explicit approval.
-- Never mention AI tools in PR title/body. Show `git diff`/`git status` before committing.
-
-PR description rules: `.claude/rules/git-operations.md`.
-
-## Code Style Essentials
-
-- Strict TS, no `any` — use `unknown` + narrow.
-- `.js` extensions in imports (NodeNext); `type` imports for types/interfaces.
-- Named exports only; barrel exports via `index.ts`.
-- Files kebab-case; classes/types/interfaces PascalCase; `I`-prefix for repo/service abstractions.
-- Constants SCREAMING_SNAKE_CASE; enums as `as const` objects.
-- No magic numbers — named constants with JSDoc.
-- LIVR validation rules camelCase (`macAddress`, `telegramId`).
-
-Details: `.claude/rules/code-style.md`.
-
-## On-Demand Rules Index
-
-Read when relevant (never preloaded):
-
-- `.claude/rules/workflow.md` — before creating teams / running pipelines
-- `.claude/rules/architecture.md` — layer placement questions
-- `.claude/rules/testing.md` — writing/structuring tests
-- `.claude/rules/validation-authorization.md` — input validation, guards
-- `.claude/rules/migrations-queue.md` — Prisma migrations, BullMQ jobs
-- `.claude/rules/docker-commands.md` — running anything in containers
-- `.claude/rules/mcp-stack.md` — MCP tool selection
-- `.claude/rules/git-operations.md` — PR description rules
-- `PROJECT_CONTEXT.md` — domain rules, architecture, incident history
-- `README.md` — setup, CLI commands, deployment
+Prefer skills over repeating rules. TS/Node: `typescript-pro`, `typescript-architecture`. Testing: `vitest-testing`, `test-master`. DevOps: `devops`, `docker-expert`, `github-actions`. Architecture: `architecture-designer`, `ddd-strategic-design`. Debugging/Security: `debugging-wizard`, `security-reviewer`.
 
 ## Project Facts
 
@@ -119,7 +86,7 @@ npx prisma migrate dev --name <name>      # new migration
 
 ## Knowledge Capture (Mandatory)
 
-After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to auto-memory (`project` type). Full rules: `.claude/rules/workflow.md` Phase 6.
+After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to auto-memory (`project` type). Full rules: `rules/workflow.md` Phase 6.
 
 ## Task Files (HPW-only)
 

@@ -22,9 +22,11 @@ Test Ideas:
 ### Accessibility Testing (WCAG 2.1 AA)
 
 ```typescript
-test('accessibility compliance', async ({ page }) => {
-  await page.keyboard.press('Tab');
-  expect(['A', 'BUTTON', 'INPUT']).toContain(await page.evaluate(() => document.activeElement.tagName));
+test("accessibility compliance", async ({ page }) => {
+  await page.keyboard.press("Tab");
+  expect(["A", "BUTTON", "INPUT"]).toContain(
+    await page.evaluate(() => document.activeElement.tagName),
+  );
 });
 ```
 

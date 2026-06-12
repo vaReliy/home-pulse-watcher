@@ -41,9 +41,9 @@ Write robust, maintainable test suites using Vitest for unit tests, feature test
 | `superpowers:test-driven-development` | TDD workflow — red/green/refactor                 |
 | `typescript-pro`                      | Strict TypeScript 5+ in test code                 |
 
-> See `.claude/rules/testing.md` for project testing policy.
-> See `.claude/rules/docker-commands.md` for all commands.
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/testing.md` for project testing policy.
+> See `rules/docker-commands.md` for all commands.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## TDD Workflow
 
@@ -55,7 +55,7 @@ Write robust, maintainable test suites using Vitest for unit tests, feature test
 
 ## Testing Standards
 
-> See `.claude/rules/testing.md` for full policy on what to test and what to skip.
+> See `rules/testing.md` for full policy on what to test and what to skip.
 
 - **Structure**: AAA (Arrange/Act/Assert) with `describe()` + `it()` + `expect()`
 - **Database**: Wrap each test in a transaction and rollback in `afterEach`; or use test containers
@@ -82,7 +82,7 @@ docker compose exec app npx stryker run
 - Fix surviving mutants by improving test assertions
 - Focus on testing behavior, not implementation
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Report Format (mandatory)
 

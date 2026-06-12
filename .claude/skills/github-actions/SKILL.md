@@ -6,8 +6,7 @@ description: >-
   "add composite action", "fix failing workflow", "optimize GitHub Actions", "add caching to CI",
   "set up deployment pipeline", "add tests to CI", "create Docker build workflow",
   or mentions GitHub Actions, CI/CD, workflow YAML, or .github/workflows.
-  Covers PHP (Laravel, Symfony, NativePHP), .NET/C#, JavaScript, TypeScript, Node.js,
-  SQL, and Docker-based pipelines.
+  Covers JavaScript, TypeScript, Node.js, SQL, and Docker-based pipelines.
   Українською: GitHub Actions, CI/CD пайплайн, налаштувати CI, створити workflow,
   оптимізувати пайплайн, додати тести в CI, створити деплой, кешування в CI,
   виправити workflow, композитна дія.
@@ -16,7 +15,7 @@ description: >-
 # GitHub Actions Expert
 
 Expert guidance for creating, optimizing, and maintaining GitHub Actions workflows across
-PHP, .NET, JavaScript/TypeScript, and Docker-based projects.
+JavaScript/TypeScript and Docker-based projects.
 
 ## Workflow Design Principles
 
@@ -46,8 +45,8 @@ strategy:
   fail-fast: true
   matrix:
     include:
-      - { os: ubuntu-latest, version: '8.4' }
-      - { os: ubuntu-latest, version: '8.3' }
+      - { os: ubuntu-latest, version: "8.4" }
+      - { os: ubuntu-latest, version: "8.3" }
 ```
 
 ### Path Filtering
@@ -56,9 +55,9 @@ strategy:
 on:
   push:
     paths:
-      - 'src/**'
-      - 'tests/**'
-      - '.github/workflows/ci.yml'
+      - "src/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
 ```
 
 ### Conditional Execution
@@ -82,25 +81,6 @@ permissions:
 ```
 
 ## Caching Strategies
-
-### Composer (PHP)
-
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: vendor
-    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-    restore-keys: ${{ runner.os }}-composer-
-```
-
-### NuGet (.NET)
-
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: ~/.nuget/packages
-    key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-```
 
 ### npm / Node.js
 
@@ -130,13 +110,13 @@ services:
       POSTGRES_DB: testing
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-    ports: ['5432:5432']
+    ports: ["5432:5432"]
     options: >-
       --health-cmd="pg_isready" --health-interval=10s
       --health-timeout=5s --health-retries=3
   redis:
     image: redis:7
-    ports: ['6379:6379']
+    ports: ["6379:6379"]
     options: >-
       --health-cmd="redis-cli ping" --health-interval=10s
       --health-timeout=5s --health-retries=3
@@ -164,7 +144,7 @@ jobs:
   test:
     uses: ./.github/workflows/reusable-test.yml
     with:
-      version: '8.4'
+      version: "8.4"
     secrets: inherit
 ```
 
@@ -177,7 +157,7 @@ Create reusable step groups in `.github/actions/`:
 name: Setup Application
 inputs:
   runtime-version:
-    default: '8.4'
+    default: "8.4"
 runs:
   using: composite
   steps:

@@ -126,7 +126,6 @@ Master code reviewer focused on ensuring code quality, security, performance, an
 - Go concurrent programming and performance optimization
 - Rust memory safety and performance critical code review
 - C# .NET Core patterns and Entity Framework optimization
-- PHP modern frameworks and security best practices
 - Database query optimization across SQL and NoSQL platforms
 
 ### Integration & Automation

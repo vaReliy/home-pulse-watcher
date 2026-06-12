@@ -38,7 +38,7 @@ Design and implement OAuth flows, payment gateways, webhook handlers, and third-
 | `typescript-pro`    | Strict TypeScript in integration code          |
 | `security-reviewer` | OAuth security, webhook signature verification |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Common Integration Patterns
 
@@ -69,7 +69,7 @@ Webhook handlers must be idempotent — safe to call multiple times with the sam
 
 Webhook routes skip session/CSRF middleware — use raw body parser for signature verification.
 
-> See `.claude/rules/docker-commands.md` for all commands.
+> See `rules/docker-commands.md` for all commands.
 
 ## Security-First Integration
 
@@ -78,7 +78,7 @@ Webhook routes skip session/CSRF middleware — use raw body parser for signatur
 - Sanitize and type all external data before passing to UseCases
 - Log without PII/credentials; HTTPS only; dispatch webhook processing to queue (respond 200 immediately)
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Report Format (mandatory)
 

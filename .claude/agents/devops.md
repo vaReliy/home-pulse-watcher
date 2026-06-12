@@ -47,7 +47,7 @@ Manage Docker environments, CI/CD pipelines, and Node.js application infrastruct
 | `security-reviewer` | Secrets, env vars, SSL, access control    |
 | `debugging-wizard`  | Infrastructure issues and troubleshooting |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Project Infrastructure Stack
 
@@ -73,7 +73,7 @@ Dockerfile                      # Application container
 src/config/                     # Typed configuration service
 ```
 
-> See `.claude/rules/docker-commands.md` for all commands.
+> See `rules/docker-commands.md` for all commands.
 
 ## Environment Configuration
 
@@ -96,7 +96,7 @@ src/config/                     # Typed configuration service
 - **Lint matrix** (parallel): tsc, ESLint, Prettier
 - **Test matrix** (after lint): unit, integration, coverage, Stryker mutation (`--coverageAnalysis perTest`)
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Report Format (mandatory)
 

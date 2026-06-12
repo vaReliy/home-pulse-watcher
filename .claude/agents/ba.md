@@ -33,7 +33,7 @@ For each feature, cover: requirements discovery → technical analysis (affected
 | `architecture-designer`                       | System architecture and design decisions              |
 | `ddd-strategic-design`                        | Domain boundaries and bounded contexts                |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Scope Boundary
 

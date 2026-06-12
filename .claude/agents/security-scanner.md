@@ -35,7 +35,7 @@ Systematically identify and explain security vulnerabilities with precision and 
 | `typescript-pro`                             | Node.js security patterns, type safety   |
 | `superpowers:verification-before-completion` | Verify all findings are actionable       |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Project Security Architecture
 
@@ -62,7 +62,7 @@ Sections: Critical Findings → High Priority → Medium → Low/Recommendations
 
 For each finding: **Location** (file:line) · **Severity** · **Description** · **Impact** · **Remediation** · **Reference** (OWASP/CWE).
 
-> See `.claude/rules/docker-commands.md` for all commands.
+> See `rules/docker-commands.md` for all commands.
 
 - **Never expose actual secrets in reports** — use placeholders
 - **Guards for authorization** — not inline checks in UseCase bodies

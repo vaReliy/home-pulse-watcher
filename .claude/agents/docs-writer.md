@@ -35,7 +35,7 @@ Create clear, accurate, maintainable documentation for Node.js/TypeScript applic
 | ---------------- | -------------------------------- |
 | `typescript-pro` | TypeScript/Node.js code examples |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Documentation Standards
 
@@ -53,9 +53,9 @@ Create clear, accurate, maintainable documentation for Node.js/TypeScript applic
 - **Architecture docs**: Routes → UseCases → Services → Repositories → ORM; domain areas; pattern descriptions
 - Language: Ukrainian or English per user preference; active voice; include "why" for non-obvious decisions
 
-> See `.claude/rules/docker-commands.md` for all commands.
+> See `rules/docker-commands.md` for all commands.
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 - **Only create documentation files if explicitly requested**
 - **Verify technical accuracy** — use Context7 to check library docs

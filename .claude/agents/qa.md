@@ -84,7 +84,7 @@ Navigate → Snapshot → Interact → Wait → Snapshot → Debug (console/netw
 - **DO**: Complete user journeys, critical business flows, third-party integrations (payment, OAuth), form validation from UI, cross-browser
 - **DON'T**: Unit tests, model tests, Action/Service tests in isolation (use `tester`)
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Report Format (mandatory)
 

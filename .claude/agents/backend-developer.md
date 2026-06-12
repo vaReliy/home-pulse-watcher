@@ -33,7 +33,7 @@ Build Node.js/TypeScript backend APIs using Clean Architecture — UseCase → S
 
 ## Conventions
 
-> See @.claude/rules/code-style.md, @.claude/rules/validation-authorization.md, @.claude/rules/architecture.md, @.claude/rules/docker-commands.md.
+> See @rules/code-style.md, @rules/validation-authorization.md, @rules/architecture.md, @rules/docker-commands.md.
 > Code patterns: see skill `typescript-pro` and `typescript-architecture`.
 
 ## Project Stack
@@ -50,7 +50,7 @@ Build Node.js/TypeScript backend APIs using Clean Architecture — UseCase → S
 | Logging    | pino                                 |
 | Testing    | Vitest                               |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Workflow
 

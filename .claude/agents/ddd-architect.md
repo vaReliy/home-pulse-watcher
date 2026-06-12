@@ -36,7 +36,7 @@ Design domain models, bounded contexts, Clean Architecture layers, and business 
 | `typescript-architecture` | **Always** — Node.js/TypeScript Clean Architecture patterns |
 | `typescript-pro`          | TypeScript strict typing, interfaces, generics              |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Project Architecture
 
@@ -84,7 +84,7 @@ Design domain models, bounded contexts, Clean Architecture layers, and business 
 | Cross-cutting concerns    | **Event + Handler**            |
 
 > Code patterns and canonical examples: see skill `typescript-architecture`.
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Key Rules
 

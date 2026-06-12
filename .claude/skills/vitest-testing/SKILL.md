@@ -34,12 +34,15 @@ triggers:
 ## Basic Test Structure
 
 ```typescript
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CreatePostUseCase } from '@/use-cases/create-post/create-post.usecase';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { CreatePostUseCase } from "@/use-cases/create-post/create-post.usecase";
 
-describe('CreatePostUseCase', () => {
+describe("CreatePostUseCase", () => {
   let useCase: CreatePostUseCase;
-  let mockRepo: { save: ReturnType<typeof vi.fn>; existsBySlug: ReturnType<typeof vi.fn> };
+  let mockRepo: {
+    save: ReturnType<typeof vi.fn>;
+    existsBySlug: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     mockRepo = {
@@ -49,17 +52,22 @@ describe('CreatePostUseCase', () => {
     useCase = new CreatePostUseCase(mockRepo as any);
   });
 
-  it('creates a post and saves it', async () => {
-    const result = await useCase.execute({ title: 'Test Post', body: 'Content' });
+  it("creates a post and saves it", async () => {
+    const result = await useCase.execute({
+      title: "Test Post",
+      body: "Content",
+    });
 
-    expect(result.title).toBe('Test Post');
+    expect(result.title).toBe("Test Post");
     expect(mockRepo.save).toHaveBeenCalledOnce();
   });
 
-  it('throws ConflictError if slug exists', async () => {
+  it("throws ConflictError if slug exists", async () => {
     mockRepo.existsBySlug.mockResolvedValue(true);
 
-    await expect(useCase.execute({ title: 'Test', body: 'Content' })).rejects.toThrow(ConflictError);
+    await expect(
+      useCase.execute({ title: "Test", body: "Content" }),
+    ).rejects.toThrow(ConflictError);
   });
 });
 ```
@@ -68,31 +76,42 @@ describe('CreatePostUseCase', () => {
 
 ```typescript
 // Mock entire module
-vi.mock('../services/email.service');
+vi.mock("../services/email.service");
 
 // Spy on method
-const spy = vi.spyOn(emailService, 'send').mockResolvedValue(undefined);
-expect(spy).toHaveBeenCalledWith(expect.objectContaining({ to: 'user@example.com' }));
+const spy = vi.spyOn(emailService, "send").mockResolvedValue(undefined);
+expect(spy).toHaveBeenCalledWith(
+  expect.objectContaining({ to: "user@example.com" }),
+);
 ```
 
 ## HTTP Integration Tests
 
 ```typescript
-import supertest from 'supertest';
-import { app } from '@/app';
+import supertest from "supertest";
+import { app } from "@/app";
 
-it('POST /posts returns 201', async () => {
-  const response = await supertest(app).post('/posts').set('Authorization', `Bearer ${testToken}`).send({ title: 'New Post', body: 'Content' });
+it("POST /posts returns 201", async () => {
+  const response = await supertest(app)
+    .post("/posts")
+    .set("Authorization", `Bearer ${testToken}`)
+    .send({ title: "New Post", body: "Content" });
 
   expect(response.status).toBe(201);
-  expect(response.body).toMatchObject({ id: expect.any(String), title: 'New Post' });
+  expect(response.body).toMatchObject({
+    id: expect.any(String),
+    title: "New Post",
+  });
 });
 
-it('POST /posts returns 422 for invalid input', async () => {
-  const response = await supertest(app).post('/posts').set('Authorization', `Bearer ${testToken}`).send({ title: '' });
+it("POST /posts returns 422 for invalid input", async () => {
+  const response = await supertest(app)
+    .post("/posts")
+    .set("Authorization", `Bearer ${testToken}`)
+    .send({ title: "" });
 
   expect(response.status).toBe(422);
-  expect(response.body.fields).toHaveProperty('title');
+  expect(response.body.fields).toHaveProperty("title");
 });
 ```
 

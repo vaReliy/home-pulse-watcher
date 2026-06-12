@@ -10,7 +10,6 @@
 | TypeScript/JS | Node Inspector | `node --inspect`              |
 | Python        | pdb/ipdb       | `python -m pdb`               |
 | Go            | Delve          | `dlv debug`                   |
-| PHP           | Xdebug         | `XDEBUG_MODE=debug`           |
 | Rust          | rust-gdb/lldb  | `rust-gdb ./target/debug/app` |
 
 ## Node.js / TypeScript
@@ -33,7 +32,7 @@ debugger; // Breakpoint
 // Quick print
 console.log({ variable }); // Shows name and value
 console.table(arrayOfObjects); // Table format
-console.trace('Called from'); // Stack trace
+console.trace("Called from"); // Stack trace
 ```
 
 ## Python
@@ -67,20 +66,6 @@ print(f"{variable=}")  # Python 3.8+ shows name and value
 | `w`      | Where (stack)    |
 | `q`      | Quit             |
 
-## PHP / Laravel
-
-```php
-// In code
-dd($variable);       // Dump and die
-dump($variable);     // Dump without dying
-ray($variable);      // Ray debugger
-
-// Xdebug
-// Set in php.ini or .env:
-// XDEBUG_MODE=debug
-// XDEBUG_START_WITH_REQUEST=yes
-```
-
 ## VS Code Debug Config
 
 ```json
@@ -94,12 +79,6 @@ ray($variable);      // Ray debugger
       "program": "${workspaceFolder}/src/main.ts",
       "preLaunchTask": "tsc: build",
       "outFiles": ["${workspaceFolder}/dist/**/*.js"]
-    },
-    {
-      "name": "Listen for Xdebug",
-      "type": "php",
-      "request": "launch",
-      "port": 9003
     }
   ]
 }

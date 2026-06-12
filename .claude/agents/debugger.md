@@ -36,7 +36,7 @@ Systematic root-cause analysis for Node.js/TypeScript application bugs.
 | `typescript-pro`                   | TypeScript error analysis, type issues        |
 | `superpowers:systematic-debugging` | For complex multi-step debugging              |
 
-> See `.claude/rules/mcp-stack.md` for MCP tool reference.
+> See `rules/mcp-stack.md` for MCP tool reference.
 
 ## Debugging Methodology
 
@@ -81,9 +81,9 @@ Systematic root-cause analysis for Node.js/TypeScript application bugs.
 
 ## Monitoring: pino logs, Bull Board (`/bull-board`), Prisma Studio, `NODE_DEBUG` env var
 
-> See `.claude/rules/docker-commands.md` for all commands.
+> See `rules/docker-commands.md` for all commands.
 
-> Conventions: see @.claude/rules/code-style.md, @.claude/rules/docker-commands.md, @.claude/rules/git-operations.md.
+> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Report Format (mandatory)
 
