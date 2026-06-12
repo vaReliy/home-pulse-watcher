@@ -47,5 +47,6 @@ Read when relevant (never preloaded):
 - `rules/docker-commands.md` — running anything in containers
 - `rules/mcp-stack.md` — MCP tool selection
 - `rules/git-operations.md` — PR description rules
+- `docs/KNOWLEDGE_INBOX.md` — append-only inbox for durable-but-unplaced learnings; any AI tool working in the repo may append entries in the 3-line format from `rules/workflow.md`'s Knowledge Inbox section, which also defines the distillation policy
 - `PROJECT_CONTEXT.md` — domain rules, architecture, incident history
 - `README.md` — setup, CLI commands, deployment

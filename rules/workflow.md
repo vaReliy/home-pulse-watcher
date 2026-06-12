@@ -193,6 +193,7 @@ No `tester` or `qa` for infra-only changes.
 | ----------------------------- | ----------------------------------- | --------------------------------------------------------------------- |
 | `CHANGELOG.md`                | **Always**                          | Concise summary of what changed and why; one entry per task           |
 | `PROJECT_CONTEXT.md`          | Architecture/domain changed         | New modules, domain rule changes, infra changes, historical incidents |
+| `docs/KNOWLEDGE_INBOX.md`     | Durable learning, home unclear      | A 3-line entry (see Knowledge Inbox below)                            |
 | Auto-memory (`project` type)  | Non-obvious decision or gotcha      | One-time discoveries that are not in code comments                    |
 | Auto-memory (`feedback` type) | Workflow correction or confirmation | Agent behavior to repeat or avoid                                     |
 
@@ -201,6 +202,7 @@ No `tester` or `qa` for infra-only changes.
 - Changed a UseCase, domain rule, or layer boundary → update `PROJECT_CONTEXT.md`
 - Added a module, endpoint, or schema model → update `PROJECT_CONTEXT.md`
 - Discovered a subtle bug (e.g. buffer size, ISR starvation, PEM newline) → save to auto-memory as `project` type
+- Durable, project-relevant learning whose final home (`PROJECT_CONTEXT.md` / `CLAUDE.md` / a rule / a skill) is unclear → append an entry to `docs/KNOWLEDGE_INBOX.md` (see Knowledge Inbox below). Claude-session-specific gotchas still go to auto-memory; learnings with an obvious home go straight there — the inbox is only for "durable but unplaced".
 - Everything else → `CHANGELOG.md` only
 - If nothing non-obvious was learned → `CHANGELOG.md` only, no auto-memory needed
 
@@ -226,6 +228,35 @@ Example:
 Why: URL contains bucket, object path, expiry, signature — all base64-encoded.
 How to apply: Any char[] buffer holding a GCS signed URL must be ≥ 1024 bytes.
 ```
+
+### Knowledge Inbox (`docs/KNOWLEDGE_INBOX.md`)
+
+An append-only queue for durable, project-relevant learnings whose final home isn't clear yet — the **agent-agnostic memory layer**: any AI tool working in the repo (Claude, Codex, Gemini, Copilot, ...) may append to it, unlike vendor-private auto-memory. It trends toward empty — a queue, not an archive.
+
+If the file doesn't exist yet, create it with this header + format:
+
+```markdown
+# Knowledge Inbox
+
+Append-only queue for durable, project-relevant learnings whose final home isn't clear yet. Distilled into PROJECT_CONTEXT.md / CLAUDE.md / a rule / a skill, then deleted from here — this file should trend toward empty.
+
+## YYYY-MM-DD — [area] short fact
+Why: …
+Belongs in (guess): PROJECT_CONTEXT | CLAUDE.md | rule | skill | discard
+```
+
+Append new entries using the same 3-line format (header line + `Why:` + `Belongs in (guess):`).
+
+**Automatic distillation:** during every Phase 6, check `docs/KNOWLEDGE_INBOX.md`. If it has more than 10 entries or exceeds ~3 KB, distill it as part of this phase (a `cheap`-tier agent may be dispatched for this): move each entry into its permanent home (`PROJECT_CONTEXT.md`, `CLAUDE.md`, a rule, or a skill — or discard if no longer useful), then delete the entry from the inbox. Also distill on explicit request ("distill the knowledge inbox") or at the end of a roadmap phase.
+
+**Hard constraint:** never `@`-reference `docs/KNOWLEDGE_INBOX.md` from `CLAUDE.md` or `AGENTS.md` — that would force-load it into every conversation as noise. Reference it only as a plain path in on-demand indexes.
+
+**Division of labor:**
+
+- Auto-memory — Claude-private workflow preferences / session gotchas (vendor-local, per-machine)
+- `docs/KNOWLEDGE_INBOX.md` — project-durable knowledge **in transit** (agent-agnostic, travels with the repo)
+- `PROJECT_CONTEXT.md` — distilled, stable domain truth
+- `CHANGELOG.md` — what changed and why, per task
 
 ## Team Conventions
 
