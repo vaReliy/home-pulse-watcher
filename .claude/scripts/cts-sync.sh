@@ -60,14 +60,22 @@ NEW_SHA=$(git -C "$SRC_DIR" rev-parse HEAD 2>/dev/null || echo "local")
 
 mapfile -t PAYLOAD < <(grep -vE '^[[:space:]]*(#|$)' "$SRC_DIR/$PAYLOAD_FILE")
 
-# Gitignore-style check: matches exact paths and "dir/" prefixes anywhere in the tree.
+# Gitignore-style check: a bare pattern matches exact paths and "dir/" prefixes
+# anywhere in the tree; a leading "/" anchors it to the project root only
+# (so "/AGENTS.md" protects the root file without shadowing nested ones).
 is_ignored() {
   local p="$1" pat
   [ -f "$IGNORE_FILE" ] || return 1
   while IFS= read -r pat; do
     case "$pat" in ''|'#'*) continue ;; esac
     pat="${pat%/}"
-    case "$p" in "$pat"|"$pat"/*|*/"$pat"|*/"$pat"/*) return 0 ;; esac
+    case "$pat" in
+      /*)
+        pat="${pat#/}"
+        case "$p" in "$pat"|"$pat"/*) return 0 ;; esac ;;
+      *)
+        case "$p" in "$pat"|"$pat"/*|*/"$pat"|*/"$pat"/*) return 0 ;; esac ;;
+    esac
   done < "$IGNORE_FILE"
   return 1
 }
@@ -75,7 +83,7 @@ is_ignored() {
 copy_one() {
   local rel="$1"
   if [ "$CMD" = update ] && is_ignored "$rel"; then
-    echo "skip (ignored): $rel"
+    if [ "$DRY_RUN" = 1 ]; then echo "skip (ignored): $rel"; fi
     return
   fi
   if [ "$DRY_RUN" = 1 ]; then
@@ -113,6 +121,8 @@ if [ "$CMD" = init ]; then
 # .ctsignore — gitignore-syntax paths that `cts-sync.sh update` will never touch.
 # Use for: customized CTS files, pruned CTS files (prevents re-adding them),
 # and project-only additions placed under payload directories.
+# A leading "/" anchors to the project root: "/AGENTS.md" protects only the
+# root file; a bare "AGENTS.md" would also match nested files with that name.
 EOF
   fi
   echo "Done. CTS payload installed at $NEW_SHA."
@@ -127,12 +137,20 @@ else
       [ -e "$SRC_DIR/$rel" ] || is_ignored "$rel" || echo "removed upstream — delete manually if unwanted: $rel"
     done < <(find "./$entry" -type f -print0)
   done
-  if [ "$DRY_RUN" != 1 ]; then
-    if [ -n "$OLD_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ] && git -C "$SRC_DIR" cat-file -e "$OLD_SHA" 2>/dev/null; then
+  # Ignored files are never touched, but silence must not hide upstream drift:
+  # report any .ctsignore'd payload file that changed in CTS since the last sync.
+  if [ -n "$OLD_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ] && git -C "$SRC_DIR" cat-file -e "$OLD_SHA" 2>/dev/null; then
+    while IFS= read -r f; do
+      if is_ignored "$f"; then
+        echo "ignored, but changed upstream — review manually: $f"
+        echo "  git -C $SRC_DIR diff $OLD_SHA..$NEW_SHA -- $f"
+      fi
+    done < <(git -C "$SRC_DIR" diff --name-only "$OLD_SHA" "$NEW_SHA")
+    if [ "$DRY_RUN" != 1 ]; then
       echo "Changes:"
       git -C "$SRC_DIR" log --oneline "$OLD_SHA..$NEW_SHA"
     fi
-    echo "$NEW_SHA" > "$VERSION_FILE"
   fi
+  [ "$DRY_RUN" = 1 ] || echo "$NEW_SHA" > "$VERSION_FILE"
   echo "Done. Review with: git diff"
 fi

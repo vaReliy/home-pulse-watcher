@@ -41,12 +41,17 @@ Per the README's **Install Profile** section:
 
 Append every path deleted or hand-merged in steps 2 and 4 to `.ctsignore` (gitignore syntax, one path per line) so `cts-sync.sh update` never re-adds or overwrites them. Add a short comment above each group explaining why (pruned / customized).
 
-## 6. Verify
+## 6. Bootstrap knowledge inbox
+
+If `docs/KNOWLEDGE_INBOX.md` doesn't exist yet, create it using the template + format in `rules/workflow.md`'s "Knowledge Inbox" section (append-only, agent-agnostic learnings queue). Do not add it to `.ctsignore` — it's project data, not a payload file.
+
+## 7. Verify
 
 - `grep -L 'Report Format' .claude/agents/*.md` → must print nothing for the agents that remain.
 - `.cts-version` and `.ctsignore` both exist.
+- `docs/KNOWLEDGE_INBOX.md` exists.
 - Print a short summary table: columns `installed` / `pruned` / `ignored`, one row per path touched.
 
-## 7. Hand off
+## 8. Hand off
 
 Tell the user to review `git status` / `git diff` and commit themselves — this skill never commits or pushes.

@@ -2,11 +2,11 @@
 # Use for: customized CTS files, pruned CTS files (prevents re-adding them),
 # and project-only additions placed under payload directories.
 #
-# Built during the round-2 adoption gate (2026-06-12). Classification:
-#   pruned     = exists in CTS, deliberately deleted in HPW (D8, no frontend)
+# Built during CTS template adoption (2026-06-12). Classification:
+#   pruned     = exists in CTS, deliberately deleted in HPW (no frontend here)
 #   customized = exists in both, HPW content intentionally differs from CTS
 
-# pruned — D8: HPW has no frontend; re-add from CTS if a UI ever appears
+# pruned — HPW has no frontend/UI; re-add from CTS if a UI ever appears
 .claude/agents/vue-developer.md
 .claude/agents/react-developer.md
 .claude/agents/angular-developer.md
@@ -16,9 +16,11 @@
 
 # customized — HPW's AGENTS.md/CLAUDE.md split carries HPW's actual stack
 # (NestJS/Nx/ESP32), caveman communication style, embedded-cpp routing,
-# task-file naming rule (D9), and a trimmed Skills/Routing table (no frontend).
-AGENTS.md
-CLAUDE.md
+# HPW's task-file naming rule, and a trimmed Skills/Routing table (no frontend).
+# Leading "/" anchors to repo root so nested payload files with the same name
+# (e.g. .claude/skills/postgres-best-practices/AGENTS.md) still receive updates.
+/AGENTS.md
+/CLAUDE.md
 
 # customized — HPW settings.json wires Nx/superpowers plugins, ESP32 secrets
 # deny-list, and project-specific lint/format hooks; not a generic CTS config.
@@ -32,17 +34,15 @@ rules/migrations-queue.md
 rules/testing.md
 rules/validation-authorization.md
 
-# customized — HPW workflow.md trimmed to backend-only pipelines (D3/D8):
+# customized — HPW workflow.md trimmed to backend-only pipelines:
 # no frontend swimlanes, conditional quality gate already applied.
 rules/workflow.md
 
-# customized — HPW already fixed stale skill references that CTS's agent
-# files haven't caught up to yet (dba/qa referenced deleted
-# database-optimizer/postgresql/playwright-skill); reviewer/tester also
-# had their Vue/React/Angular rows pruned per D8. queue-specialist uses
-# HPW's single-quote code style (see rules/code-style.md note above).
-.claude/agents/dba.md
-.claude/agents/qa.md
+# customized — reviewer/tester had their Vue/React/Angular rows pruned (no
+# frontend here); queue-specialist uses HPW's single-quote code style (see
+# rules/code-style.md note above). dba.md/qa.md were removed from this list
+# once CTS adopted HPW's stale-skill-reference fixes — those files are
+# byte-identical, CTS-owned again.
 .claude/agents/reviewer.md
 .claude/agents/tester.md
 .claude/agents/queue-specialist.md
