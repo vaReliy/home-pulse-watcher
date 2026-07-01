@@ -26,7 +26,7 @@
 ### RED: Write One Minimal Failing Test
 
 ```typescript
-it("should return 0 for empty array", () => {
+it('should return 0 for empty array', () => {
   expect(sum([])).toBe(0);
 });
 // Run: ✗ FAIL - sum is not defined

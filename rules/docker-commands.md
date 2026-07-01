@@ -22,30 +22,43 @@ docker compose exec app npx typeorm migration:revert
 
 ## Code Quality
 
+Use nx targets (see `rules/workflow.md` → Command Execution Policy). Run them locally — they do not need a Docker context:
+
 ```bash
-docker compose exec app npx eslint .
-docker compose exec app npx eslint . --fix
-docker compose exec app npx prettier --check .
-docker compose exec app npx prettier --write .
-docker compose exec app npx tsc --noEmit
+nx lint api                        # ESLint via nx
+nx lint api --fix                  # auto-fix
+nx build api --skip-nx-cache       # type-check + build
+nx run-many --target=lint          # lint all projects
 ```
 
-## Testing (Vitest)
+Prettier is workspace-wide and has no nx target — run directly from the workspace root:
 
 ```bash
-docker compose exec app npx vitest run
-docker compose exec app npx vitest run --coverage
-docker compose exec app npx vitest run --reporter=verbose
-docker compose exec app npx vitest run src/use-cases/create-post/create-post.spec.ts
+npx prettier --check .
+npx prettier --write .
+```
+
+## Testing
+
+Use nx targets locally (see `rules/workflow.md` → Command Execution Policy):
+
+```bash
+nx test api                         # vitest via nx
+nx test api --skip-nx-cache         # bypass cache
+nx run-many --target=test           # all projects
+```
+
+Stryker mutation testing has no nx plugin — run inside Docker:
+
+```bash
 docker compose exec app npx stryker run
 ```
 
-## Build & Runtime
+## Build & Dev Server
 
 ```bash
-docker compose exec app npm run build
-docker compose exec app npm run dev
-docker compose exec app npm run start
+nx build api                        # production build
+nx serve api                        # dev server with watch
 ```
 
 ## Package Management

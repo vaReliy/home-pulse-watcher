@@ -34,15 +34,30 @@ rules/migrations-queue.md
 rules/testing.md
 rules/validation-authorization.md
 
-# customized — HPW workflow.md trimmed to backend-only pipelines:
-# no frontend swimlanes, conditional quality gate already applied.
+# customized — HPW workflow.md is process content re-merged from upstream on
+# 2026-07-01 (Foresight gate, Nx Command Execution Policy, sequential quality
+# gate, severity floor, CLAUDE_TS_CHANGELOG knowledge routing), then
+# frontend-pruned (no impl-team/frontend swimlanes, no Vue/React/Angular rows).
+# WARNING: whole-file ignore froze this at mid-June content for ~2 weeks before
+# the drift was caught — re-diff against upstream periodically (e.g. every
+# /cts-update), don't assume "customized" means "never touch again".
 rules/workflow.md
 
 # customized — reviewer/tester had their Vue/React/Angular rows pruned (no
 # frontend here); queue-specialist uses HPW's single-quote code style (see
 # rules/code-style.md note above). dba.md/qa.md were removed from this list
 # once CTS adopted HPW's stale-skill-reference fixes — those files are
-# byte-identical, CTS-owned again.
+# byte-identical, CTS-owned again. tester.md's "Vitest" wording was also
+# corrected to "Jest" here (2026-07-01) — see vitest-testing note below.
 .claude/agents/reviewer.md
 .claude/agents/tester.md
 .claude/agents/queue-specialist.md
+
+# customized — HPW is pure Jest (jest.config.ts/.cts in every app/lib,
+# jest/ts-jest/@swc/jest deps, zero vitest in package.json). CTS's
+# vitest-testing skill body was Vitest-only despite claiming "(or Jest)"
+# support; examples rewritten to Jest APIs (jest.fn/jest.mock, no `vitest`
+# import) here on 2026-07-01. Candidate to contribute upstream later as a
+# wider vitest-or-jest skill, or split into two — not yet. See
+# docs/CLAUDE_TS_CHANGELOG.md.
+.claude/skills/vitest-testing/

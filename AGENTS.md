@@ -27,11 +27,11 @@ Details: `rules/code-style.md`.
 
 Generic tiers used across rules and task files; each AI vendor maps them to concrete models.
 
-| Tier     | Use for                                                                 | Claude mapping |
-| -------- | ------------------------------------------------------------------------ | --------------- |
-| deep     | Rare cascading decisions (architecture), hardest root-cause debugging   | opus            |
-| standard | Implementation, review, tests, requirements, security checklists        | sonnet          |
-| cheap    | Mechanical/template work: docs, config edits, deletions                 | haiku           |
+| Tier     | Use for                                                               | Claude mapping |
+| -------- | --------------------------------------------------------------------- | -------------- |
+| deep     | Rare cascading decisions (architecture), hardest root-cause debugging | opus           |
+| standard | Implementation, review, tests, requirements, security checklists      | sonnet         |
+| cheap    | Mechanical/template work: docs, config edits, deletions               | haiku          |
 
 Other vendors (Gemini, Codex, Copilot): mappings added when those tools are actually used.
 

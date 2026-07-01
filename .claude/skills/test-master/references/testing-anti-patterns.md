@@ -13,17 +13,17 @@
 
 ```typescript
 // ❌ BAD: Testing the mock, not the behavior
-it("should call the API", () => {
-  const mockApi = jest.fn().mockResolvedValue({ data: "test" });
+it('should call the API', () => {
+  const mockApi = jest.fn().mockResolvedValue({ data: 'test' });
   service.getUser(1);
   expect(mockApi).toHaveBeenCalledWith(1); // Testing mock, not result
 });
 
 // ✅ GOOD: Testing actual behavior
-it("should return user data from API", async () => {
-  const mockApi = jest.fn().mockResolvedValue({ id: 1, name: "Alice" });
+it('should return user data from API', async () => {
+  const mockApi = jest.fn().mockResolvedValue({ id: 1, name: 'Alice' });
   const user = await service.getUser(1);
-  expect(user.name).toBe("Alice"); // Testing actual output
+  expect(user.name).toBe('Alice'); // Testing actual output
 });
 ```
 
@@ -47,9 +47,9 @@ function createFreshCache(): UserCache {
 
 ```typescript
 // ❌ BAD: Mocking everything
-jest.mock("./inventory");
-jest.mock("./payment");
-jest.mock("./shipping");
+jest.mock('./inventory');
+jest.mock('./payment');
+jest.mock('./shipping');
 // What did we actually test?
 
 // ✅ GOOD: Strategic mocking
@@ -61,11 +61,11 @@ const payment = mockPaymentGateway(); // Mock only external
 
 ```typescript
 // ❌ BAD: Incomplete mock
-mockResolvedValue({ id: 1, name: "Test" });
+mockResolvedValue({ id: 1, name: 'Test' });
 // Missing: email, createdAt, permissions...
 
 // ✅ GOOD: Use factories
-mockResolvedValue(createMockUser({ name: "Test" }));
+mockResolvedValue(createMockUser({ name: 'Test' }));
 ```
 
 ### Anti-Pattern 5: Tests as Afterthought
@@ -74,11 +74,9 @@ mockResolvedValue(createMockUser({ name: "Test" }));
 // ❌ BAD: "We'll add tests later" (Day 30: catastrophic bug)
 
 // ✅ GOOD: Tests ship with feature
-it("should reject duplicate usernames", async () => {
-  await createUser({ username: "alice" });
-  await expect(createUser({ username: "alice" })).rejects.toThrow(
-    "Username already exists",
-  );
+it('should reject duplicate usernames', async () => {
+  await createUser({ username: 'alice' });
+  await expect(createUser({ username: 'alice' })).rejects.toThrow('Username already exists');
 });
 ```
 

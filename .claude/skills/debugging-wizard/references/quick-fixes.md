@@ -14,7 +14,7 @@ user.profile.name;
 user?.profile?.name;
 
 // Fix: Default value
-user?.profile?.name ?? "Unknown";
+user?.profile?.name ?? 'Unknown';
 
 // Fix: Guard clause
 if (!user?.profile) {
@@ -34,7 +34,7 @@ fetchData().then(process);
 fetchData()
   .then(process)
   .catch((error) => {
-    console.error("Fetch failed:", error);
+    console.error('Fetch failed:', error);
   });
 
 // Fix: try/catch with await
@@ -42,7 +42,7 @@ try {
   const data = await fetchData();
   await process(data);
 } catch (error) {
-  console.error("Operation failed:", error);
+  console.error('Operation failed:', error);
 }
 ```
 
@@ -83,12 +83,12 @@ npm install
 ```typescript
 // Error: await in non-async function
 function getData() {
-  const data = await fetch("/api"); // SyntaxError!
+  const data = await fetch('/api'); // SyntaxError!
 }
 
 // Fix: Mark function as async
 async function getData() {
-  const data = await fetch("/api");
+  const data = await fetch('/api');
 }
 
 // Error: forEach doesn't await

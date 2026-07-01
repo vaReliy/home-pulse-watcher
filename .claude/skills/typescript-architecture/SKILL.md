@@ -51,7 +51,7 @@ export class CreatePostUseCase {
     const slug = this.slugService.generate(dto.title);
 
     if (await this.postRepository.existsBySlug(slug)) {
-      throw new ConflictError("Slug already exists");
+      throw new ConflictError('Slug already exists');
     }
 
     const post = new Post({ ...dto, slug });
@@ -70,8 +70,8 @@ export class SlugService {
   generate(title: string): string {
     return title
       .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
   }
 }
 ```
@@ -118,11 +118,7 @@ Constructor injection (works with NestJS, tsyringe, inversify, or manual wiring)
 // Manual wiring (no framework)
 const postRepository = new PrismaPostRepository(prisma);
 const slugService = new SlugService();
-const createPostUseCase = new CreatePostUseCase(
-  postRepository,
-  slugService,
-  eventBus,
-);
+const createPostUseCase = new CreatePostUseCase(postRepository, slugService, eventBus);
 ```
 
 ## Directory Structure

@@ -1,6 +1,6 @@
 ---
 name: docker-expert
-description: "Docker containerization expert with deep knowledge of multi-stage builds, image optimization, container security, Docker Compose orchestration, and production deployment patterns. Use PROACTIVELY f... Українською: Експерт з Docker, контейнеризація, оптимізація образів, безпека, Docker Compose, multi-stage збірка, мережі Docker, volume, налаштувати контейнер, запустити образ, docker-compose файл."
+description: 'Docker containerization expert with deep knowledge of multi-stage builds, image optimization, container security, Docker Compose orchestration, and production deployment patterns. Use PROACTIVELY f... Українською: Експерт з Docker, контейнеризація, оптимізація образів, безпека, Docker Compose, multi-stage збірка, мережі Docker, volume, налаштувати контейнер, запустити образ, docker-compose файл.'
 category: devops
 color: blue
 displayName: Docker Expert
@@ -146,7 +146,7 @@ USER 1001
 **Production-ready compose pattern:**
 
 ```yaml
-version: "3.8"
+version: '3.8'
 services:
   app:
     build:
@@ -159,7 +159,7 @@ services:
       - frontend
       - backend
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -167,10 +167,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: '0.5'
           memory: 512M
         reservations:
-          cpus: "0.25"
+          cpus: '0.25'
           memory: 256M
 
   db:
@@ -188,7 +188,7 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -259,7 +259,7 @@ services:
       - NODE_ENV=development
       - DEBUG=app:*
     ports:
-      - "9229:9229" # Debug port
+      - '9229:9229' # Debug port
     command: npm run dev
 ```
 
@@ -280,10 +280,10 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.0"
+          cpus: '1.0'
           memory: 1G
         reservations:
-          cpus: "0.5"
+          cpus: '0.5'
           memory: 512M
       restart_policy:
         condition: on-failure

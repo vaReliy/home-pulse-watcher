@@ -120,9 +120,9 @@ env:
 on:
   push:
     paths:
-      - "packages/api/**"
-      - "packages/shared/**"
-      - ".github/workflows/api.yml"
+      - 'packages/api/**'
+      - 'packages/shared/**'
+      - '.github/workflows/api.yml'
 ```
 
 ### Detect Changed Packages
@@ -147,7 +147,7 @@ on:
 ```yaml
 on:
   push:
-    tags: ["v*"]
+    tags: ['v*']
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -178,7 +178,7 @@ jobs:
 ```yaml
 on:
   schedule:
-    - cron: "0 8 * * 1"
+    - cron: '0 8 * * 1'
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -192,7 +192,7 @@ jobs:
 ```yaml
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: '0 6 * * *'
 jobs:
   trivy:
     runs-on: ubuntu-latest
@@ -201,7 +201,7 @@ jobs:
       - uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
-          severity: "HIGH,CRITICAL"
+          severity: 'HIGH,CRITICAL'
 ```
 
 ## PR Automation

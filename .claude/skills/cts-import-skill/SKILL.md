@@ -5,7 +5,7 @@ description: "Maintainer flow for importing an external skill (GitHub URL, owner
 
 # /cts-import-skill
 
-Invocation: `/cts-import-skill <github-url | owner/repo/path | local-path>`. This is **maintainer-side**: it curates the skills that ship *inside* CTS itself, not skills installed into a consumer project (that's `/cts-update`'s job via the payload).
+Invocation: `/cts-import-skill <github-url | owner/repo/path | local-path>`. This is **maintainer-side**: it curates the skills that ship _inside_ CTS itself, not skills installed into a consumer project (that's `/cts-update`'s job via the payload).
 
 ## 1. Guard
 

@@ -17,6 +17,15 @@ tools:
 
 Surgical, high-impact refactoring that improves code quality while maintaining business logic integrity.
 
+## Pre-flight
+
+Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated project-specific conventions and discovered issues that apply to all agents.
+
+Before writing or modifying any code, additionally read:
+
+- `rules/architecture.md`
+- `rules/code-style.md`
+
 ## Scope Boundary
 
 | This Agent (Refactoring) | Backend Developer   | DBA Agent           |
@@ -87,5 +96,6 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Exact file paths, identifiers, error text — verbatim, never paraphrased.
 - Lead with verdict/result; details after.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
+- If you discovered something durable and non-obvious (config recipe, wrong-pattern gotcha, test anti-pattern, library constraint), add a `## Learnings` section at the end of your report — the orchestrator records it in `docs/KNOWLEDGE_INBOX.md`.
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed
   by next phase, PR descriptions — these stay complete and precise.

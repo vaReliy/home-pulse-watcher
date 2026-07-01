@@ -5,8 +5,8 @@
 ```yaml
 - uses: actions/setup-node@v4
   with:
-    node-version: "22"
-    cache: "npm"
+    node-version: '22'
+    cache: 'npm'
 ```
 
 ### With .nvmrc
@@ -14,8 +14,8 @@
 ```yaml
 - uses: actions/setup-node@v4
   with:
-    node-version-file: ".nvmrc"
-    cache: "npm"
+    node-version-file: '.nvmrc'
+    cache: 'npm'
 ```
 
 ## Basic CI
@@ -28,8 +28,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: '22'
+          cache: 'npm'
       - run: npm ci
       - run: npm run lint
       - run: npm run type-check
@@ -48,8 +48,8 @@ lint:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: "22"
-        cache: "npm"
+        node-version: '22'
+        cache: 'npm'
     - run: npm ci
     - run: npx eslint . --max-warnings=0
 ```
@@ -69,8 +69,8 @@ type-check:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: "22"
-        cache: "npm"
+        node-version: '22'
+        cache: 'npm'
     - run: npm ci
     - run: npx tsc --noEmit
 ```
@@ -86,8 +86,8 @@ test:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: "22"
-        cache: "npm"
+        node-version: '22'
+        cache: 'npm'
     - run: npm ci
     - run: npx vitest run --coverage
     - uses: codecov/codecov-action@v4
@@ -112,8 +112,8 @@ e2e:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: "22"
-        cache: "npm"
+        node-version: '22'
+        cache: 'npm'
     - run: npm ci
     - run: npx playwright install --with-deps chromium
     - run: npx playwright test
@@ -135,8 +135,8 @@ build:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: "22"
-        cache: "npm"
+        node-version: '22'
+        cache: 'npm'
     - run: npm ci
     - run: npm run build
     - uses: actions/upload-artifact@v4
@@ -158,8 +158,8 @@ publish:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
-        node-version: "22"
-        registry-url: "https://registry.npmjs.org"
+        node-version: '22'
+        registry-url: 'https://registry.npmjs.org'
     - run: npm ci
     - run: npm publish --provenance --access public
       env:
@@ -172,14 +172,14 @@ publish:
 strategy:
   fail-fast: true
   matrix:
-    node: ["20", "22"]
+    node: ['20', '22']
     os: [ubuntu-latest, macos-latest]
 runs-on: ${{ matrix.os }}
 steps:
   - uses: actions/setup-node@v4
     with:
       node-version: ${{ matrix.node }}
-      cache: "npm"
+      cache: 'npm'
   - run: npm ci
   - run: npm test
 ```

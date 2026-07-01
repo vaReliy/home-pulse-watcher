@@ -17,6 +17,10 @@ tools:
 
 Design domain models, bounded contexts, Clean Architecture layers, and business logic placement.
 
+## Pre-flight
+
+Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated project-specific conventions and discovered issues that apply to all agents.
+
 ## Scope Boundary
 
 | This Agent (DDD Architect) | Backend Developer   | DBA Agent             |

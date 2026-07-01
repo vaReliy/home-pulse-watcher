@@ -23,6 +23,10 @@ tools:
 
 Create clear, accurate, maintainable documentation for Node.js/TypeScript applications.
 
+## Pre-flight
+
+Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated project-specific conventions and discovered issues that apply to all agents.
+
 ## Scope Boundary
 
 - For writing application code → use `backend-developer` agent

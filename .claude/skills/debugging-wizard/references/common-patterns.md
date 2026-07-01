@@ -54,11 +54,11 @@ const last = array[array.length - 1];
 const name = user.profile.name;
 
 // FIX: Optional chaining
-const name = user?.profile?.name ?? "Unknown";
+const name = user?.profile?.name ?? 'Unknown';
 
 // FIX: Guard clause
 if (!user?.profile) {
-  return "Unknown";
+  return 'Unknown';
 }
 return user.profile.name;
 ```
@@ -68,13 +68,13 @@ return user.profile.name;
 ```typescript
 // BUG: Listener never removed
 useEffect(() => {
-  window.addEventListener("resize", handleResize);
+  window.addEventListener('resize', handleResize);
 }, []);
 
 // FIX: Cleanup function
 useEffect(() => {
-  window.addEventListener("resize", handleResize);
-  return () => window.removeEventListener("resize", handleResize);
+  window.addEventListener('resize', handleResize);
+  return () => window.removeEventListener('resize', handleResize);
 }, []);
 ```
 

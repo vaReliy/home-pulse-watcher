@@ -21,9 +21,9 @@ class Login implements Task {
     private password: string,
   ) {}
   async performAs(actor: Actor) {
-    await actor.page.getByLabel("Email").fill(this.email);
-    await actor.page.getByLabel("Password").fill(this.password);
-    await actor.page.getByRole("button", { name: "Login" }).click();
+    await actor.page.getByLabel('Email').fill(this.email);
+    await actor.page.getByLabel('Password').fill(this.password);
+    await actor.page.getByRole('button', { name: 'Login' }).click();
   }
 }
 ```
@@ -36,7 +36,7 @@ async function findElement(page: Page, strategies: string[]): Promise<Locator> {
     const el = page.locator(selector);
     if ((await el.count()) > 0) return el;
   }
-  throw new Error(`Not found: ${strategies.join(", ")}`);
+  throw new Error(`Not found: ${strategies.join(', ')}`);
 }
 ```
 

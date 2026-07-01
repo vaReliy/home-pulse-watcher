@@ -32,7 +32,7 @@ debugger; // Breakpoint
 // Quick print
 console.log({ variable }); // Shows name and value
 console.table(arrayOfObjects); // Table format
-console.trace("Called from"); // Stack trace
+console.trace('Called from'); // Stack trace
 ```
 
 ## Python

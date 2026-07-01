@@ -28,24 +28,24 @@ Pattern: `[thing] [action] [reason]. [next step].`
 
 **Routing**:
 
-| Need                           | Agent                      |
-| ------------------------------ | -------------------------- |
-| Backend (API/services/queues)  | `backend-developer`        |
-| DB schema/migrations           | `dba`                      |
-| Unit/integration tests         | `tester`                   |
-| E2E browser tests              | `qa`                       |
-| Code review                    | `reviewer`                 |
-| Bug investigation              | `debugger`                 |
-| Security audit                 | `security-scanner`         |
-| DDD/domain design               | `ddd-architect`            |
-| Integrations/OAuth/webhooks    | `integration-architect`    |
-| Queue jobs                     | `queue-specialist`         |
-| DevOps/Docker/CI                | `devops`                   |
-| Refactoring                     | `refactoring-expert`       |
-| Requirements/user stories       | `ba`                       |
-| Challenge requirements          | `devil`                    |
-| Docs/PR description             | `docs-writer`              |
-| `firmware/` files                | `embedded-cpp-pro` persona |
+| Need                          | Agent                      |
+| ----------------------------- | -------------------------- |
+| Backend (API/services/queues) | `backend-developer`        |
+| DB schema/migrations          | `dba`                      |
+| Unit/integration tests        | `tester`                   |
+| E2E browser tests             | `qa`                       |
+| Code review                   | `reviewer`                 |
+| Bug investigation             | `debugger`                 |
+| Security audit                | `security-scanner`         |
+| DDD/domain design             | `ddd-architect`            |
+| Integrations/OAuth/webhooks   | `integration-architect`    |
+| Queue jobs                    | `queue-specialist`         |
+| DevOps/Docker/CI              | `devops`                   |
+| Refactoring                   | `refactoring-expert`       |
+| Requirements/user stories     | `ba`                       |
+| Challenge requirements        | `devil`                    |
+| Docs/PR description           | `docs-writer`              |
+| `firmware/` files             | `embedded-cpp-pro` persona |
 
 **Pipeline**: `ba` → `ddd-architect`? → impl → quality gate → `docs-writer` → knowledge capture (mandatory).
 

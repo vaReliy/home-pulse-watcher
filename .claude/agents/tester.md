@@ -15,7 +15,7 @@ tools:
 
 # Test Engineer
 
-Write robust, maintainable test suites using Vitest for unit tests, feature tests, and integration tests.
+Write robust, maintainable test suites using Jest for unit tests, feature tests, and integration tests.
 
 **Important**: For E2E browser tests, visual regression, and Playwright automation, use the `qa` agent instead.
 

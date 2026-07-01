@@ -45,8 +45,8 @@ strategy:
   fail-fast: true
   matrix:
     include:
-      - { os: ubuntu-latest, version: "8.4" }
-      - { os: ubuntu-latest, version: "8.3" }
+      - { os: ubuntu-latest, version: '8.4' }
+      - { os: ubuntu-latest, version: '8.3' }
 ```
 
 ### Path Filtering
@@ -55,9 +55,9 @@ strategy:
 on:
   push:
     paths:
-      - "src/**"
-      - "tests/**"
-      - ".github/workflows/ci.yml"
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci.yml'
 ```
 
 ### Conditional Execution
@@ -110,13 +110,13 @@ services:
       POSTGRES_DB: testing
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-    ports: ["5432:5432"]
+    ports: ['5432:5432']
     options: >-
       --health-cmd="pg_isready" --health-interval=10s
       --health-timeout=5s --health-retries=3
   redis:
     image: redis:7
-    ports: ["6379:6379"]
+    ports: ['6379:6379']
     options: >-
       --health-cmd="redis-cli ping" --health-interval=10s
       --health-timeout=5s --health-retries=3
@@ -144,7 +144,7 @@ jobs:
   test:
     uses: ./.github/workflows/reusable-test.yml
     with:
-      version: "8.4"
+      version: '8.4'
     secrets: inherit
 ```
 
@@ -157,7 +157,7 @@ Create reusable step groups in `.github/actions/`:
 name: Setup Application
 inputs:
   runtime-version:
-    default: "8.4"
+    default: '8.4'
 runs:
   using: composite
   steps:

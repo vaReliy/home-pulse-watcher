@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "22", cache: "npm" }
+        with: { node-version: '22', cache: 'npm' }
       - run: npm ci
       - run: npx tsc --noEmit
 
@@ -96,7 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "22", cache: "npm" }
+        with: { node-version: '22', cache: 'npm' }
       - run: npm ci
       - run: npx eslint .
       - run: npx prettier --check .
@@ -118,7 +118,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: "22", cache: "npm" }
+        with: { node-version: '22', cache: 'npm' }
       - run: npm ci
       - run: npx vitest run --coverage
 ```
@@ -131,9 +131,9 @@ Use a typed config service — never raw `process.env` in application code:
 
 ```typescript
 export class Config {
-  readonly port = parseInt(process.env.PORT ?? "3000", 10);
-  readonly databaseUrl = this.require("DATABASE_URL");
-  readonly redisUrl = this.require("REDIS_URL");
+  readonly port = parseInt(process.env.PORT ?? '3000', 10);
+  readonly databaseUrl = this.require('DATABASE_URL');
+  readonly redisUrl = this.require('REDIS_URL');
 
   private require(key: string): string {
     const value = process.env[key];

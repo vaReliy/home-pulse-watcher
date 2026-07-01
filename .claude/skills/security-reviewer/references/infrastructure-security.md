@@ -19,8 +19,8 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
       - uses: aquasecurity/trivy-action@master
         with:
-          scan-type: "fs"
-          severity: "CRITICAL,HIGH"
+          scan-type: 'fs'
+          severity: 'CRITICAL,HIGH'
 ```
 
 ### Infrastructure as Code Security
@@ -117,8 +117,8 @@ spec:
           drop: [ALL]
       resources:
         limits:
-          memory: "128Mi"
-          cpu: "500m"
+          memory: '128Mi'
+          cpu: '500m'
 ---
 # Network Policy - Default deny
 apiVersion: networking.k8s.io/v1
@@ -210,11 +210,11 @@ metadata:
 spec:
   provider:
     vault:
-      server: "https://vault.example.com"
-      path: "secret"
+      server: 'https://vault.example.com'
+      path: 'secret'
       auth:
         kubernetes:
-          role: "app-role"
+          role: 'app-role'
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
@@ -247,8 +247,8 @@ filebeat.inputs:
       environment: production
 
 output.elasticsearch:
-  hosts: ["elasticsearch:9200"]
-  index: "security-logs-%{+yyyy.MM.dd}"
+  hosts: ['elasticsearch:9200']
+  index: 'security-logs-%{+yyyy.MM.dd}'
 ```
 
 ## Quick Reference
