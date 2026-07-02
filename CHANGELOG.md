@@ -9,6 +9,10 @@
 - **AI config**: Slimmed `.claude/agents/*.md` frontmatter `description:` fields (removed `<example>` blocks, compressed UA trigger keyword lists to 4–5 terms) — these are loaded into every message, so smaller is cheaper. Downgraded `ba`, `devil`, `security-scanner` from `opus` to `sonnet` (kept `opus` for `ddd-architect` and `debugger`, where wrong answers/retries are costlier). Added a mandatory "Report Format" section to every agent body for terse, structured reports back to the orchestrator.
 - **AI config**: Pruned frontend agents/skills (`vue-developer`/`react-developer`/`angular-developer`, `vue-expert`/`react-expert`/`angular-expert` — no UI in this repo) and duplicate skills (`playwright-skill`, `postgresql`, `database-optimizer`); removed non-TS examples from `github-actions` skill; fixed broken `description:` frontmatter on `playwright-expert` and `security-reviewer` skills that prevented correct trigger matching.
 
+### Tests
+
+- **Firmware/OTA**: Added boundary tests (`libs/firmware-shared/test/test_ota/test_ota.cpp`) for the silent URL-truncation guard in `ota.cpp` (`strlen(url) == sizeof(url) - 1`): a 1023-char URL now asserted to return `CheckResult::ParseError`, a 1022-char URL asserted to parse successfully. The guard itself was already shipped in `86b39e4`; only test coverage was missing (task `tmp/tasks/todo/2026-05-23-02-ota-url-buffer-truncation-check.md` predated that commit).
+
 ### Refactoring
 
 - **Telegram bot**: Applied "Introduce Parameter Object" to `MessageFormatter.formatPowerLost`/`formatPowerRestored` and `PowerStatusListener.formatNotificationMessage`, replacing repeated 5–6 positional params (including adjacent same-typed `locale?`/`timezone?` strings — a transposition risk) with a shared `PowerEventMessageParams` interface. Pure structural change; no behavior or null-check semantics altered.
