@@ -90,7 +90,7 @@ After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CON
 
 ## Task Files (HPW-only)
 
-Plan/task files: name `YYYY-MM-DD-hh-mm-NN[-slug].md`, default location `tmp/tasks/todo/`. Move to `tmp/tasks/done/` when completed.
+Plan/task files: name `YYYY-MM-DD-NN[-slug].md`, default location `tmp/tasks/todo/`. Full format (5-row header + sections) in `rules/task-authoring.md`. Move to `tmp/tasks/done/` when completed.
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
