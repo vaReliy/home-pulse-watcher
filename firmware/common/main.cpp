@@ -357,6 +357,14 @@ void setup() {
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(led, lastPowerStatus);
 
+#if HAS_UPS_MODULE
+    // Prime battery cache before the first sendPowerStatus() call — without this,
+    // lastBatteryAdcValue would still hold its 0 initializer (no heartbeat has run yet)
+    // and the boot-time send would ship a literal 0mV battery reading.
+    lastBatteryAdcValue = readBatteryVoltage();
+    Serial.printf("Initial battery: %dmV\n", lastBatteryAdcValue);
+#endif
+
     // Send initial status with retries (first TCP connection after WiFi often fails — ARP not yet cached)
     bool initialSendOk = false;
     for (int attempt = 1; attempt <= INITIAL_SEND_RETRIES; attempt++) {
@@ -487,6 +495,12 @@ void loop() {
                 lastPowerStatus, decision.newCommitted, lastAdcValue, adcBand);
             lastPowerStatus = decision.newCommitted;
             updateStatusLed(led, lastPowerStatus);
+
+#if HAS_UPS_MODULE
+            // Refresh battery cache before send — a heartbeat may not have fired since boot
+            // (e.g. device rebooted mid-outage), leaving lastBatteryAdcValue stale/0 otherwise.
+            lastBatteryAdcValue = readBatteryVoltage();
+#endif
 
             if (currentTime - lastSendTime >= MIN_STATE_CHANGE_MS) {
                 if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {

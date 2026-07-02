@@ -286,6 +286,33 @@ describe('MessageFormatter', () => {
       expect(result).toContain('4\\.20');
       expect(result).toContain('100');
     });
+
+    // Repro: same invalid-reading guard as appendBatteryLine, but
+    // formatDeviceStatus has its own separate `> 0` check (line 75) that is
+    // not covered by the appendBatteryLine-based tests below.
+    it('should not include battery line when batteryVoltage is 0 (invalid reading)', () => {
+      const device = makeDevice({ batteryVoltage: 0 });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).not.toContain('Battery');
+      expect(result).not.toContain('🔋');
+    });
+
+    it('should not include battery line when batteryVoltage is negative (invalid reading)', () => {
+      const device = makeDevice({ batteryVoltage: -1 });
+      const result = formatter.formatDeviceStatus(
+        device,
+        null,
+        'en',
+        'Europe/Kyiv',
+      );
+      expect(result).not.toContain('Battery');
+      expect(result).not.toContain('🔋');
+    });
   });
 
   describe('formatPowerLost with battery', () => {
@@ -312,6 +339,35 @@ describe('MessageFormatter', () => {
       });
       expect(result).toContain('🔋');
       expect(result).toContain('3\\.85');
+    });
+
+    // Repro: device reports batteryVoltage=0 (stale/uninitialised firmware reading
+    // before first heartbeat). 0 mV is physically implausible for a live device and
+    // must be treated as "no reading", matching the SOS guard (batteryVoltage > 0)
+    // in ProcessPowerStatusService. Should NOT render "0.00V (0%)".
+    it('should not include battery info when batteryVoltage is 0 (invalid reading)', () => {
+      const result = formatter.formatPowerLost({
+        deviceLabel: 'Kitchen',
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+        durationSeconds: null,
+        locale: 'en',
+        timezone: 'Europe/Kyiv',
+        batteryVoltage: 0,
+      });
+      expect(result).not.toContain('🔋');
+      expect(result).not.toContain('0\\.00');
+    });
+
+    it('should not include battery info when batteryVoltage is negative (invalid reading)', () => {
+      const result = formatter.formatPowerLost({
+        deviceLabel: 'Kitchen',
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+        durationSeconds: null,
+        locale: 'en',
+        timezone: 'Europe/Kyiv',
+        batteryVoltage: -50,
+      });
+      expect(result).not.toContain('🔋');
     });
   });
 
@@ -340,6 +396,22 @@ describe('MessageFormatter', () => {
       expect(result).toContain('🔋');
       expect(result).toContain('4\\.20');
       expect(result).toContain('100');
+    });
+
+    // Repro: power-restored right after a reboot mid-outage, before the first
+    // heartbeat refreshed the battery reading → device sends batteryVoltage=0.
+    // Must be treated as "no reading", not rendered as "0.00V (0%)".
+    it('should not include battery info when batteryVoltage is 0 (invalid reading)', () => {
+      const result = formatter.formatPowerRestored({
+        deviceLabel: 'Kitchen',
+        timestamp: new Date('2026-02-10T08:00:00Z'),
+        durationSeconds: 14160,
+        locale: 'en',
+        timezone: 'Europe/Kyiv',
+        batteryVoltage: 0,
+      });
+      expect(result).not.toContain('🔋');
+      expect(result).not.toContain('0\\.00');
     });
   });
 

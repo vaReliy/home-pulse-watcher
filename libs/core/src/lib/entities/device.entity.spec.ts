@@ -88,5 +88,11 @@ describe('Device', () => {
 
       expect(device.hasUps).toBe(true);
     });
+
+    it('should return false when batteryVoltage is 0 (no-reading sentinel)', () => {
+      const device = createDevice({ batteryVoltage: 0 });
+
+      expect(device.hasUps).toBe(false);
+    });
   });
 });

@@ -44,9 +44,9 @@ export class Device {
     this.releaseChannel = props.releaseChannel;
   }
 
-  /** Returns true if this device has a UPS battery module (batteryVoltage is not null). */
+  /** Returns true if this device has a UPS battery module (batteryVoltage is not null and not the 0 sentinel for "no reading"). */
   get hasUps(): boolean {
-    return this.batteryVoltage !== null;
+    return this.batteryVoltage !== null && this.batteryVoltage > 0;
   }
 
   /**

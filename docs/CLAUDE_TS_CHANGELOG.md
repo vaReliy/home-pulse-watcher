@@ -20,3 +20,8 @@ Upstream action: HPW-only fix (the freeze was a local process gap, not a CTS bug
 
 Divergence: CTS's `.claude/skills/vitest-testing/SKILL.md` description says "Testing with Vitest (or Jest)" but every code example uses Vitest-only APIs (`vi.fn`, `vi.mock`, `import ... from 'vitest'`) — zero Jest examples. HPW is pure Jest (no Vitest dependency anywhere). Rewrote HPW's local copy to Jest APIs (`jest.fn`, `jest.mock`, no import needed) and added it to `.ctsignore`.
 Upstream action: undecided — either (a) make the skill genuinely framework-agnostic (dual examples or a note on the API mapping), or (b) split into `vitest-testing` + `jest-testing`. Not done yet; revisit when contributing back via `/cts-contribute`.
+
+## 2026-07-02 — rules/code-style.md missing a strictNullChecks relational-operator gotcha
+
+Divergence: added a new section, "Do Not Drop `!= null` Guards Before Relational Comparisons", documenting that `strictNullChecks` rejects `>`/`<`/`>=`/`<=` directly on `T | null`/`T | undefined` operands (`TS2531`/`TS2532`) regardless of downstream reuse — discovered while fixing a Telegram battery-voltage display bug, after two incorrect draft attempts assumed JS runtime null-comparison semantics (`null > 0` === `false`) meant the guard was redundant. Verified against real `tsc` output via a `backend-developer` agent before landing the final wording. This is general strict-TS advice, not HPW-specific (no NestJS/Nx/ESP32 content) — a genuine content gap in CTS's `rules/code-style.md`, not a customization.
+Upstream action: port as-is via `/cts-contribute` — general TS gotcha applicable to any CTS consumer using `strictNullChecks`.

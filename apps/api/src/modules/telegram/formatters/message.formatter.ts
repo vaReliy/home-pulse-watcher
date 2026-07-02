@@ -72,7 +72,7 @@ export class MessageFormatter {
 
     let statusLine = msgs.DEVICE_STATUS(label, status, lastSeen, statusSince);
 
-    if (device.batteryVoltage !== null) {
+    if (device.batteryVoltage != null && device.batteryVoltage > 0) {
       const voltage = escapeMarkdownV2(formatVoltage(device.batteryVoltage));
       const pct = escapeMarkdownV2(
         String(batteryPercentage(device.batteryVoltage)),
@@ -347,7 +347,7 @@ export class MessageFormatter {
     batteryVoltage: number | null | undefined,
     msgs: Messages,
   ): string {
-    if (batteryVoltage == null) {
+    if (batteryVoltage == null || batteryVoltage <= 0) {
       return message;
     }
 
