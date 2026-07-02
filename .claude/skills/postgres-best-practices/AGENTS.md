@@ -1482,6 +1482,59 @@ Search multiple terms:
 
 Reference: https://supabase.com/docs/guides/database/full-text-search
 
+### 8.3 Specialized Data Types and Extensions
+
+**Impact: LOW (enables purpose-built storage and queries vs. generic columns/joins)**
+
+Beyond core scalar types, Postgres ships specialized types and extensions for common domains. Pick the purpose-built type — it gets the right index support for free.
+
+- **Range types** (`daterange`, `numrange`, `tstzrange`): support `&&` (overlap), `@>` (containment); index with **GiST**. Use for scheduling/booking windows instead of separate `start`/`end` columns plus manual overlap logic.
+  ```sql
+  create table bookings (
+    room_id bigint not null,
+    during tstzrange not null,
+    exclude using gist (room_id with =, during with &&)
+  );
+  ```
+- **Network types** (`inet`, `cidr`, `macaddr`): store IPs/subnets natively, support `<<`, `>>`, `&&` operators — avoids storing IPs as `text` and parsing in application code.
+- **Geometric types** (`point`, `polygon`, `circle`): index with **GiST** for 2D spatial queries; for serious geospatial work use **PostGIS**.
+- **Generated columns**: `... GENERATED ALWAYS AS (<expr>) STORED` for computed, indexable fields derived from other columns — keeps derived data consistent without triggers.
+  ```sql
+  alter table profiles add column theme text
+    generated always as (attrs->>'theme') stored;
+  ```
+- **EXCLUDE constraints**: prevent overlapping rows using operators (often paired with range types and GiST), e.g. preventing double-booking a room — see example above.
+
+**Useful extensions:**
+
+| Extension                  | Use case                                                                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------- |
+| `pgvector`                 | Vector similarity search for embeddings (AI/ML features)                                     |
+| `timescaledb`              | Automated time-based partitioning, retention, compression for time-series                    |
+| `postgis`                  | Full geospatial support beyond basic geometric types                                         |
+| `pg_trgm`                  | Fuzzy text search via `%` operator and `similarity()`; pairs with GIN for `LIKE '%pattern%'` |
+| `pgcrypto`                 | `crypt()` for password hashing                                                               |
+| `btree_gin` / `btree_gist` | Mixed-type indexes (e.g., GIN index combining JSONB and text columns)                        |
+
+Reference: https://www.postgresql.org/docs/current/
+
+### 8.4 Server Configuration Tuning
+
+**Impact: LOW-MEDIUM (memory/WAL/autovacuum settings compound with schema and query fixes)**
+
+Schema and query fixes have limits if the server itself is misconfigured. Key `postgresql.conf` settings to review for dedicated database servers:
+
+- **`shared_buffers`**: ~25% of system RAM (up to 40% on a dedicated DB host). Monitor cache hit ratio via `pg_statio_user_tables` — target >99%.
+- **`work_mem`**: per-operation memory for sorts/hashes — roughly `(RAM * 0.25) / max_connections`. Too low causes disk-based sorts (`EXPLAIN ANALYZE` shows `external merge`); too high risks OOM under concurrent load.
+- **`maintenance_work_mem`**: 1-2GB on production — speeds up `VACUUM`, `CREATE INDEX`, `ALTER TABLE`.
+- **`effective_cache_size`**: ~50-75% of RAM — hints the planner about OS-level disk cache, influencing index-vs-seqscan choices.
+- **Autovacuum**: don't disable it. For high-churn tables, lower `autovacuum_vacuum_scale_factor` (e.g. `0.05`) so vacuum runs more often on large tables — default `0.2` means waiting for 20% bloat.
+- **WAL**: increase `max_wal_size` for write-heavy workloads to reduce checkpoint frequency; `wal_compression = on` reduces WAL volume.
+
+Always change one setting at a time and measure (`pg_stat_statements`, `EXPLAIN ANALYZE`) before/after — see section 7 (Monitoring & Diagnostics).
+
+Reference: https://www.postgresql.org/docs/current/runtime-config.html
+
 ---
 
 ## References

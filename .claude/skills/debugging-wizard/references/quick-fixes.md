@@ -105,23 +105,6 @@ for (const item of items) {
 await Promise.all(items.map((item) => process(item)));
 ```
 
-## PHP / Laravel Common Errors
-
-```php
-// Error: Class not found
-// Fix: Run composer dump-autoload
-composer dump-autoload
-
-// Error: Method not found on model
-// Fix: Check relationship name, run ide-helper
-php artisan ide-helper:models
-
-// Error: SQLSTATE[HY000] Connection refused
-// Fix: Check database config in .env
-DB_HOST=127.0.0.1
-DB_PORT=5432
-```
-
 ## Quick Reference
 
 | Error Message                     | Likely Fix                  |

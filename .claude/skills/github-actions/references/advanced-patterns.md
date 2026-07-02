@@ -184,7 +184,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: composer audit
       - run: npm audit
 ```
 

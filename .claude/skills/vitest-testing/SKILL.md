@@ -1,27 +1,29 @@
 ---
 name: vitest-testing
 description: >-
-  Testing with Vitest (or Jest) for TypeScript applications. Use when writing
+  Testing with Jest (or Vitest) for TypeScript applications. Use when writing
   unit tests, integration tests, mocking, coverage, mutation testing (Stryker),
   or TDD workflows in Node.js/TypeScript.
 
-  Українською: тестування Vitest, Jest, написати тест, юніт тест, інтеграційний
-  тест, мок, покриття, мутаційне тестування, TDD, vi.fn, vi.mock, describe, it.
+  Українською: тестування Jest, Vitest, написати тест, юніт тест, інтеграційний
+  тест, мок, покриття, мутаційне тестування, TDD, jest.fn, jest.mock, describe, it.
 triggers:
-  - Vitest
   - Jest
+  - Vitest
   - test
   - spec
   - TDD
   - assertion
   - coverage
   - mock
-  - vi.fn
-  - vi.mock
+  - jest.fn
+  - jest.mock
   - Stryker
 ---
 
-# Vitest Testing
+# Jest Testing
+
+This repo runs Jest (`@nx/jest`, `ts-jest`/`@swc/jest`) — no Vitest dependency exists in `package.json`. Examples below use Jest APIs.
 
 ## When to Apply
 
@@ -34,26 +36,31 @@ triggers:
 ## Basic Test Structure
 
 ```typescript
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CreatePostUseCase } from '@/use-cases/create-post/create-post.usecase';
 
 describe('CreatePostUseCase', () => {
   let useCase: CreatePostUseCase;
-  let mockRepo: { save: ReturnType<typeof vi.fn>; existsBySlug: ReturnType<typeof vi.fn> };
+  let mockRepo: {
+    save: jest.Mock;
+    existsBySlug: jest.Mock;
+  };
 
   beforeEach(() => {
     mockRepo = {
-      save: vi.fn().mockResolvedValue(undefined),
-      existsBySlug: vi.fn().mockResolvedValue(false),
+      save: jest.fn().mockResolvedValue(undefined),
+      existsBySlug: jest.fn().mockResolvedValue(false),
     };
     useCase = new CreatePostUseCase(mockRepo as any);
   });
 
   it('creates a post and saves it', async () => {
-    const result = await useCase.execute({ title: 'Test Post', body: 'Content' });
+    const result = await useCase.execute({
+      title: 'Test Post',
+      body: 'Content',
+    });
 
     expect(result.title).toBe('Test Post');
-    expect(mockRepo.save).toHaveBeenCalledOnce();
+    expect(mockRepo.save).toHaveBeenCalledTimes(1);
   });
 
   it('throws ConflictError if slug exists', async () => {
@@ -68,10 +75,10 @@ describe('CreatePostUseCase', () => {
 
 ```typescript
 // Mock entire module
-vi.mock('../services/email.service');
+jest.mock('../services/email.service');
 
 // Spy on method
-const spy = vi.spyOn(emailService, 'send').mockResolvedValue(undefined);
+const spy = jest.spyOn(emailService, 'send').mockResolvedValue(undefined);
 expect(spy).toHaveBeenCalledWith(expect.objectContaining({ to: 'user@example.com' }));
 ```
 
@@ -85,7 +92,10 @@ it('POST /posts returns 201', async () => {
   const response = await supertest(app).post('/posts').set('Authorization', `Bearer ${testToken}`).send({ title: 'New Post', body: 'Content' });
 
   expect(response.status).toBe(201);
-  expect(response.body).toMatchObject({ id: expect.any(String), title: 'New Post' });
+  expect(response.body).toMatchObject({
+    id: expect.any(String),
+    title: 'New Post',
+  });
 });
 
 it('POST /posts returns 422 for invalid input', async () => {
@@ -103,7 +113,7 @@ it('POST /posts returns 422 for invalid input', async () => {
 | `expect(x).toBe(y)`                           | Strict equality (`===`)        |
 | `expect(x).toEqual(y)`                        | Deep equality                  |
 | `expect(x).toMatchObject(partial)`            | Partial object match           |
-| `expect(fn).toHaveBeenCalledOnce()`           | Mock called exactly once       |
+| `expect(fn).toHaveBeenCalledTimes(1)`         | Mock called exactly once       |
 | `expect(fn).toHaveBeenCalledWith(...)`        | Mock called with specific args |
 | `expect(promise).rejects.toThrow(ErrorClass)` | Async error assertion          |
 
@@ -121,11 +131,11 @@ it('POST /posts returns 422 for invalid input', async () => {
 ## Running Tests
 
 ```bash
-docker compose exec app npx vitest run
-docker compose exec app npx vitest run --coverage
-docker compose exec app npx vitest run test/unit/create-post.spec.ts
-docker compose exec app npx vitest watch
-docker compose exec app npx stryker run
+npx nx test api                          # run once via nx (preferred — see rules/docker-commands.md)
+npx nx test api --coverage
+npx nx test api --testFile=create-post.spec.ts
+npx nx test api --watch
+docker compose exec app npx stryker run  # Stryker has no nx plugin, run inside Docker
 ```
 
 Minimum mutation score: **80%** for covered code.
@@ -136,6 +146,7 @@ Minimum mutation score: **80%** for covered code.
 - Sharing mock state between tests — always reset in `beforeEach`
 - Testing implementation instead of behavior
 - Brittle assertions: prefer `toMatchObject` over exact `toEqual` for API responses
+- Do not import test helpers (`vi`, `describe`, `it`, `expect`) from `'vitest'` — this repo has no Vitest dependency; `jest` and `describe`/`it`/`expect` are Jest globals, no import needed
 
 ## Related Skills
 

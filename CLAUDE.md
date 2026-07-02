@@ -1,10 +1,4 @@
-@.claude/rules/workflow.md
-@.claude/rules/code-style.md
-@.claude/rules/git-operations.md
-
-## Stack
-
-Node.js 22+ · TypeScript 5 (strict) · Vue 3 / React 18+ / Angular 17+ · Prisma (primary) / TypeORM / Drizzle · PostgreSQL 17 · Redis · BullMQ · Vitest · Playwright · Docker
+@AGENTS.md
 
 ## Communication Style
 
@@ -18,284 +12,85 @@ Pattern: `[thing] [action] [reason]. [next step].`
 
 **Exception**: use full sentences for security warnings, irreversible action confirmations, multi-step sequences where fragment order risks misread.
 
-## Agent Dispatch (MANDATORY)
+## Orchestrator (Dispatcher) Core
 
-**You are a DISPATCHER. Your job is classification → delegation → synthesis of reports.**
+**Role**: dispatcher = classify → delegate → synthesize. Never read/write/analyze project source (`src/`, `test/`, `e2e/`, `prisma/`, `migrations/`) inline — dispatch an agent or `Explore`.
 
-You do NOT:
+**Triage** (first action — no exploration before dispatch):
 
-- Read project source code (`src/`, `test/`, `e2e/`, `prisma/`, `migrations/`).
-- Write, edit, or analyze implementation code.
-- Perform codebase research inline — dispatch `Explore` or `ba` instead.
+1. Trivial (typo, single config value, ≤2-file config) → handle directly.
+2. Bug report → `debugger` pipeline (write a failing test first).
+3. Infra/CI/Docker → `devops` pipeline.
+4. Feature / code change → `ba` pipeline.
+5. Ambiguous → 1 round `AskUserQuestion`, then pipeline.
+6. Pure research ("how does X work?") → `Explore` subagent.
+7. > 3 files affected → split into smaller tasks, run pipeline per task.
 
-You DO:
+**Routing**:
 
-- Classify the request against pipeline triggers in @.claude/rules/workflow.md.
-- Dispatch the correct agent/team immediately.
-- Read agent reports and decide the next step.
-- Ask the user for clarification when requirements are ambiguous.
-- Synthesize final answers from agent outputs.
-- If request involves files in firmware/, always adopt the embedded-cpp-pro persona.
+| Need                          | Agent                      |
+| ----------------------------- | -------------------------- |
+| Backend (API/services/queues) | `backend-developer`        |
+| DB schema/migrations          | `dba`                      |
+| Unit/integration tests        | `tester`                   |
+| E2E browser tests             | `qa`                       |
+| Code review                   | `reviewer`                 |
+| Bug investigation             | `debugger`                 |
+| Security audit                | `security-scanner`         |
+| DDD/domain design             | `ddd-architect`            |
+| Integrations/OAuth/webhooks   | `integration-architect`    |
+| Queue jobs                    | `queue-specialist`         |
+| DevOps/Docker/CI              | `devops`                   |
+| Refactoring                   | `refactoring-expert`       |
+| Requirements/user stories     | `ba`                       |
+| Challenge requirements        | `devil`                    |
+| Docs/PR description           | `docs-writer`              |
+| `firmware/` files             | `embedded-cpp-pro` persona |
 
-See @.claude/rules/workflow.md → "Orchestrator Tool Policy" for the hard tool limits.
+**Pipeline**: `ba` → `ddd-architect`? → impl → quality gate → `docs-writer` → knowledge capture (mandatory).
 
-## Claude-Specific Behavior
+**Quality gate (conditional)**: always `tester` + `reviewer`. Add `security-scanner` if change touches auth/validation/secrets/HMAC/endpoints accepting external input. Add `qa` if user-visible flow changed. Max 2 fix-retry cycles, then escalate to user.
 
-- Prefer Skills over repeating rules. TypeScript/Node: `typescript-pro`, `typescript-architecture`. Testing: `vitest-testing`, `test-master`. Frontend: `vue-expert`, `react-expert`, `angular-expert`. DevOps: `devops`, `docker-expert`, `github-actions`. Architecture: `architecture-designer`, `ddd-strategic-design`. Debugging/Security: `debugging-wizard`, `security-reviewer`.
-- On-demand rules (agents load as needed): @.claude/rules/architecture.md, @.claude/rules/validation-authorization.md, @.claude/rules/migrations-queue.md, @.claude/rules/mcp-stack.md, @.claude/rules/testing.md, @.claude/rules/docker-commands.md.
-- Embedded Expert: `embedded-cpp-pro`. Focus: PlatformIO environment, ESP32-C3/C6 architecture, non-blocking code, Arduino framework best practices, memory optimization (heap vs stack), and hardware abstraction layers.
+**Hard tool limits**: `Read` only `.claude/**`, `rules/**`, `AGENTS.md`, plan files, agent reports. `Bash` only `git status`/`git log` + `gh`. No `Edit`/`Write` on project files.
 
-## IMPORTANT
+Full pipeline detail, team conventions, Tool API: read `rules/workflow.md` before creating any team.
 
-1. **First action on any task: classify and dispatch.** Do not open project files before an agent has run. If the pipeline in @.claude/rules/workflow.md matches — dispatch immediately. If the request is ambiguous, ask a clarifying question first, then dispatch.
-2. If requirements are ambiguous, ask clarifying questions **before** starting the pipeline.
-3. After finishing the pipeline, list edge cases and suggest additional test cases.
-4. If a task requires changes to more than 3 files, break it into smaller tasks — each handled by the pipeline separately.
-5. When there's a bug, start by writing a test that reproduces it, then fix it.
+## Skills
 
-**Available agents (18):**
+Prefer skills over repeating rules. TS/Node: `typescript-pro`, `typescript-architecture`. Testing: `vitest-testing`, `test-master`. DevOps: `devops`, `docker-expert`, `github-actions`. Architecture: `architecture-designer`, `ddd-strategic-design`. Debugging/Security: `debugging-wizard`, `security-reviewer`.
 
-- Backend/Infra: `backend-developer`, `dba`, `queue-specialist`, `integration-architect`, `devops`
-- Frontend (pick ONE — never combine): `vue-developer` (Vue 3) · `react-developer` (React 18+) · `angular-developer` (Angular 17+)
-- Quality: `tester`, `qa`, `reviewer`, `security-scanner`, `debugger`
-- Planning/Design: `ba`, `ddd-architect`, `devil`, `refactoring-expert`
-- Docs: `docs-writer`
+## Project Facts
 
-Routing details and pipelines: see @.claude/rules/workflow.md.
+HomePulse Watcher: ESP32-C3/C6 devices send HMAC-signed REST status updates to this NestJS backend, which stores PowerEvents and notifies users via Telegram. **MVP stage** — no legacy concerns, DB recreated from scratch as needed.
 
-## Setup
-
-See @README.md for system requirements, installation, and common commands.
-
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Project Overview
-
-HomePulse Watcher is a DIY power outage monitoring system. ESP32-C3/ESP32-C6 devices monitor power status and send HMAC-signed REST requests to this NestJS backend, which stores events and notifies users via Telegram.
-
-**MVP Stage**: This project is in early development. No legacy concerns - database can be recreated from scratch as needed.
-
-> **AI Assistant Shared Mental Model**: [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) — load this for a concise overview of architecture, domain rules (ADC sensing, HMAC/AES, debounce), incident history, and doc map.
-
-## Build & Development Commands
+**Commands**:
 
 ```bash
-# Start development server
-npx nx serve api
-
-# Build for production
-npx nx build api
-
-# Run unit tests
-npx nx test api
-
-# Run single test file
-npx nx test api --testFile=app.service.spec.ts
-
-# Run E2E tests
-npx nx e2e api-e2e
-
-# Lint
-npx nx lint api
-
-# Type check
-npx nx typecheck api
-
-# Build Docker image
-npx nx docker:build api
-
-# Database commands
-npx prisma generate
-npx prisma migrate dev --name <migration_name>
-npx prisma migrate deploy  # production
+npx nx serve api                          # dev server
+npx nx build api                          # production build
+npx nx test api                           # unit tests
+npx nx lint api                           # lint
+npx nx typecheck api                      # type check
+npx prisma migrate dev --name <name>      # new migration
 ```
 
-## Architecture
+**Architecture**: Onion/Clean — Core (entities, repo interfaces) → Application (UseCases) → Infrastructure (Prisma repos, Telegram) → Interface (REST controllers, Telegram bot). Detail: `docs/ARCHITECTURE.md`.
 
-Full architectural overview: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+**DB models**: User (telegramId, locale, timezone), Device (macAddress, encryptedSecret), UserDevice (role: OWNER/EDITOR/VIEWER), PowerEvent (status 0/1, duration).
 
-### Core Layer Exports
+**Telegram bot**: `apps/api/src/modules/telegram/` — Telegraf, button-driven (`/start` only slash command), MarkdownV2, i18n uk/en (default uk, Europe/Kyiv).
 
-```typescript
-// Entities
-(User, Device, UserDevice, PowerEvent);
+**Firmware**: `firmware/` (ESP32-C3/C6, PlatformIO + Arduino). Files here → adopt `embedded-cpp-pro` persona.
 
-// Enums
-(PowerStatus((OFF = 0), (ON = 1)), DeviceRole(OWNER, EDITOR, VIEWER));
+**Build**: Webpack bundles all deps except Prisma (`@prisma/client`, `@prisma/adapter-pg`, `pg`) — see `apps/api/webpack.config.js`.
 
-// Repository Interfaces
-(IUserRepository, IDeviceRepository, IUserDeviceRepository, IPowerEventRepository);
-```
+## Knowledge Capture (Mandatory)
 
-### Infrastructure Layer (Pure TypeScript)
+After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to auto-memory (`project` type). Full rules: `rules/workflow.md` Phase 6.
 
-```typescript
-// Repositories - plain classes, constructor injection of PrismaClient
-const userRepo = new PrismaUserRepository(prismaClient);
-const device = await userRepo.findByTelegramId(BigInt(123));
+## Task Files (HPW-only)
 
-// Factory for PrismaClient singleton
-(getPrismaClient(), disconnectPrisma());
-```
-
-### Telegram Bot Integration
-
-- **Library**: Telegraf (TypeScript-native Telegram bot framework)
-- **Module**: `apps/api/src/modules/telegram/`
-- **Interaction model**: Button-driven; `/start` is the only slash command (user registration)
-  - **Reply Keyboard**: Status, Devices, Settings, Help (persistent bottom menu)
-  - **Inline Buttons**: Check Status, View History (in power event notifications)
-  - **Settings**: Stateless inline keyboard menu for locale and timezone selection
-- **Parse mode**: MarkdownV2 for all bot messages (`escape-markdown.ts` utility, `keyboard.builder.ts` for keyboard construction)
-- **Notifications**: Event-driven via `@OnEvent(POWER_STATUS_CHANGED_EVENT)`
-- **Authentication**: User verification via `telegramId` lookup before protected commands
-- **Environment**: `TELEGRAM_BOT_TOKEN` (required), `TELEGRAM_ADMIN_CHAT_ID` (optional)
-- **i18n**: `TranslationService` in `telegram/i18n/` — default locale `uk`, default timezone `Europe/Kyiv`. All user-facing strings are translated (Ukrainian + English). Date/time formatting uses per-user timezone via `Intl.DateTimeFormat`.
-
-Bot follows the adapter pattern - handlers call existing Application Services, keeping business logic transport-agnostic.
-
-### ESP32 Firmware
-
-- **Location**: `firmware/` directory (ESP32-C3 and ESP32-C6 variants)
-- **Build Tool**: PlatformIO with Arduino framework
-- **Features**: WiFi, NTP time sync, HMAC-SHA256 signing, GPIO power detection
-- **Configuration**: `config.h` (hardware), `secrets.h` (credentials - not tracked)
-- **Documentation**: `docs/admin-guide.md`, `firmware/docs/FLASHING_GUIDE.md`
-
-## Tech Stack
-
-- **Monorepo**: Nx 22.4 with `@home-pulse-watcher/` prefix
-- **Framework**: NestJS 11
-- **Bundler**: Webpack via `@nx/webpack` (serverless bundling — all deps bundled except Prisma)
-- **ORM**: Prisma 7.3 with PostgreSQL
-- **Validation**: LIVR (custom rules use camelCase: `macAddress`, `hmacFormat`, `powerStatus`, `telegramId`)
-- **Testing**: Jest 30 with SWC compiler
-- **CLI**: nest-commander for admin tasks
-- **Deployment**: Google Cloud Run (Docker multi-stage build)
-
-## Database Models
-
-- **User**: Telegram users (telegramId unique, locale default 'uk', timezone default 'Europe/Kyiv')
-- **Device**: ESP32 devices (macAddress unique, encryptedSecret for HMAC verification)
-- **UserDevice**: Many-to-many with role (VIEWER default)
-- **PowerEvent**: Status changes (1=on, 0=off) with optional duration
-
-## Build & Bundling
-
-Webpack bundles **all** `node_modules` into `main.js` and `cli.js`, eliminating runtime dependency resolution issues. Only Prisma-related packages are kept external (they require native WASM binaries and generated code at runtime).
-
-- **Config**: `apps/api/webpack.config.js`
-- **External packages**: `@prisma/client`, `@prisma/adapter-pg`, `.prisma/client`, `pg`
-- **Minimal package.json**: `apps/api/src/assets/package.json` — copied to `dist/`, lists only external deps for Docker `npm install`
-- **NestJS lazy imports**: `@nestjs/microservices` and `@nestjs/websockets` are ignored via `IgnorePlugin` (optional peer deps, not installed)
-
-## Coding Standards
-
-- **Strict TypeScript**: No `any`, strict null checks
-- **Composition over Inheritance**: Avoid deep class hierarchies
-- **Interface-First**: Infrastructure adapters implement Core/Application interfaces
-- **Descriptive Names**: `lastSeenAt` not `date`
-- **camelCase Everywhere**: Including LIVR rules (`macAddress` not `mac_address`)
-- **No Magic Numbers**: Extract numeric literals into named constants with JSDoc comments (`HISTORY_WINDOW_MS`, `TELEGRAM_MESSAGE_MAX_LENGTH`). Thresholds, limits, and configuration values must never appear inline.
-- **Single Responsibility Methods**: Keep methods focused on one concern. Extract secondary logic (truncation, pagination, retry) into separate private methods that can be tested and reasoned about independently.
-
-## Code Formatting Rules
-
-### TypeScript Configuration
-
-- **Module System**: `"module": "nodenext"`, `"moduleResolution": "nodenext"`
-- **Target**: ES2022
-- **Strict Mode**: All strict flags enabled
-- **Compiler Options**:
-  - `noUnusedLocals: true`
-  - `noImplicitReturns: true`
-  - `noFallthroughCasesInSwitch: true`
-  - `noImplicitOverride: true`
-
-### Import/Export Conventions
-
-- **Always use `.js` extensions** in imports (TypeScript with NodeNext module resolution)
-  - `import { User } from './user.entity.js';`
-  - `import { BaseService } from '../../base-service.js';`
-- **Use `type` imports** for types/interfaces: `import type { Device } from '@home-pulse-watcher/core';`
-- **Named exports only** - avoid default exports
-- **Barrel exports** through index.ts files for clean API surfaces
-
-### Prettier Configuration
-
-- **Single quotes**: `'string'` not `"string"`
-- **Default Prettier rules** for everything else (2-space indent, trailing commas, etc.)
-
-### Naming Conventions
-
-- **Interfaces**: Prefix with `I` for repository/service abstractions (`IDeviceRepository`, `IEventEmitter`)
-- **Types**: PascalCase without prefix (`PowerStatus`, `DeviceRole`, `LivrRules`)
-- **Classes**: PascalCase (`BaseService`, `PrismaDeviceRepository`, `CreateUserService`)
-- **Files**: kebab-case (`device.repository.ts`, `create-user.service.ts`, `power-status.enum.ts`)
-- **Constants**: SCREAMING_SNAKE_CASE for error codes (`DEVICE_ALREADY_REGISTERED`)
-- **Enums**: Use `as const` objects over TypeScript enums
-
-### Service Structure
-
-```typescript
-export interface ServiceNameInput {
-  field: string;
-}
-
-export interface ServiceNameOutput {
-  result: ResultType;
-}
-
-export class ServiceNameService extends BaseService<ServiceNameInput, ServiceNameOutput> {
-  constructor(private readonly repository: IRepository) {
-    super();
-  }
-
-  protected validationRules(): LivrRules {
-    return {
-      field: ['required', 'string'],
-    };
-  }
-
-  protected async execute(params: ServiceNameInput, context: ServiceContext): Promise<ServiceNameOutput> {
-    // Implementation
-  }
-}
-```
-
-### Repository Pattern
-
-- **Plain TypeScript classes** in Infrastructure layer (no `@Injectable()`)
-- **Constructor injection** of PrismaClient
-- **Map Prisma models** to Domain Entities using mapper functions
-- **Never expose** Prisma types outside Infrastructure layer
-
-### Error Handling
-
-- **Specific error classes**: `ValidationError`, `DomainError`, `NotFoundError`
-- **Error codes as constants**: `DomainErrorCode.DEVICE_ALREADY_REGISTERED`
-- **Descriptive messages**: Include identifiers in error messages
-
-### Documentation
-
-- **JSDoc comments** for:
-  - All public classes and interfaces
-  - All public methods
-  - Complex business logic
-- **Concise descriptions**: One-line summary preferred
-- **Include parameter/return descriptions** for non-obvious cases
-
-### Knowledge Capture (Mandatory — enforced by pipeline Phase 6)
-
-Every completed task must update at minimum `CHANGELOG.md`. See `.claude/rules/workflow.md` → **Phase 6: Knowledge Capture** for the full decision rules (when to also update `PROJECT_CONTEXT.md` and what to save to auto-memory).
-
-**Quick reference:**
-
-- `CHANGELOG.md` — always, after every task
-- `PROJECT_CONTEXT.md` — when architecture, domain rules, infra, or historical incidents change
-- Auto-memory (`project` type) — non-obvious discoveries not visible from code (buffer sizes, ISR constraints, PEM format gotchas, etc.)
+Plan/task files: name `YYYY-MM-DD-hh-mm-NN[-slug].md`, default location `tmp/tasks/todo/`. Move to `tmp/tasks/done/` when completed.
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->

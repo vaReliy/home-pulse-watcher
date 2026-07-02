@@ -6,8 +6,7 @@ description: >-
   "add composite action", "fix failing workflow", "optimize GitHub Actions", "add caching to CI",
   "set up deployment pipeline", "add tests to CI", "create Docker build workflow",
   or mentions GitHub Actions, CI/CD, workflow YAML, or .github/workflows.
-  Covers PHP (Laravel, Symfony, NativePHP), .NET/C#, JavaScript, TypeScript, Node.js,
-  SQL, and Docker-based pipelines.
+  Covers JavaScript, TypeScript, Node.js, SQL, and Docker-based pipelines.
   Українською: GitHub Actions, CI/CD пайплайн, налаштувати CI, створити workflow,
   оптимізувати пайплайн, додати тести в CI, створити деплой, кешування в CI,
   виправити workflow, композитна дія.
@@ -16,7 +15,7 @@ description: >-
 # GitHub Actions Expert
 
 Expert guidance for creating, optimizing, and maintaining GitHub Actions workflows across
-PHP, .NET, JavaScript/TypeScript, and Docker-based projects.
+JavaScript/TypeScript and Docker-based projects.
 
 ## Workflow Design Principles
 
@@ -82,25 +81,6 @@ permissions:
 ```
 
 ## Caching Strategies
-
-### Composer (PHP)
-
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: vendor
-    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-    restore-keys: ${{ runner.os }}-composer-
-```
-
-### NuGet (.NET)
-
-```yaml
-- uses: actions/cache@v4
-  with:
-    path: ~/.nuget/packages
-    key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-```
 
 ### npm / Node.js
 
@@ -199,8 +179,6 @@ runs:
 
 For stack-specific workflow templates and advanced patterns:
 
-- **`references/php-workflows.md`** — Laravel (Pest, Pint, PHPStan), Symfony, NativePHP CI patterns
-- **`references/dotnet-workflows.md`** — .NET/C# build, test, publish patterns
 - **`references/node-workflows.md`** — Node.js, TypeScript, JavaScript CI patterns
 - **`references/advanced-patterns.md`** — OIDC deployments, Docker multi-stage builds, monorepo strategies, environment promotion
 
@@ -208,7 +186,5 @@ For stack-specific workflow templates and advanced patterns:
 
 Working examples in `examples/`:
 
-- **`examples/laravel-ci.yml`** — Laravel CI with Pest, Pint, PHPStan, PostgreSQL, Redis
-- **`examples/dotnet-ci.yml`** — .NET build + test + publish
 - **`examples/node-ci.yml`** — Node.js/TypeScript lint + test + build
 - **`examples/docker-deploy.yml`** — Docker build, push, and deploy

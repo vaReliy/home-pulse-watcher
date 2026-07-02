@@ -1,0 +1,63 @@
+# .ctsignore — gitignore-syntax paths that `cts-sync.sh update` will never touch.
+# Use for: customized CTS files, pruned CTS files (prevents re-adding them),
+# and project-only additions placed under payload directories.
+#
+# Built during CTS template adoption (2026-06-12). Classification:
+#   pruned     = exists in CTS, deliberately deleted in HPW (no frontend here)
+#   customized = exists in both, HPW content intentionally differs from CTS
+
+# pruned — HPW has no frontend/UI; re-add from CTS if a UI ever appears
+.claude/agents/vue-developer.md
+.claude/agents/react-developer.md
+.claude/agents/angular-developer.md
+.claude/skills/vue-expert/
+.claude/skills/react-expert/
+.claude/skills/angular-expert/
+
+# customized — HPW's AGENTS.md/CLAUDE.md split carries HPW's actual stack
+# (NestJS/Nx/ESP32), caveman communication style, embedded-cpp routing,
+# HPW's task-file naming rule, and a trimmed Skills/Routing table (no frontend).
+# Leading "/" anchors to repo root so nested payload files with the same name
+# (e.g. .claude/skills/postgres-best-practices/AGENTS.md) still receive updates.
+/AGENTS.md
+/CLAUDE.md
+
+# customized — HPW settings.json wires Nx/superpowers plugins, ESP32 secrets
+# deny-list, and project-specific lint/format hooks; not a generic CTS config.
+.claude/settings.json
+
+# customized — HPW rule files use single-quote code samples (matches HPW's
+# actual Prettier/ESLint config) and migrations-queue/testing/validation
+# examples were rewritten for HPW's stack.
+rules/code-style.md
+rules/migrations-queue.md
+rules/testing.md
+rules/validation-authorization.md
+
+# customized — HPW workflow.md is process content re-merged from upstream on
+# 2026-07-01 (Foresight gate, Nx Command Execution Policy, sequential quality
+# gate, severity floor, CLAUDE_TS_CHANGELOG knowledge routing), then
+# frontend-pruned (no impl-team/frontend swimlanes, no Vue/React/Angular rows).
+# WARNING: whole-file ignore froze this at mid-June content for ~2 weeks before
+# the drift was caught — re-diff against upstream periodically (e.g. every
+# /cts-update), don't assume "customized" means "never touch again".
+rules/workflow.md
+
+# customized — reviewer/tester had their Vue/React/Angular rows pruned (no
+# frontend here); queue-specialist uses HPW's single-quote code style (see
+# rules/code-style.md note above). dba.md/qa.md were removed from this list
+# once CTS adopted HPW's stale-skill-reference fixes — those files are
+# byte-identical, CTS-owned again. tester.md's "Vitest" wording was also
+# corrected to "Jest" here (2026-07-01) — see vitest-testing note below.
+.claude/agents/reviewer.md
+.claude/agents/tester.md
+.claude/agents/queue-specialist.md
+
+# customized — HPW is pure Jest (jest.config.ts/.cts in every app/lib,
+# jest/ts-jest/@swc/jest deps, zero vitest in package.json). CTS's
+# vitest-testing skill body was Vitest-only despite claiming "(or Jest)"
+# support; examples rewritten to Jest APIs (jest.fn/jest.mock, no `vitest`
+# import) here on 2026-07-01. Candidate to contribute upstream later as a
+# wider vitest-or-jest skill, or split into two — not yet. See
+# docs/CLAUDE_TS_CHANGELOG.md.
+.claude/skills/vitest-testing/
