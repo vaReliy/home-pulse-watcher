@@ -64,7 +64,12 @@ export class DevicesHandler {
           const online = device.isOnline() ? '🟢' : '🔴';
           lines.push(`${online} ${boldMd(label)}`);
           lines.push(`   ${msgs.MAC_LABEL} ${codeMd(device.macAddress)}`);
-          lines.push(`   ${msgs.ROLE_LABEL} ${escapeMarkdownV2(ud.role)}\n`);
+          lines.push(`   ${msgs.ROLE_LABEL} ${escapeMarkdownV2(ud.role)}`);
+          const firmwareVersion =
+            device.firmwareVersion ?? msgs.FIRMWARE_VERSION_UNKNOWN;
+          lines.push(
+            `   ${msgs.FIRMWARE_LABEL} ${escapeMarkdownV2(firmwareVersion)}\n`,
+          );
         }
       }
 

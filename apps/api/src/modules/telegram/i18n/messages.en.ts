@@ -61,6 +61,8 @@ Contact your administrator to link a device to your account\\.`,
   YOUR_DEVICES_HEADER: 'Your Devices:',
   MAC_LABEL: 'MAC:',
   ROLE_LABEL: 'Role:',
+  FIRMWARE_LABEL: 'Firmware:',
+  FIRMWARE_VERSION_UNKNOWN: 'n/a',
 
   // Notifications
   POWER_LOST: (label, time) =>

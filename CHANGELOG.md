@@ -9,6 +9,7 @@
 
 ### Features
 
+- **Telegram `/devices` command**: Now displays each device's current firmware version (from existing `Device.firmwareVersion` field, nullable — falls back to "n/a"/"н/д" per locale when unknown). No schema change required; field already existed from OTA fleet autonomy work.
 - **OTA Fleet Autonomy** — Added server-initiated force-check capability, typed release channels, device type tracking, extracted upload UseCase for CLI reuse, and browser-based admin firmware upload route.
   - **Force-check flag** (`Device.otaForceCheckRequested`): sticky column set by admin CLI (`device:request-ota-check --mac <mac>`); `/api/device/status` response includes optional `forceOtaCheck: true` field (omitted when false), consumed and cleared atomically server-side. Firmware parses field and resets OTA timer to trigger immediate check instead of waiting up to 6h.
   - **Typed release channels** (`enum class OtaChannel` in `libs/firmware-shared`, TS `as const` pattern in `libs/core`): replaced freeform string validation on both firmware and backend. C++ mirror includes `toString()`/`fromString()` for wire format.
