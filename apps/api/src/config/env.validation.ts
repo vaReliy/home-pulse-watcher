@@ -19,12 +19,29 @@ const REQUIRED_VARS: RequiredVar[] = [
         ? null
         : 'must be exactly 64 hex characters (32 bytes for AES-256-GCM)',
   },
+];
+
+/**
+ * Required only in production — dev/test don't exercise these routes.
+ * - TELEGRAM_WEBHOOK_SECRET: Cloud Run scales to zero, so prod always runs
+ *   webhook mode (this secret guards it); dev/test use Telegram long-polling.
+ * - ADMIN_UPLOAD_TOKEN: guards the prod-only admin firmware-upload route. Missing
+ *   it must fail fast at startup, not surface as a request-time 503 in the guard.
+ */
+const PRODUCTION_REQUIRED_VARS: RequiredVar[] = [
   {
     name: 'TELEGRAM_WEBHOOK_SECRET',
     validate: (value) =>
       value.length >= 16
         ? null
         : 'must be at least 16 characters (empty or short secrets allow timing-safe bypass)',
+  },
+  {
+    name: 'ADMIN_UPLOAD_TOKEN',
+    validate: (value) =>
+      value.length >= 32
+        ? null
+        : 'must be at least 32 characters (bearer token guarding /admin/firmware)',
   },
 ];
 
@@ -67,7 +84,12 @@ const OPTIONAL_VARS: OptionalVar[] = [
 export function validateEnv(): void {
   const errors: string[] = [];
 
-  for (const { name, validate } of REQUIRED_VARS) {
+  const requiredVars =
+    process.env['NODE_ENV'] === 'production'
+      ? [...REQUIRED_VARS, ...PRODUCTION_REQUIRED_VARS]
+      : REQUIRED_VARS;
+
+  for (const { name, validate } of requiredVars) {
     const value = process.env[name];
     if (!value) {
       errors.push(`${name} is required but not set`);

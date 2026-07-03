@@ -7,6 +7,7 @@ const mockPrismaClient = {
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     delete: jest.fn(),
     count: jest.fn(),
   },
@@ -18,6 +19,7 @@ const basePrismaDevice = {
   firmwareVersion: null,
   batteryVoltage: null,
   releaseChannel: 'STABLE',
+  deviceType: 'MAINS',
 };
 
 describe('PrismaDeviceRepository', () => {
@@ -164,6 +166,49 @@ describe('PrismaDeviceRepository', () => {
       expect(result[0]).toBeInstanceOf(Device);
       expect(mockPrismaClient.device.findMany).toHaveBeenCalledWith({
         where: { users: { some: { userId: 'user-1' } } },
+      });
+    });
+  });
+
+  describe('consumeOtaForceCheckRequest', () => {
+    it('should return true and clear flag when it was set', async () => {
+      mockPrismaClient.device.updateMany.mockResolvedValue({ count: 1 });
+
+      const result = await repository.consumeOtaForceCheckRequest('device-1');
+
+      expect(result).toBe(true);
+      expect(mockPrismaClient.device.updateMany).toHaveBeenCalledWith({
+        where: { id: 'device-1', otaForceCheckRequested: true },
+        data: { otaForceCheckRequested: false },
+      });
+    });
+
+    it('should return false when flag was not set', async () => {
+      mockPrismaClient.device.updateMany.mockResolvedValue({ count: 0 });
+
+      const result = await repository.consumeOtaForceCheckRequest('device-1');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('requestOtaForceCheck', () => {
+    it('should set the flag to true', async () => {
+      mockPrismaClient.device.update.mockResolvedValue({
+        ...basePrismaDevice,
+        id: 'device-1',
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        label: null,
+        lastStatus: null,
+        lastSeenAt: null,
+        statusChangedAt: null,
+      });
+
+      await repository.requestOtaForceCheck('device-1');
+
+      expect(mockPrismaClient.device.update).toHaveBeenCalledWith({
+        where: { id: 'device-1' },
+        data: { otaForceCheckRequested: true },
       });
     });
   });

@@ -47,6 +47,8 @@ describe('ListDevicesService', () => {
     updateStatus: jest.fn(),
     delete: jest.fn(),
     existsByMacAddress: jest.fn(),
+    consumeOtaForceCheckRequest: jest.fn(),
+    requestOtaForceCheck: jest.fn(),
   });
 
   const createMockUserRepository = (): jest.Mocked<IUserRepository> => ({

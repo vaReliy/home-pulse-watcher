@@ -14,6 +14,8 @@ export const DomainErrorCode = {
   UNAUTHORIZED_ACTION: 'UNAUTHORIZED_ACTION',
   BOARD_MISMATCH: 'BOARD_MISMATCH',
   INVALID_DEVICE_STATE: 'INVALID_DEVICE_STATE',
+  FIRMWARE_RELEASE_ALREADY_EXISTS: 'FIRMWARE_RELEASE_ALREADY_EXISTS',
+  INVALID_FIRMWARE_FILENAME: 'INVALID_FIRMWARE_FILENAME',
 } as const;
 
 export type DomainErrorCodeType =
@@ -42,6 +44,7 @@ export class DomainError extends BaseError {
       DomainErrorCode.DEVICE_ALREADY_REGISTERED,
       DomainErrorCode.USER_ALREADY_EXISTS,
       DomainErrorCode.DEVICE_ALREADY_LINKED,
+      DomainErrorCode.FIRMWARE_RELEASE_ALREADY_EXISTS,
     ];
 
     const forbiddenCodes: DomainErrorCodeType[] = [

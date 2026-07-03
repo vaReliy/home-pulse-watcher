@@ -21,6 +21,7 @@ describe('validateEnv', () => {
     DEVICE_SECRET_ENCRYPTION_KEY: 'a'.repeat(64),
     GCS_BUCKET_NAME: 'test-bucket',
     TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret',
+    ADMIN_UPLOAD_TOKEN: 'a'.repeat(32),
   };
 
   it('passes when all required vars are set', () => {
@@ -36,27 +37,39 @@ describe('validateEnv', () => {
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  it('exits when TELEGRAM_WEBHOOK_SECRET is missing', () => {
+  it('passes when TELEGRAM_WEBHOOK_SECRET is missing outside production', () => {
     const { TELEGRAM_WEBHOOK_SECRET: _, ...rest } = BASE_ENV;
     process.env = { ...rest };
     validateEnv();
-    expect(process.exit).toHaveBeenCalledWith(1);
+    expect(process.exit).not.toHaveBeenCalled();
   });
 
-  it('exits when TELEGRAM_WEBHOOK_SECRET is empty string', () => {
-    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: '' };
+  it('exits in production when TELEGRAM_WEBHOOK_SECRET is empty string', () => {
+    process.env = {
+      ...BASE_ENV,
+      TELEGRAM_WEBHOOK_SECRET: '',
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  it('exits when TELEGRAM_WEBHOOK_SECRET is shorter than 16 characters', () => {
-    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: 'tooshort' };
+  it('exits in production when TELEGRAM_WEBHOOK_SECRET is shorter than 16 characters', () => {
+    process.env = {
+      ...BASE_ENV,
+      TELEGRAM_WEBHOOK_SECRET: 'tooshort',
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  it('passes when TELEGRAM_WEBHOOK_SECRET is exactly 16 characters', () => {
-    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: 'a'.repeat(16) };
+  it('passes in production when TELEGRAM_WEBHOOK_SECRET is exactly 16 characters', () => {
+    process.env = {
+      ...BASE_ENV,
+      TELEGRAM_WEBHOOK_SECRET: 'a'.repeat(16),
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).not.toHaveBeenCalled();
   });
@@ -64,6 +77,30 @@ describe('validateEnv', () => {
   it('exits in production when TELEGRAM_WEBHOOK_SECRET is missing', () => {
     const { TELEGRAM_WEBHOOK_SECRET: _, ...rest } = BASE_ENV;
     process.env = { ...rest, NODE_ENV: 'production' };
+    validateEnv();
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('passes when ADMIN_UPLOAD_TOKEN is missing outside production', () => {
+    const { ADMIN_UPLOAD_TOKEN: _, ...rest } = BASE_ENV;
+    process.env = { ...rest };
+    validateEnv();
+    expect(process.exit).not.toHaveBeenCalled();
+  });
+
+  it('exits in production when ADMIN_UPLOAD_TOKEN is missing', () => {
+    const { ADMIN_UPLOAD_TOKEN: _, ...rest } = BASE_ENV;
+    process.env = { ...rest, NODE_ENV: 'production' };
+    validateEnv();
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('exits in production when ADMIN_UPLOAD_TOKEN is shorter than 32 characters', () => {
+    process.env = {
+      ...BASE_ENV,
+      ADMIN_UPLOAD_TOKEN: 'a'.repeat(31),
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).toHaveBeenCalledWith(1);
   });

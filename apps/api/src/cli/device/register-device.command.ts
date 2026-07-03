@@ -2,11 +2,13 @@ import { Inject, Logger } from '@nestjs/common';
 import { Command, CommandRunner, Option } from 'nest-commander';
 import type { RegisterDeviceService } from '@home-pulse-watcher/application';
 import { BaseError } from '@home-pulse-watcher/shared';
+import { DeviceType } from '@home-pulse-watcher/core';
 import { SERVICE_TOKENS } from '../../modules/services/services.module';
 
 interface RegisterDeviceOptions {
   mac: string;
   label?: string;
+  deviceType?: DeviceType;
 }
 
 @Command({
@@ -37,6 +39,7 @@ export class RegisterDeviceCommand extends CommandRunner {
         {
           macAddress: options.mac,
           label: options.label,
+          deviceType: options.deviceType,
         },
         {
           config: { deviceSecretEncryptionKey },
@@ -78,5 +81,14 @@ export class RegisterDeviceCommand extends CommandRunner {
   })
   parseLabel(val: string): string {
     return val;
+  }
+
+  @Option({
+    flags: '-t, --device-type <deviceType>',
+    description:
+      'Hardware category: UPS or MAINS (default: MAINS). Write-once at provisioning.',
+  })
+  parseDeviceType(val: string): DeviceType {
+    return val.toUpperCase() as DeviceType;
   }
 }

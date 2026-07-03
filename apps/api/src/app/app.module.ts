@@ -16,6 +16,7 @@ import { BigIntSerializerInterceptor } from '../interceptors/bigint-serializer.i
 import { HealthModule } from '../modules/health/health.module.js';
 import { StorageModule } from '../modules/storage/storage.module.js';
 import { OtaModule } from '../modules/ota/ota.module.js';
+import { AdminModule } from '../modules/admin/admin.module.js';
 
 const isProduction = process.env['NODE_ENV'] === 'production';
 
@@ -65,6 +66,7 @@ const isProduction = process.env['NODE_ENV'] === 'production';
     TelegramModule,
     StorageModule,
     OtaModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

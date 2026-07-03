@@ -23,4 +23,6 @@ export interface IFirmwareReleaseRepository {
     channels: ReleaseChannel[],
   ): Promise<FirmwareRelease[]>;
   markCritical(id: string): Promise<FirmwareRelease>;
+  /** All releases across every board/channel, newest first — used by admin listing. */
+  findAll(): Promise<FirmwareRelease[]>;
 }

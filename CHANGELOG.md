@@ -2,12 +2,33 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- **Admin upload guard misconfig no longer 500s**: `AdminTokenGuard.canActivate` threw a raw `Error('ADMIN_UPLOAD_TOKEN not configured')` when the env var was missing → Nest returned HTTP 500 with a leaking stack trace. Now throws `ServiceUnavailableException` (503) with a generic client body (`'Admin firmware upload is temporarily unavailable'`) and logs the specific reason server-side only. Also promoted `ADMIN_UPLOAD_TOKEN` from optional to a production-required env var (`env.validation.ts` `PRODUCTION_REQUIRED_VARS`, mirroring `TELEGRAM_WEBHOOK_SECRET`) so prod misconfiguration fails fast at startup instead of at first request.
+- **Env validation**: `TELEGRAM_WEBHOOK_SECRET` was unconditionally required at startup, so local/test `nx serve api` without the var exited(1) even though dev uses Telegram polling, not the webhook route. Moved it to a prod-only required-vars list checked only when `NODE_ENV=production` (mirrors the webhook-only usage guarded in `TelegramController`).
+
+### Features
+
+- **Telegram `/devices` command**: Now displays each device's current firmware version (from existing `Device.firmwareVersion` field, nullable — falls back to "n/a"/"н/д" per locale when unknown). No schema change required; field already existed from OTA fleet autonomy work.
+- **OTA Fleet Autonomy** — Added server-initiated force-check capability, typed release channels, device type tracking, extracted upload UseCase for CLI reuse, and browser-based admin firmware upload route.
+  - **Force-check flag** (`Device.otaForceCheckRequested`): sticky column set by admin CLI (`device:request-ota-check --mac <mac>`); `/api/device/status` response includes optional `forceOtaCheck: true` field (omitted when false), consumed and cleared atomically server-side. Firmware parses field and resets OTA timer to trigger immediate check instead of waiting up to 6h.
+  - **Typed release channels** (`enum class OtaChannel` in `libs/firmware-shared`, TS `as const` pattern in `libs/core`): replaced freeform string validation on both firmware and backend. C++ mirror includes `toString()`/`fromString()` for wire format.
+  - **Device type tracking** (`Device.deviceType` column: `'UPS'|'MAINS'`): write-once at provisioning via captive portal/`secrets.h`, sent on first heartbeat. No admin-edit path for v1 — hardware categorization is fixed post-deployment.
+  - **Extracted `UploadFirmwareService` UseCase** (`libs/application`): reusable firmware upload entry point consumed by both CLI and new admin HTTP route; CLI is now a thin adapter with interactive prompts (InquirerService) for version/board/channel when flags omitted.
+  - **`firmware:list` CLI command**: shows current live releases per board/channel, helps admin avoid accidental downgrades/duplicates.
+  - **`GET/POST /admin/firmware` route** in existing `apps/api`: browser-based firmware upload with static HTML form (drag-drop file, DB-sourced version/board/channel dropdowns). Auth via single `ADMIN_UPLOAD_TOKEN` bearer-token env var; reuses `UploadFirmwareService`, no duplicated upload logic. 4MB upload limit, server-side filename validation.
+  - Two Prisma migrations: `20260703120000_add_device_type`, `20260703121500_add_device_ota_force_check_requested`.
+
 ### Chore
 
 - **AI config**: `/cts-update` synced CTS payload to `6503059` (new skills `cts-contribute`/`cts-rule-auditor`/`distill-inbox`, `nx`-first `rules/docker-commands.md`, expanded `security-scanner`). Discovered the whole-file `.ctsignore` on `rules/workflow.md` had frozen it since 2026-06-12, missing two rounds of generic (non-frontend) upstream process improvements — re-merged Foresight gate, Nx Command Execution Policy, sequential quality gate (`tester → reviewer → security-scanner‖qa`, replacing all-parallel), severity floor, and `docs/CLAUDE_TS_CHANGELOG.md` knowledge routing, then re-pruned frontend-only sections. Also rewrote `.claude/skills/vitest-testing/SKILL.md` examples to Jest (this repo has no Vitest dependency) and corrected `tester.md`'s "using Vitest" wording; added new `docs/CLAUDE_TS_CHANGELOG.md` ledger to track these divergences for future upstream contribution. See that file for details.
 - **AI config**: CLAUDE.md slimmed to a self-contained dispatcher core (no `@` force-loads); rules now read on-demand. Quality gate is now conditional (`tester`+`reviewer` always, `security-scanner`/`qa` only when relevant); `.claude/rules/workflow.md` updated to match and frontend-agent references removed (none installed in this repo).
 - **AI config**: Slimmed `.claude/agents/*.md` frontmatter `description:` fields (removed `<example>` blocks, compressed UA trigger keyword lists to 4–5 terms) — these are loaded into every message, so smaller is cheaper. Downgraded `ba`, `devil`, `security-scanner` from `opus` to `sonnet` (kept `opus` for `ddd-architect` and `debugger`, where wrong answers/retries are costlier). Added a mandatory "Report Format" section to every agent body for terse, structured reports back to the orchestrator.
 - **AI config**: Pruned frontend agents/skills (`vue-developer`/`react-developer`/`angular-developer`, `vue-expert`/`react-expert`/`angular-expert` — no UI in this repo) and duplicate skills (`playwright-skill`, `postgresql`, `database-optimizer`); removed non-TS examples from `github-actions` skill; fixed broken `description:` frontmatter on `playwright-expert` and `security-reviewer` skills that prevented correct trigger matching.
+
+### Tests
+
+- **Firmware/OTA**: Added boundary tests (`libs/firmware-shared/test/test_ota/test_ota.cpp`) for the silent URL-truncation guard in `ota.cpp` (`strlen(url) == sizeof(url) - 1`): a 1023-char URL now asserted to return `CheckResult::ParseError`, a 1022-char URL asserted to parse successfully. The guard itself was already shipped in `86b39e4`; only test coverage was missing (task `tmp/tasks/todo/2026-05-23-02-ota-url-buffer-truncation-check.md` predated that commit).
 
 ### Refactoring
 

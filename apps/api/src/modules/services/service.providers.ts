@@ -20,7 +20,10 @@ import {
   UpdateDeviceService,
   DeleteDeviceService,
   RotateDeviceSecretService,
+  RequestOtaForceCheckService,
   CheckOtaUpdateService,
+  UploadFirmwareService,
+  ListFirmwareReleasesService,
 } from '@home-pulse-watcher/application';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REPOSITORY_TOKENS } from '../repositories/repository.tokens.js';
@@ -128,6 +131,12 @@ export const serviceProviders: Provider[] = [
     inject: [REPOSITORY_TOKENS.DEVICE],
   },
   {
+    provide: SERVICE_TOKENS.REQUEST_OTA_FORCE_CHECK,
+    useFactory: (deviceRepo: IDeviceRepository) =>
+      new RequestOtaForceCheckService(deviceRepo),
+    inject: [REPOSITORY_TOKENS.DEVICE],
+  },
+  {
     provide: SERVICE_TOKENS.LIST_USERS,
     useFactory: (userRepo: IUserRepository) => new ListUsersService(userRepo),
     inject: [REPOSITORY_TOKENS.USER],
@@ -155,5 +164,22 @@ export const serviceProviders: Provider[] = [
       REPOSITORY_TOKENS.FIRMWARE_RELEASE,
       STORAGE_TOKENS.FIRMWARE_STORAGE,
     ],
+  },
+  {
+    provide: SERVICE_TOKENS.UPLOAD_FIRMWARE,
+    useFactory: (
+      storage: IFirmwareStorageService,
+      firmwareRepo: IFirmwareReleaseRepository,
+    ) => new UploadFirmwareService(storage, firmwareRepo),
+    inject: [
+      STORAGE_TOKENS.FIRMWARE_STORAGE,
+      REPOSITORY_TOKENS.FIRMWARE_RELEASE,
+    ],
+  },
+  {
+    provide: SERVICE_TOKENS.LIST_FIRMWARE_RELEASES,
+    useFactory: (firmwareRepo: IFirmwareReleaseRepository) =>
+      new ListFirmwareReleasesService(firmwareRepo),
+    inject: [REPOSITORY_TOKENS.FIRMWARE_RELEASE],
   },
 ];

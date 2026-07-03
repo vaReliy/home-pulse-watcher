@@ -36,6 +36,7 @@
 #include <esp_task_wdt.h>
 #include <esp_idf_version.h>
 #include <Adafruit_NeoPixel.h>
+#include <ArduinoJson.h>
 
 #include "config.h"
 #include <HomePulse/credentials.h>
@@ -268,7 +269,21 @@ bool sendPowerStatus(int status, int adcValue) {
 
     Serial.printf("HTTP %d: %s\n", result.statusCode, result.body.c_str());
 
-    return result.statusCode == HTTP_CODE_OK || result.statusCode == HTTP_CODE_CREATED;
+    bool ok = result.statusCode == HTTP_CODE_OK || result.statusCode == HTTP_CODE_CREATED;
+
+    // Backend may ask for an immediate OTA check via a sticky flag (bypasses the
+    // 6h OTA_CHECK_INTERVAL_MS timer). Old backend won't send this field; missing
+    // key deserializes as false via JsonVariant, so this is safe against old-shape responses.
+    if (ok) {
+        JsonDocument responseDoc;
+        DeserializationError parseErr = deserializeJson(responseDoc, result.body);
+        if (!parseErr && responseDoc["forceOtaCheck"].as<bool>()) {
+            Serial.println("[OTA] Force-check requested by backend, resetting OTA timer");
+            lastOtaCheckTime = 0;
+        }
+    }
+
+    return ok;
 }
 
 void setup() {

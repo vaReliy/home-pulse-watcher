@@ -134,9 +134,17 @@ docker compose --profile admin run --rm admin device:link --telegram-id 12345678
 docker compose --profile admin run --rm admin firmware:upload \
   --file /firmware/esp32c3-v0.2.0.bin --version 0.2.0 \
   --board esp32c3 --channel BETA
+
+# interactive prompts for version/board/channel when flags omitted
+docker compose --profile admin run --rm admin firmware:upload --file /firmware/esp32c3-v0.2.0.bin
+
+# list current live releases per board/channel
+docker compose --profile admin run --rm admin firmware:list
 ```
 
 **Authentication note:** gcloud inside the container uses Application Default Credentials (ADC) from `~/.config/gcloud` on the host. Leave `GCP_SERVICE_ACCOUNT_KEY` empty in `.env` — ADC automatically kicks in when the environment variable is not set.
+
+**Browser-based upload alternative**: Point your browser to `http://localhost:3000/admin/firmware` (requires `ADMIN_UPLOAD_TOKEN` env var set). Static HTML form with drag-drop file upload, version/board/channel dropdowns populated from the database, and optional critical-flag checkbox. No credentials in the URL; authentication is via bearer token in the `Authorization` header.
 
 See [CLI Reference](./docs/cli-reference.md) for full documentation and the [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 
@@ -153,7 +161,7 @@ pio run -t upload
 
 On first boot the device starts a `HomePulse-Setup-XXXX` Wi-Fi AP. Connect to it and open `http://192.168.4.1` to enter your Wi-Fi SSID, password, device MAC, secret, and backend URL. Credentials are saved to NVS (non-volatile flash) and persist across reboots.
 
-> **Backend URL format**: Enter the base origin only — no path, no trailing slash (e.g., `https://your-server.com`). The firmware appends `/api/device/status` for power events and `/api/ota/check` for OTA update checks.
+> **Backend URL format**: Enter the base origin only — no path, no trailing slash (e.g., `https://your-server.com`). The firmware appends `/api/device/status` for power events and `/api/ota/check` for OTA update checks. **Device type** (`UPS` or `MAINS`) is selected at provisioning via a captive portal dropdown and is write-once — reflect your hardware config accurately (UPS = battery-backed, MAINS = mains-only).
 
 > **Dev shortcut**: Copy `include/secrets.h.example` to `include/secrets.h` and fill in credentials. If the file exists at compile time, its values are written to NVS on the first boot (when NVS is empty) — no captive portal required. Do **not** commit `secrets.h`.
 

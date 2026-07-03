@@ -9,7 +9,10 @@ export const SERVICE_TOKENS = {
   UPDATE_DEVICE: Symbol('UpdateDeviceService'),
   DELETE_DEVICE: Symbol('DeleteDeviceService'),
   ROTATE_DEVICE_SECRET: Symbol('RotateDeviceSecretService'),
+  REQUEST_OTA_FORCE_CHECK: Symbol('RequestOtaForceCheckService'),
   UNLINK_DEVICE_FROM_USER: Symbol('UnlinkDeviceFromUserService'),
   LIST_USERS: Symbol('ListUsersService'),
   CHECK_OTA_UPDATE: Symbol('CheckOtaUpdateService'),
+  UPLOAD_FIRMWARE: Symbol('UploadFirmwareService'),
+  LIST_FIRMWARE_RELEASES: Symbol('ListFirmwareReleasesService'),
 } as const;

@@ -46,6 +46,12 @@ export {
   type RotateDeviceSecretOutput,
 } from './device/rotate-device-secret.service.js';
 
+export {
+  RequestOtaForceCheckService,
+  type RequestOtaForceCheckInput,
+  type RequestOtaForceCheckOutput,
+} from './device/request-ota-force-check.service.js';
+
 // User services
 export {
   CreateUserService,
@@ -63,6 +69,11 @@ export {
   CheckOtaUpdateService,
   type CheckOtaUpdateInput,
   type CheckOtaUpdateOutput,
+  UploadFirmwareService,
+  type UploadFirmwareInput,
+  type UploadFirmwareOutput,
+  ListFirmwareReleasesService,
+  type ListFirmwareReleasesOutput,
 } from './ota/index.js';
 
 // Power event services

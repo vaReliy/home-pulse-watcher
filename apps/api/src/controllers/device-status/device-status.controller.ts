@@ -37,6 +37,11 @@ export class DeviceStatusController {
    *
    * @param dto - Power status (0 = OFF, 1 = ON)
    * @param deviceId - Verified device ID from guard
+   *
+   * Response includes optional `forceOtaCheck: true` when the sticky
+   * `Device.otaForceCheckRequested` flag was set (consumed on read) —
+   * old firmware never parses this response body, so adding the field
+   * is safe to roll out before the firmware change that consumes it.
    */
   /** 60 req/min/IP — matches normal device polling cadence */
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
@@ -63,6 +68,7 @@ export class DeviceStatusController {
       timestamp: result.data.event.timestamp.toISOString(),
       isStatusChange: result.data.isStatusChange,
       debounced: result.data.debounced,
+      ...(result.data.forceOtaCheck && { forceOtaCheck: true }),
     };
   }
 }

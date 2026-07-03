@@ -62,6 +62,8 @@ export const messagesUk: Messages = {
   YOUR_DEVICES_HEADER: 'Ваші пристрої:',
   MAC_LABEL: 'MAC:',
   ROLE_LABEL: 'Роль:',
+  FIRMWARE_LABEL: 'Прошивка:',
+  FIRMWARE_VERSION_UNKNOWN: 'н/д',
 
   // Notifications
   POWER_LOST: (label, time) =>

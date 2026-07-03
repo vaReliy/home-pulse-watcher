@@ -1,5 +1,6 @@
 import * as crypto from 'node:crypto';
 import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
+import { DeviceType } from '@home-pulse-watcher/core';
 import {
   DomainError,
   DomainErrorCode,
@@ -12,6 +13,8 @@ import { BaseService } from '../../base-service.js';
 export interface RegisterDeviceInput {
   macAddress: string;
   label?: string;
+  /** Hardware category, written once at provisioning. Defaults to MAINS. */
+  deviceType?: DeviceType;
 }
 
 export interface RegisterDeviceOutput {
@@ -31,6 +34,7 @@ export class RegisterDeviceService extends BaseService<
     return {
       macAddress: ['required', 'macAddress'],
       label: { max_length: 100 },
+      deviceType: { one_of: Object.values(DeviceType) },
     };
   }
 
@@ -64,6 +68,7 @@ export class RegisterDeviceService extends BaseService<
       macAddress: normalizedMac,
       encryptedSecret,
       label: params.label ?? null,
+      deviceType: params.deviceType ?? DeviceType.MAINS,
     });
 
     return {

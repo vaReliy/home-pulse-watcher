@@ -5,6 +5,41 @@
 
 using namespace HomePulse::Ota;
 
+// ─── OtaChannel ──────────────────────────────────────────────────────────────
+
+void test_ota_channel_to_string(void) {
+    TEST_ASSERT_EQUAL_STRING("ALPHA",  toString(OtaChannel::ALPHA));
+    TEST_ASSERT_EQUAL_STRING("BETA",   toString(OtaChannel::BETA));
+    TEST_ASSERT_EQUAL_STRING("STABLE", toString(OtaChannel::STABLE));
+}
+
+void test_ota_channel_from_string_valid(void) {
+    OtaChannel ch;
+    TEST_ASSERT_TRUE(fromString("ALPHA", ch));
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::ALPHA, (int)ch);
+
+    TEST_ASSERT_TRUE(fromString("BETA", ch));
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::BETA, (int)ch);
+
+    TEST_ASSERT_TRUE(fromString("STABLE", ch));
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::STABLE, (int)ch);
+}
+
+void test_ota_channel_from_string_invalid(void) {
+    OtaChannel ch = OtaChannel::STABLE;
+    TEST_ASSERT_FALSE(fromString("BOGUS", ch));
+    TEST_ASSERT_FALSE(fromString("", ch));
+    TEST_ASSERT_FALSE(fromString(nullptr, ch));
+    // outChannel untouched on failure
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::STABLE, (int)ch);
+}
+
+void test_ota_channel_from_string_case_sensitive(void) {
+    // Wire format is uppercase only — lowercase must not match.
+    OtaChannel ch;
+    TEST_ASSERT_FALSE(fromString("stable", ch));
+}
+
 // ─── parseOtaResponse ────────────────────────────────────────────────────────
 
 void test_parse_no_update(void) {
@@ -124,6 +159,43 @@ void test_extract_escaped_backslash_in_url(void) {
     TEST_ASSERT_EQUAL_STRING("https://example.com/path\\with-backslash", info.url.c_str());
 }
 
+void test_parse_url_exactly_fills_buffer_returns_parse_error(void) {
+    // url[] is 1024 bytes → capacity 1023 chars. A URL that exactly fills it
+    // to the rim is indistinguishable from a silently truncated one and must
+    // be rejected rather than passed downstream with a truncated value.
+    char longUrl[1024];
+    memset(longUrl, 'a', 1023);
+    longUrl[1023] = '\0';
+
+    char body[2048];
+    snprintf(body, sizeof(body),
+        "{\"hasUpdate\":true,\"version\":\"1.0.0\",\"url\":\"%s\","
+        "\"checksum\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        longUrl);
+
+    UpdateInfo info;
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::ParseError, (int)r);
+}
+
+void test_parse_url_one_below_buffer_capacity_succeeds(void) {
+    // Boundary check: one char short of capacity (1022 chars) must still parse.
+    char longUrl[1024];
+    memset(longUrl, 'a', 1022);
+    longUrl[1022] = '\0';
+
+    char body[2048];
+    snprintf(body, sizeof(body),
+        "{\"hasUpdate\":true,\"version\":\"1.0.0\",\"url\":\"%s\","
+        "\"checksum\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\"}",
+        longUrl);
+
+    UpdateInfo info;
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::UpdateAvailable, (int)r);
+    TEST_ASSERT_EQUAL_INT(1022, (int)info.url.length());
+}
+
 void test_extract_value_exceeding_buffer_returns_parse_error(void) {
     // version[] is 32 bytes; a 32-char version string must not fit → ParseError.
     UpdateInfo info;
@@ -164,6 +236,10 @@ void tearDown(void) {}
 int main(void) {
     UNITY_BEGIN();
 
+    RUN_TEST(test_ota_channel_to_string);
+    RUN_TEST(test_ota_channel_from_string_valid);
+    RUN_TEST(test_ota_channel_from_string_invalid);
+    RUN_TEST(test_ota_channel_from_string_case_sensitive);
     RUN_TEST(test_parse_no_update);
     RUN_TEST(test_parse_update_available_populates_fields);
     RUN_TEST(test_parse_update_available_critical_flag);
@@ -171,6 +247,8 @@ int main(void) {
     RUN_TEST(test_parse_null_body_returns_parse_error);
     RUN_TEST(test_parse_missing_url_field_returns_parse_error);
     RUN_TEST(test_parse_long_gcs_signed_url_succeeds);
+    RUN_TEST(test_parse_url_exactly_fills_buffer_returns_parse_error);
+    RUN_TEST(test_parse_url_one_below_buffer_capacity_succeeds);
     RUN_TEST(test_ota_canonical_string_format);
     RUN_TEST(test_ota_canonical_beta_channel);
     RUN_TEST(test_extract_escaped_quote_in_url);

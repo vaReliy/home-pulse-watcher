@@ -48,6 +48,8 @@ export interface Messages {
   YOUR_DEVICES_HEADER: string;
   MAC_LABEL: string;
   ROLE_LABEL: string;
+  FIRMWARE_LABEL: string;
+  FIRMWARE_VERSION_UNKNOWN: string;
 
   // Notifications
   POWER_LOST: (label: string, time: string) => string;
