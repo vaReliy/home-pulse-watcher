@@ -5,6 +5,41 @@
 
 using namespace HomePulse::Ota;
 
+// ─── OtaChannel ──────────────────────────────────────────────────────────────
+
+void test_ota_channel_to_string(void) {
+    TEST_ASSERT_EQUAL_STRING("ALPHA",  toString(OtaChannel::ALPHA));
+    TEST_ASSERT_EQUAL_STRING("BETA",   toString(OtaChannel::BETA));
+    TEST_ASSERT_EQUAL_STRING("STABLE", toString(OtaChannel::STABLE));
+}
+
+void test_ota_channel_from_string_valid(void) {
+    OtaChannel ch;
+    TEST_ASSERT_TRUE(fromString("ALPHA", ch));
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::ALPHA, (int)ch);
+
+    TEST_ASSERT_TRUE(fromString("BETA", ch));
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::BETA, (int)ch);
+
+    TEST_ASSERT_TRUE(fromString("STABLE", ch));
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::STABLE, (int)ch);
+}
+
+void test_ota_channel_from_string_invalid(void) {
+    OtaChannel ch = OtaChannel::STABLE;
+    TEST_ASSERT_FALSE(fromString("BOGUS", ch));
+    TEST_ASSERT_FALSE(fromString("", ch));
+    TEST_ASSERT_FALSE(fromString(nullptr, ch));
+    // outChannel untouched on failure
+    TEST_ASSERT_EQUAL_INT((int)OtaChannel::STABLE, (int)ch);
+}
+
+void test_ota_channel_from_string_case_sensitive(void) {
+    // Wire format is uppercase only — lowercase must not match.
+    OtaChannel ch;
+    TEST_ASSERT_FALSE(fromString("stable", ch));
+}
+
 // ─── parseOtaResponse ────────────────────────────────────────────────────────
 
 void test_parse_no_update(void) {
@@ -201,6 +236,10 @@ void tearDown(void) {}
 int main(void) {
     UNITY_BEGIN();
 
+    RUN_TEST(test_ota_channel_to_string);
+    RUN_TEST(test_ota_channel_from_string_valid);
+    RUN_TEST(test_ota_channel_from_string_invalid);
+    RUN_TEST(test_ota_channel_from_string_case_sensitive);
     RUN_TEST(test_parse_no_update);
     RUN_TEST(test_parse_update_available_populates_fields);
     RUN_TEST(test_parse_update_available_critical_flag);

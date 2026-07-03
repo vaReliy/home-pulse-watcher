@@ -139,6 +139,7 @@ describe('OtaController (integration)', () => {
       findById: jest.fn(),
       findByVersionAndBoard: jest.fn(),
       findLatestForBoard: jest.fn().mockResolvedValue([]),
+      findAll: jest.fn(),
       markCritical: jest.fn(),
     };
 
@@ -157,6 +158,8 @@ describe('OtaController (integration)', () => {
       updateStatus: jest.fn(),
       delete: jest.fn(),
       existsByMacAddress: jest.fn(),
+      consumeOtaForceCheckRequest: jest.fn(),
+      requestOtaForceCheck: jest.fn(),
     };
 
     const checkOtaUpdateService = new CheckOtaUpdateService(

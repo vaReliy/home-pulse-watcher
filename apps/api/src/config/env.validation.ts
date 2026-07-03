@@ -30,6 +30,13 @@ const REQUIRED_VARS: RequiredVar[] = [
 
 const OPTIONAL_VARS: OptionalVar[] = [
   {
+    name: 'ADMIN_UPLOAD_TOKEN',
+    validate: (value) =>
+      value.length >= 32
+        ? null
+        : 'must be at least 32 characters (bearer token guarding /admin/firmware)',
+  },
+  {
     name: 'GCP_SERVICE_ACCOUNT_KEY',
     validate: (value) => {
       let parsed: unknown;

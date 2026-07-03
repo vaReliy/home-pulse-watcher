@@ -1,5 +1,6 @@
 import type { Device } from '../entities/device.entity.js';
 import type { PowerStatus } from '../types/power-status.enum.js';
+import type { DeviceType } from '../types/device-type.enum.js';
 
 /**
  * Repository interface for Device entity operations.
@@ -22,6 +23,8 @@ export interface IDeviceRepository {
     macAddress: string;
     encryptedSecret: string;
     label?: string | null;
+    /** Hardware category, write-once at provisioning. Defaults to MAINS. */
+    deviceType?: DeviceType;
   }): Promise<Device>;
 
   /**
@@ -63,4 +66,18 @@ export interface IDeviceRepository {
    * Find all devices for a user (through UserDevice).
    */
   findByUserId(userId: string): Promise<Device[]>;
+
+  /**
+   * Atomically check-and-clear the sticky "force OTA check" flag for a device.
+   * Consumes (clears) the flag so it is served at most once per request.
+   * @returns true if the flag was set (and has now been cleared), false otherwise.
+   */
+  consumeOtaForceCheckRequest(id: string): Promise<boolean>;
+
+  /**
+   * Set the sticky "force OTA check" flag for a device (e.g. from an admin
+   * CLI command post-upload). Served (and cleared) on the device's next
+   * `/api/device/status` call via {@link consumeOtaForceCheckRequest}.
+   */
+  requestOtaForceCheck(id: string): Promise<void>;
 }

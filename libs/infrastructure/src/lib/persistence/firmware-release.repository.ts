@@ -78,4 +78,17 @@ export class PrismaFirmwareReleaseRepository
     );
     return mapPrismaFirmwareReleaseToEntity(row);
   }
+
+  async findAll(): Promise<FirmwareRelease[]> {
+    const rows = await withPrismaError('FirmwareRelease', () =>
+      this.prisma.firmwareRelease.findMany({
+        orderBy: [
+          { boardType: 'asc' },
+          { channel: 'asc' },
+          { createdAt: 'desc' },
+        ],
+      }),
+    );
+    return rows.map(mapPrismaFirmwareReleaseToEntity);
+  }
 }

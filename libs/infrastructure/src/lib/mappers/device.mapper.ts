@@ -3,6 +3,8 @@ import {
   PowerStatus,
   ReleaseChannel,
   isReleaseChannel,
+  DeviceType,
+  isDeviceType,
 } from '@home-pulse-watcher/core';
 import type { Device as PrismaDevice } from '@prisma/client';
 
@@ -26,5 +28,8 @@ export function mapPrismaDeviceToEntity(prismaDevice: PrismaDevice): Device {
     releaseChannel: isReleaseChannel(prismaDevice.releaseChannel)
       ? prismaDevice.releaseChannel
       : ReleaseChannel.STABLE,
+    deviceType: isDeviceType(prismaDevice.deviceType)
+      ? prismaDevice.deviceType
+      : DeviceType.MAINS,
   });
 }

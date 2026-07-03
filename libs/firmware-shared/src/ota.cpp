@@ -22,6 +22,25 @@
 namespace HomePulse {
 namespace Ota {
 
+// ─── OtaChannel ───────────────────────────────────────────────────────────────
+
+const char* toString(OtaChannel channel) {
+    switch (channel) {
+        case OtaChannel::ALPHA:  return "ALPHA";
+        case OtaChannel::BETA:   return "BETA";
+        case OtaChannel::STABLE: return "STABLE";
+    }
+    return "STABLE";
+}
+
+bool fromString(const char* str, OtaChannel& outChannel) {
+    if (!str) return false;
+    if (strcmp(str, "ALPHA") == 0)  { outChannel = OtaChannel::ALPHA;  return true; }
+    if (strcmp(str, "BETA") == 0)   { outChannel = OtaChannel::BETA;   return true; }
+    if (strcmp(str, "STABLE") == 0) { outChannel = OtaChannel::STABLE; return true; }
+    return false;
+}
+
 // ─── Portable JSON helpers ────────────────────────────────────────────────────
 
 // Handles \" and \\ escape sequences; other \X sequences copy X (passthrough).

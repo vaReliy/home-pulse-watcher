@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Features
+
+- **OTA Fleet Autonomy** — Added server-initiated force-check capability, typed release channels, device type tracking, extracted upload UseCase for CLI reuse, and browser-based admin firmware upload route.
+  - **Force-check flag** (`Device.otaForceCheckRequested`): sticky column set by admin CLI (`device:request-ota-check --mac <mac>`); `/api/device/status` response includes optional `forceOtaCheck: true` field (omitted when false), consumed and cleared atomically server-side. Firmware parses field and resets OTA timer to trigger immediate check instead of waiting up to 6h.
+  - **Typed release channels** (`enum class OtaChannel` in `libs/firmware-shared`, TS `as const` pattern in `libs/core`): replaced freeform string validation on both firmware and backend. C++ mirror includes `toString()`/`fromString()` for wire format.
+  - **Device type tracking** (`Device.deviceType` column: `'UPS'|'MAINS'`): write-once at provisioning via captive portal/`secrets.h`, sent on first heartbeat. No admin-edit path for v1 — hardware categorization is fixed post-deployment.
+  - **Extracted `UploadFirmwareService` UseCase** (`libs/application`): reusable firmware upload entry point consumed by both CLI and new admin HTTP route; CLI is now a thin adapter with interactive prompts (InquirerService) for version/board/channel when flags omitted.
+  - **`firmware:list` CLI command**: shows current live releases per board/channel, helps admin avoid accidental downgrades/duplicates.
+  - **`GET/POST /admin/firmware` route** in existing `apps/api`: browser-based firmware upload with static HTML form (drag-drop file, DB-sourced version/board/channel dropdowns). Auth via single `ADMIN_UPLOAD_TOKEN` bearer-token env var; reuses `UploadFirmwareService`, no duplicated upload logic. 4MB upload limit, server-side filename validation.
+  - Two Prisma migrations: `20260703120000_add_device_type`, `20260703121500_add_device_ota_force_check_requested`.
+
 ### Chore
 
 - **AI config**: `/cts-update` synced CTS payload to `6503059` (new skills `cts-contribute`/`cts-rule-auditor`/`distill-inbox`, `nx`-first `rules/docker-commands.md`, expanded `security-scanner`). Discovered the whole-file `.ctsignore` on `rules/workflow.md` had frozen it since 2026-06-12, missing two rounds of generic (non-frontend) upstream process improvements — re-merged Foresight gate, Nx Command Execution Policy, sequential quality gate (`tester → reviewer → security-scanner‖qa`, replacing all-parallel), severity floor, and `docs/CLAUDE_TS_CHANGELOG.md` knowledge routing, then re-pruned frontend-only sections. Also rewrote `.claude/skills/vitest-testing/SKILL.md` examples to Jest (this repo has no Vitest dependency) and corrected `tester.md`'s "using Vitest" wording; added new `docs/CLAUDE_TS_CHANGELOG.md` ledger to track these divergences for future upstream contribution. See that file for details.

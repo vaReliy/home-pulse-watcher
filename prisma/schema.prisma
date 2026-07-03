@@ -33,6 +33,8 @@ model Device {
   firmwareVersion  String?
   batteryVoltage   Int?
   releaseChannel   String       @default("STABLE")
+  otaForceCheckRequested Boolean @default(false)
+  deviceType       String       @default("MAINS")
   users           UserDevice[]
   events          PowerEvent[]
 }

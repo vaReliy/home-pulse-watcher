@@ -37,6 +37,8 @@ export interface ProcessPowerStatusOutput {
   isStatusChange: boolean;
   previousStatus: PowerStatus | null;
   debounced: boolean;
+  /** True if backend requests an immediate OTA check (sticky flag, consumed once). */
+  forceOtaCheck: boolean;
 }
 
 /**
@@ -194,12 +196,17 @@ export class ProcessPowerStatusService extends BaseService<
       );
     }
 
+    // 8. Consume sticky force-OTA-check flag (atomic check-and-clear, served at most once).
+    const forceOtaCheck =
+      await this.deviceRepository.consumeOtaForceCheckRequest(deviceId);
+
     return {
       event,
       device: updatedDevice,
       isStatusChange,
       previousStatus,
       debounced,
+      forceOtaCheck,
     };
   }
 }

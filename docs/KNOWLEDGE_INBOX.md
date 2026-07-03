@@ -41,3 +41,28 @@ Belongs in (guess): CLAUDE.md (firmware/embedded-cpp-pro section) or a rule
 
 Why: (1) Without `app.set('trust proxy', 1)` (number, not boolean), Cloud Run's LB rewrite makes all requests share one IP → one global throttle bucket, both a DoS risk and a bypass. Boolean `true` trusts the whole XFF chain and is spoofable — don't build a custom `getTracker()` reading leftmost XFF either. (2) `ThrottlerModule.forRoot`'s default in-memory store resets every Cloud Run cold start (~15 min scale-to-zero); acceptable only while min/max instances = 1 — migrate to `@nest-lab/throttler-storage-redis` before scaling horizontally. (3) Per-IP limiting under-serves NAT'd households — multiple ESP32 devices behind one home NAT share a bucket. Post-MVP: add a per-MAC named throttler inside `HmacAuthGuard` after MAC validation.
 Belongs in (guess): PROJECT_CONTEXT (infra/rate-limiting section) or rules/validation-authorization.md
+
+## 2026-07-03 — `@FileInterceptor` defaults to disk storage, not memory
+
+Why: `@FileInterceptor('file')` without `storage: memoryStorage()` writes the uploaded file to disk and passes `req.file.path` (string path) to the handler, not `req.file.buffer`. If the consumer expects a `Buffer` (e.g., `UploadFirmwareService` takes a `Buffer` argument for GCS upload), the handler receives a path string, fails type checking, and breaks at runtime. Fix: inject `multer`'s `memoryStorage()` into the interceptor options or accept `Readable` stream / path string and read it in the handler. Unit D's admin route initially hit this (typo in interceptor config) — now uses `storage: memoryStorage()` to match the UseCase contract.
+Belongs in (guess): rules/validation-authorization.md (HTTP boundary layer) or a new rule about upload handler patterns
+
+## 2026-07-03 — `BaseService` validation strips unrepresented fields from input
+
+Why: `BaseService<Input, Output>` calls `validationRules()` to build an LIVR schema, then validates input against it. LIVR silently drops any key not present in the schema — there's no "pass-through unknowns" option. A service needing to accept a `Buffer` (which LIVR has no type for) cannot extend `BaseService` without a workaround: merge the Buffer separately after LIVR validation completes, pass it as a separate service parameter outside the Input object, or skip validation for that field entirely. Unit C worked around this by having `UploadFirmwareService` accept `file: Buffer` as a separate constructor param, not a field on the validated Input type.
+Belongs in (guess): rules/validation-authorization.md (LIVR limitation section) or a new architectural note on mixing structured/unstructured input
+
+## 2026-07-03 — CHECK constraints on new columns with DEFAULT are always safe to add
+
+Why: When adding a new column with `@db.String` and `@default("value")`, even if a CHECK constraint is added in the same migration (e.g., `@db.String @default("MAINS") // @db.Char(6)`), Postgres backfills the default to all existing rows **before** enforcing the constraint. The constraint never fails on existing data, even if logically it should (e.g., a default "MAINS" for a field that was semantically NULL before). This is distinct from the already-documented gotcha (KNOWLEDGE_INBOX lines 20-23) where a CHECK constraint is **retrofitted** onto a column with pre-existing heterogeneous data — that one breaks migrations. New columns with defaults + constraints in one migration always succeed; the danger is mutating/removing the default later without data backfill.
+Belongs in (guess): rules/migrations-queue.md (Prisma migrations section)
+
+## 2026-07-03 — `sendPowerStatus()` response body was never parsed; even stronger backward-compat than OTA response precedent
+
+Why: `firmware/common/main.cpp`'s `sendPowerStatus()` POSTs to `/api/device/status` and receives a JSON response (lines 265–271), but the response body is only logged, never parsed — the firmware ignores all fields in the response and proceeds with its own state. This is an even stronger backward-compatibility guarantee than the OTA-check endpoint (KNOWLEDGE_INBOX lines 30-33), where the response is actively parsed for `sig`/`version`/`url`/`checksum`/`expiresAt`. The `forceOtaCheck` field added in Unit A is safe to emit from the backend immediately and consume only by firmware that explicitly parses it — old firmware versions will silently ignore it without risk of misbehavior. Cross-reference: if any future `/api/device/status` response field **requires** parsing (not just optional), this guarantee no longer holds; document that change in PROJECT_CONTEXT.
+Belongs in (guess): PROJECT_CONTEXT (deployment/rollout notes) as a reference note, or directly in the `forceOtaCheck` section
+
+## 2026-07-03 — admin HTML pages: no server-side interpolation of DB data; fetch + `textContent` only
+
+Why: `admin-firmware.template.ts` is a static string with zero interpolation — DB-sourced release data (version/board/channel) is fetched client-side and rendered via `createElement`/`textContent`, never `innerHTML` or server-side template literals. This eliminates stored/reflected XSS by construction in bolted-on admin pages without a templating engine. A naive variant interpolating the releases table into the HTML string server-side would be one malicious version-string away from XSS. Convention: any future admin/debug HTML route must follow the same pattern.
+Belongs in (guess): rules/validation-authorization.md ("no server-side string interpolation of untrusted/DB data into HTML" convention)

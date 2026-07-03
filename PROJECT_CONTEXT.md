@@ -354,13 +354,12 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - Signed URLs: V4 format, 15-minute TTL
 - Error translation: GCS 404 → `NotFoundError`, 403 → permission denied, etc.
 
-**Admin CLI: `firmware:upload` (Task 4, Complete)**
+**Admin CLI: Upload & List Commands**
 
-- Command: `node apps/api/dist/cli.js firmware:upload --file <bin> --version <semver> --board <board> --channel <channel> [--critical]`
-- GCS path convention: `firmware/<board>/<version>/<filename>`
-- `CliModule` imports `StorageModule` directly — `ServicesModule` does not re-export the storage token, so direct import is required
-- Best-effort GCS cleanup on DB failure prevents orphaned GCS objects
-- Default binary search path: `./tmp/firmware/` (when `--file` is a bare basename)
+- **`UploadFirmwareService` (extracted UseCase)**: `libs/application/src/lib/services/ota/upload-firmware.service.ts` — reusable firmware upload entry point consumed by both CLI command and new HTTP admin route. Handles file reading, checksum computation, GCS upload with idempotency guard (`ifGenerationMatch: 0`), DB record creation, best-effort GCS cleanup on failure.
+- **`firmware:upload` command**: `apps/api/src/cli/firmware/upload-firmware.command.ts` — thin adapter calling `UploadFirmwareService`. Syntax: `node apps/api/dist/cli.js firmware:upload --file <bin> --version <semver> --board <board> --channel <channel> [--critical]`. Interactive prompts via `InquirerService` for version/board/channel when flags omitted. GCS path convention: `firmware/<board>/<version>/<filename>`. Default binary search path: `./tmp/firmware/` (when `--file` is a bare basename).
+- **`firmware:list` command** (new): `node apps/api/dist/cli.js firmware:list` — shows current live releases per board/channel, helping admin avoid accidental downgrades/duplicates.
+- **`CliModule` imports `StorageModule` directly** — `ServicesModule` does not re-export the storage token, so direct import is required
 
 **Docker Admin Profile (Task 5, Complete)**
 
@@ -373,13 +372,20 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - **One-time host setup**: `gcloud auth application-default login` + `npx nx build api` + `docker compose --profile admin build admin`
 - `prisma.config.ts` must be copied into the admin image (Prisma 7.x reads DB URL from config, not schema)
 
-**OTA Discovery API (Task 3, Complete)**
+**Device Model Fields (Fleet Autonomy)**
+
+- `releaseChannel`: String (default `"STABLE"`) — server-controlled firmware tier; device never forces downgrade via request tampering. Typed as `as const` object in `libs/core`.
+- `deviceType`: String (`"UPS"` | `"MAINS"`, no default) — hardware category, write-once at provisioning via captive portal or compile-time `secrets.h`. Distinguishes UPS-backed devices (battery monitoring) from mains-only. No admin-edit path for v1.
+- `otaForceCheckRequested`: Boolean (default `false`) — sticky flag set by admin CLI (`device:request-ota-check --mac <mac>`), cleared after being served once in the status response.
+
+**OTA Discovery API & Force-check Mechanism**
 
 - `POST /api/ota/check` endpoint — HMAC-SHA256 authenticated, device queries latest release for its board type + channel
   - Channel waterfall: `STABLE` → `[STABLE]`, `BETA` → `[BETA, STABLE]`, `ALPHA` → `[ALPHA, BETA, STABLE]`
   - Semantic version comparison (returns only releases > current device version)
   - Response: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`
   - Guard decorator: `@HmacCanonical()` pluggable (supports both deviceId/MAC canonicalization)
+- **`POST /api/device/status` response** (heartbeat) — now includes optional `forceOtaCheck: true` field (omitted when false). When present, firmware resets its OTA-check timer (`lastOtaCheckTime`) to trigger `checkForUpdate()` immediately on the next loop iteration instead of waiting up to 6h (`OTA_CHECK_INTERVAL_MS`, `config.h:120`). Consumed and cleared atomically server-side by `ProcessPowerStatusService` (after response is sent, the flag is reset to false for the next heartbeat).
 
 **Firmware OTA Client (Task 4, Complete + Hardened)**
 
@@ -409,7 +415,17 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - Secret: per-device NVS secret (no new key material)
 - Rollout constraint: backend MUST be deployed before sig-verifying firmware
 
+**Admin HTTP Route: Browser-based Upload**
+
+- **`GET/POST /admin/firmware`** route in existing `apps/api` (no new Nx app) — browser-based firmware upload alternative to CLI
+  - `GET` serves a static HTML form with: drag-drop file input, version/board/channel dropdowns sourced from DB (via `FirmwareReleaseRepository.findAll()`), upload button
+  - `POST` accepts `multipart/form-data`: `file` (binary, 4MB limit), `version`, `board`, `channel`, optional `critical` flag. Validates filename (`SAFE_BASENAME` regex), reuses `UploadFirmwareService` for upload logic
+  - Auth: single bearer token env var `ADMIN_UPLOAD_TOKEN` (sufficient for solo admin). Missing/invalid token → 401 `Unauthorized`
+  - No session/JWT auth built — bearer token only, never logged, only checked at handler entry
+  - File validation: size limit 4MB, filename must match `^[A-Za-z0-9._-]+\.bin$` (prevents directory traversal)
+  - Response: JSON `{ success: true, path, version, board, channel }` on success, or error details on validation failure
+
 **Still pending:**
 
 - Device → Release linking for tracking upgrade status per-device (deferred to 5.7)
-- `firmware:list`, `firmware:promote` admin commands (deferred)
+- `firmware:promote` (canary/staged rollout automation) — deferred pending adoption of gradual rollout strategy

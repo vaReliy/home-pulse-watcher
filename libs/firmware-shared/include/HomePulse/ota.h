@@ -8,6 +8,26 @@
 namespace HomePulse {
 namespace Ota {
 
+/**
+ * Typed mirror of the backend's `ReleaseChannel` (`libs/core/src/lib/types/release-channel.enum.ts`).
+ * Kept as a real enum (not a raw string) so firmware code gets exhaustive
+ * switch checking; wire format is still the uppercase string via toString()/fromString().
+ */
+enum class OtaChannel {
+    ALPHA,
+    BETA,
+    STABLE
+};
+
+/** Returns the uppercase wire-format string for a channel ("ALPHA"|"BETA"|"STABLE"). */
+const char* toString(OtaChannel channel);
+
+/**
+ * Parses an uppercase wire-format channel string into an OtaChannel.
+ * @return true and populates outChannel on a recognised value; false (outChannel untouched) otherwise.
+ */
+bool fromString(const char* str, OtaChannel& outChannel);
+
 enum class CheckResult {
     NoUpdate,
     UpdateAvailable,

@@ -3,7 +3,9 @@ import type {
   IDeviceRepository,
   Device,
   PowerStatus,
+  DeviceType,
 } from '@home-pulse-watcher/core';
+import { DeviceType as DeviceTypeConst } from '@home-pulse-watcher/core';
 import { mapPrismaDeviceToEntity } from '../mappers/device.mapper.js';
 import { withPrismaError } from './prisma-error.wrapper.js';
 
@@ -32,6 +34,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
     macAddress: string;
     encryptedSecret: string;
     label?: string | null;
+    deviceType?: DeviceType;
   }): Promise<Device> {
     const device = await withPrismaError('Device', () =>
       this.prisma.device.create({
@@ -39,6 +42,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
           macAddress: data.macAddress,
           encryptedSecret: data.encryptedSecret,
           label: data.label ?? null,
+          deviceType: data.deviceType ?? DeviceTypeConst.MAINS,
         },
       }),
     );
@@ -106,5 +110,24 @@ export class PrismaDeviceRepository implements IDeviceRepository {
       }),
     );
     return devices.map(mapPrismaDeviceToEntity);
+  }
+
+  async consumeOtaForceCheckRequest(id: string): Promise<boolean> {
+    const result = await withPrismaError('Device', () =>
+      this.prisma.device.updateMany({
+        where: { id, otaForceCheckRequested: true },
+        data: { otaForceCheckRequested: false },
+      }),
+    );
+    return result.count > 0;
+  }
+
+  async requestOtaForceCheck(id: string): Promise<void> {
+    await withPrismaError('Device', () =>
+      this.prisma.device.update({
+        where: { id },
+        data: { otaForceCheckRequested: true },
+      }),
+    );
   }
 }

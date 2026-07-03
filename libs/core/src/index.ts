@@ -7,6 +7,7 @@ export {
   isReleaseChannel,
   ReleaseChannel,
 } from './lib/types/release-channel.enum.js';
+export { DeviceType, isDeviceType } from './lib/types/device-type.enum.js';
 
 // Entities
 export { Device } from './lib/entities/device.entity.js';

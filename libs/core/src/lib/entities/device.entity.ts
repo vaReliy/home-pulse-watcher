@@ -1,5 +1,6 @@
 import { PowerStatus } from '../types/power-status.enum.js';
 import { ReleaseChannel } from '../types/release-channel.enum.js';
+import { DeviceType } from '../types/device-type.enum.js';
 
 /**
  * Device domain entity.
@@ -19,6 +20,8 @@ export class Device {
   readonly batteryVoltage: number | null;
   /** OTA release channel this device is enrolled in. Defaults to STABLE. */
   readonly releaseChannel: ReleaseChannel;
+  /** Hardware category set once at provisioning; never edited afterward. */
+  readonly deviceType: DeviceType;
 
   constructor(props: {
     id: string;
@@ -31,6 +34,7 @@ export class Device {
     firmwareVersion: string | null;
     batteryVoltage: number | null;
     releaseChannel: ReleaseChannel;
+    deviceType: DeviceType;
   }) {
     this.id = props.id;
     this.macAddress = props.macAddress;
@@ -42,6 +46,7 @@ export class Device {
     this.firmwareVersion = props.firmwareVersion;
     this.batteryVoltage = props.batteryVoltage;
     this.releaseChannel = props.releaseChannel;
+    this.deviceType = props.deviceType;
   }
 
   /** Returns true if this device has a UPS battery module (batteryVoltage is not null and not the 0 sentinel for "no reading"). */

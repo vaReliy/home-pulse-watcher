@@ -39,6 +39,8 @@ describe('HmacAuthGuard', () => {
     updateStatus: jest.fn(),
     delete: jest.fn(),
     existsByMacAddress: jest.fn(),
+    consumeOtaForceCheckRequest: jest.fn(),
+    requestOtaForceCheck: jest.fn(),
   });
 
   /** Returns a Reflector with no @HmacCanonical metadata — guard will throw. Use only for tests that fail before the builder step. */

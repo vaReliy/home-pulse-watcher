@@ -68,6 +68,8 @@ const createMockDeviceRepo = (
     updateStatus: jest.fn(),
     delete: jest.fn(),
     existsByMacAddress: jest.fn(),
+    consumeOtaForceCheckRequest: jest.fn(),
+    requestOtaForceCheck: jest.fn(),
     findByUserId: jest.fn(),
   }) as unknown as jest.Mocked<IDeviceRepository>;
 
@@ -76,6 +78,7 @@ const createMockFirmwareRepo = (): jest.Mocked<IFirmwareReleaseRepository> => ({
   findById: jest.fn(),
   findByVersionAndBoard: jest.fn(),
   findLatestForBoard: jest.fn().mockResolvedValue([]),
+  findAll: jest.fn(),
   markCritical: jest.fn(),
 });
 

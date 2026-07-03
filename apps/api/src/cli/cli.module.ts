@@ -12,9 +12,14 @@ import { UnlinkDeviceFromUserCommand } from './device/unlink-device-from-user.co
 import { UpdateDeviceCommand } from './device/update-device.command';
 import { DeleteDeviceCommand } from './device/delete-device.command';
 import { RotateDeviceSecretCommand } from './device/rotate-device-secret.command';
+import { RequestOtaCheckCommand } from './device/request-ota-check.command';
 import { CreateUserCommand } from './user/create-user.command';
 import { ListUsersCommand } from './user/list-users.command';
-import { UploadFirmwareCommand } from './firmware/upload-firmware.command';
+import {
+  UploadFirmwareCommand,
+  UploadFirmwareQuestions,
+} from './firmware/upload-firmware.command';
+import { ListFirmwareCommand } from './firmware/list-firmware.command';
 
 @Module({
   imports: [
@@ -34,9 +39,12 @@ import { UploadFirmwareCommand } from './firmware/upload-firmware.command';
     UpdateDeviceCommand,
     DeleteDeviceCommand,
     RotateDeviceSecretCommand,
+    RequestOtaCheckCommand,
     CreateUserCommand,
     ListUsersCommand,
     UploadFirmwareCommand,
+    UploadFirmwareQuestions,
+    ListFirmwareCommand,
   ],
 })
 export class CliModule {}

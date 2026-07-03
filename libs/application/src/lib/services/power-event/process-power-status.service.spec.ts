@@ -63,6 +63,8 @@ describe('ProcessPowerStatusService', () => {
     updateStatus: jest.fn(),
     delete: jest.fn(),
     existsByMacAddress: jest.fn(),
+    consumeOtaForceCheckRequest: jest.fn().mockResolvedValue(false),
+    requestOtaForceCheck: jest.fn(),
   });
 
   const createMockPowerEventRepository =
@@ -1210,6 +1212,57 @@ describe('ProcessPowerStatusService', () => {
           validContext,
         ),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('force OTA check flag', () => {
+    it('should return forceOtaCheck=true when repository reports flag consumed', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(createMockDevice());
+      deviceRepo.updateStatus.mockResolvedValue(createMockDevice());
+      deviceRepo.consumeOtaForceCheckRequest.mockResolvedValue(true);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      const result = await service.run(
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
+        validContext,
+      );
+
+      expect(deviceRepo.consumeOtaForceCheckRequest).toHaveBeenCalledWith(
+        'device-123',
+      );
+      expect(result.data.forceOtaCheck).toBe(true);
+    });
+
+    it('should return forceOtaCheck=false when no flag was set', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(createMockDevice());
+      deviceRepo.updateStatus.mockResolvedValue(createMockDevice());
+      deviceRepo.consumeOtaForceCheckRequest.mockResolvedValue(false);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      const result = await service.run(
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
+        validContext,
+      );
+
+      expect(result.data.forceOtaCheck).toBe(false);
     });
   });
 });
