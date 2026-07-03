@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- **Admin upload guard misconfig no longer 500s**: `AdminTokenGuard.canActivate` threw a raw `Error('ADMIN_UPLOAD_TOKEN not configured')` when the env var was missing → Nest returned HTTP 500 with a leaking stack trace. Now throws `ServiceUnavailableException` (503) with a generic client body (`'Admin firmware upload is temporarily unavailable'`) and logs the specific reason server-side only. Also promoted `ADMIN_UPLOAD_TOKEN` from optional to a production-required env var (`env.validation.ts` `PRODUCTION_REQUIRED_VARS`, mirroring `TELEGRAM_WEBHOOK_SECRET`) so prod misconfiguration fails fast at startup instead of at first request.
 - **Env validation**: `TELEGRAM_WEBHOOK_SECRET` was unconditionally required at startup, so local/test `nx serve api` without the var exited(1) even though dev uses Telegram polling, not the webhook route. Moved it to a prod-only required-vars list checked only when `NODE_ENV=production` (mirrors the webhook-only usage guarded in `TelegramController`).
 
 ### Features

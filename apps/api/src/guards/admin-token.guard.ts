@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   Injectable,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import {
@@ -27,7 +28,15 @@ export class AdminTokenGuard implements CanActivate {
     const expectedToken = process.env['ADMIN_UPLOAD_TOKEN'];
 
     if (!expectedToken) {
-      throw new Error('ADMIN_UPLOAD_TOKEN not configured');
+      // Server misconfiguration (required admin env var missing), not a client
+      // error. Keep the specific reason server-side; return a generic 503 so the
+      // client-facing body never leaks the env var name or a stack trace.
+      this.logger.error(
+        'ADMIN_UPLOAD_TOKEN not configured — rejecting admin upload request (server misconfiguration)',
+      );
+      throw new ServiceUnavailableException(
+        'Admin firmware upload is temporarily unavailable',
+      );
     }
 
     const authHeader = request.headers['authorization'];

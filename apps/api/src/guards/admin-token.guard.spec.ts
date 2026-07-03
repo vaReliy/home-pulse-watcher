@@ -1,4 +1,4 @@
-import { ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, ServiceUnavailableException } from '@nestjs/common';
 import type { Request } from 'express';
 import {
   AuthenticationError,
@@ -89,7 +89,7 @@ describe('AdminTokenGuard', () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('fails closed (throws, does not grant access) when ADMIN_UPLOAD_TOKEN is unset', () => {
+  it('fails closed with a ServiceUnavailableException (not a raw 500) when ADMIN_UPLOAD_TOKEN is unset', () => {
     delete process.env['ADMIN_UPLOAD_TOKEN'];
     const guard = new AdminTokenGuard();
     const context = createMockContext(
@@ -97,7 +97,28 @@ describe('AdminTokenGuard', () => {
     );
 
     expect(() => guard.canActivate(context)).toThrow(
-      'ADMIN_UPLOAD_TOKEN not configured',
+      ServiceUnavailableException,
     );
+  });
+
+  it('does not leak the env var name or internals in the client-facing body when misconfigured', () => {
+    delete process.env['ADMIN_UPLOAD_TOKEN'];
+    const guard = new AdminTokenGuard();
+    const context = createMockContext(
+      createMockRequest({ authorization: 'Bearer anything' }),
+    );
+
+    try {
+      guard.canActivate(context);
+      throw new Error('expected canActivate to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ServiceUnavailableException);
+      const exception = err as ServiceUnavailableException;
+      expect(exception.getStatus()).toBe(503);
+      const response = exception.getResponse();
+      const body =
+        typeof response === 'string' ? response : JSON.stringify(response);
+      expect(body).not.toContain('ADMIN_UPLOAD_TOKEN');
+    }
   });
 });

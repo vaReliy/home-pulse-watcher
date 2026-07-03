@@ -21,6 +21,7 @@ describe('validateEnv', () => {
     DEVICE_SECRET_ENCRYPTION_KEY: 'a'.repeat(64),
     GCS_BUCKET_NAME: 'test-bucket',
     TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret',
+    ADMIN_UPLOAD_TOKEN: 'a'.repeat(32),
   };
 
   it('passes when all required vars are set', () => {
@@ -76,6 +77,30 @@ describe('validateEnv', () => {
   it('exits in production when TELEGRAM_WEBHOOK_SECRET is missing', () => {
     const { TELEGRAM_WEBHOOK_SECRET: _, ...rest } = BASE_ENV;
     process.env = { ...rest, NODE_ENV: 'production' };
+    validateEnv();
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('passes when ADMIN_UPLOAD_TOKEN is missing outside production', () => {
+    const { ADMIN_UPLOAD_TOKEN: _, ...rest } = BASE_ENV;
+    process.env = { ...rest };
+    validateEnv();
+    expect(process.exit).not.toHaveBeenCalled();
+  });
+
+  it('exits in production when ADMIN_UPLOAD_TOKEN is missing', () => {
+    const { ADMIN_UPLOAD_TOKEN: _, ...rest } = BASE_ENV;
+    process.env = { ...rest, NODE_ENV: 'production' };
+    validateEnv();
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it('exits in production when ADMIN_UPLOAD_TOKEN is shorter than 32 characters', () => {
+    process.env = {
+      ...BASE_ENV,
+      ADMIN_UPLOAD_TOKEN: 'a'.repeat(31),
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).toHaveBeenCalledWith(1);
   });

@@ -22,8 +22,11 @@ const REQUIRED_VARS: RequiredVar[] = [
 ];
 
 /**
- * Required only in production — Cloud Run scales to zero, so prod always runs
- * webhook mode (this secret guards it). Dev/test use Telegram long-polling instead.
+ * Required only in production — dev/test don't exercise these routes.
+ * - TELEGRAM_WEBHOOK_SECRET: Cloud Run scales to zero, so prod always runs
+ *   webhook mode (this secret guards it); dev/test use Telegram long-polling.
+ * - ADMIN_UPLOAD_TOKEN: guards the prod-only admin firmware-upload route. Missing
+ *   it must fail fast at startup, not surface as a request-time 503 in the guard.
  */
 const PRODUCTION_REQUIRED_VARS: RequiredVar[] = [
   {
@@ -33,9 +36,6 @@ const PRODUCTION_REQUIRED_VARS: RequiredVar[] = [
         ? null
         : 'must be at least 16 characters (empty or short secrets allow timing-safe bypass)',
   },
-];
-
-const OPTIONAL_VARS: OptionalVar[] = [
   {
     name: 'ADMIN_UPLOAD_TOKEN',
     validate: (value) =>
@@ -43,6 +43,9 @@ const OPTIONAL_VARS: OptionalVar[] = [
         ? null
         : 'must be at least 32 characters (bearer token guarding /admin/firmware)',
   },
+];
+
+const OPTIONAL_VARS: OptionalVar[] = [
   {
     name: 'GCP_SERVICE_ACCOUNT_KEY',
     validate: (value) => {
