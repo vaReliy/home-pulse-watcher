@@ -36,27 +36,39 @@ describe('validateEnv', () => {
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  it('exits when TELEGRAM_WEBHOOK_SECRET is missing', () => {
+  it('passes when TELEGRAM_WEBHOOK_SECRET is missing outside production', () => {
     const { TELEGRAM_WEBHOOK_SECRET: _, ...rest } = BASE_ENV;
     process.env = { ...rest };
     validateEnv();
-    expect(process.exit).toHaveBeenCalledWith(1);
+    expect(process.exit).not.toHaveBeenCalled();
   });
 
-  it('exits when TELEGRAM_WEBHOOK_SECRET is empty string', () => {
-    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: '' };
+  it('exits in production when TELEGRAM_WEBHOOK_SECRET is empty string', () => {
+    process.env = {
+      ...BASE_ENV,
+      TELEGRAM_WEBHOOK_SECRET: '',
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  it('exits when TELEGRAM_WEBHOOK_SECRET is shorter than 16 characters', () => {
-    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: 'tooshort' };
+  it('exits in production when TELEGRAM_WEBHOOK_SECRET is shorter than 16 characters', () => {
+    process.env = {
+      ...BASE_ENV,
+      TELEGRAM_WEBHOOK_SECRET: 'tooshort',
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  it('passes when TELEGRAM_WEBHOOK_SECRET is exactly 16 characters', () => {
-    process.env = { ...BASE_ENV, TELEGRAM_WEBHOOK_SECRET: 'a'.repeat(16) };
+  it('passes in production when TELEGRAM_WEBHOOK_SECRET is exactly 16 characters', () => {
+    process.env = {
+      ...BASE_ENV,
+      TELEGRAM_WEBHOOK_SECRET: 'a'.repeat(16),
+      NODE_ENV: 'production',
+    };
     validateEnv();
     expect(process.exit).not.toHaveBeenCalled();
   });

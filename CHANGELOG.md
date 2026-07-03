@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- **Env validation**: `TELEGRAM_WEBHOOK_SECRET` was unconditionally required at startup, so local/test `nx serve api` without the var exited(1) even though dev uses Telegram polling, not the webhook route. Moved it to a prod-only required-vars list checked only when `NODE_ENV=production` (mirrors the webhook-only usage guarded in `TelegramController`).
+
 ### Features
 
 - **OTA Fleet Autonomy** — Added server-initiated force-check capability, typed release channels, device type tracking, extracted upload UseCase for CLI reuse, and browser-based admin firmware upload route.
