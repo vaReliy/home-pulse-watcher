@@ -49,9 +49,10 @@
 #include <HomePulse/telemetry.h>
 #include <HomePulse/telemetry_http.h>
 #include <HomePulse/debounce.h>
-#if HAS_UPS_MODULE
+// UPS/battery support is always compiled in — one binary now serves both
+// UPS and MAINS-only hardware; hasUpsModule(creds) gates it at runtime
+// instead of a compile-time HAS_UPS_MODULE #define (see credentials.h).
 #include <HomePulse/BatteryUtils.h>
-#endif
 
 // Optional: when secrets.h is present at compile time, its values are used to
 // auto-provision NVS on first boot (convenient for development).
@@ -71,10 +72,10 @@ static bool timeInitialized = false;
 static int wifiFailureCount = 0;
 static int lastAdcValue = 0;               // Most recent averaged ADC reading
 
-#if HAS_UPS_MODULE
+// Battery state — always declared (single binary covers both hw variants);
+// stays at its 0 initializer and is simply never read on MAINS-only devices.
 static int lastBatteryAdcValue = 0;        // Most recent battery ADC reading
 static unsigned long lastSosTime = 0;      // Last SOS ping timestamp (for cooldown)
-#endif
 
 // Confirmation state (2 consecutive reads to confirm)
 static HomePulse::DebounceState debounceState{POWER_STATUS_ON, HomePulse::kDebounceIdle, 0};
@@ -113,9 +114,10 @@ void setupHardware() {
 
     // Configure GPIO
     pinMode(POWER_SENSE_PIN, INPUT_PULLDOWN);
-#if HAS_UPS_MODULE
+    // Configured unconditionally: this runs in setupHardware(), before NVS
+    // credentials (incl. the UPS flag) are loaded in setup(). Setting an
+    // unused analog pin to INPUT is a no-op on MAINS-only hardware.
     pinMode(BATTERY_SENSE_PIN, INPUT);
-#endif
 
     // Initialize WS2812B RGB LED
     led.begin();
@@ -197,13 +199,15 @@ int readAdcAverage() {
     return (int)(sum / ADC_SAMPLES);
 }
 
-#if HAS_UPS_MODULE
 /**
  * Read averaged battery voltage from GPIO3 (100k/100k divider).
  * Takes BATTERY_ADC_SAMPLES readings and returns millivolts.
  *
  * Uses analogReadMilliVolts() for factory-calibrated ADC linearity correction,
  * then scales by the hardware divider ratio (BATTERY_DIVIDER_RATIO_NUM / BATTERY_DIVIDER_RATIO_DEN).
+ *
+ * Only meaningful when hasUpsModule(creds) is true — callers gate on that at
+ * runtime. Always compiled in (one binary covers both hw variants).
  *
  * @return Battery voltage in millivolts
  */
@@ -216,7 +220,6 @@ int readBatteryVoltage() {
     int mvAvg = (int)(sum / BATTERY_ADC_SAMPLES);
     return HomePulse::calculateBatteryMv(mvAvg, BATTERY_DIVIDER_RATIO_NUM, BATTERY_DIVIDER_RATIO_DEN);
 }
-#endif
 
 /**
  * Send power status to backend
@@ -238,17 +241,13 @@ bool sendPowerStatus(int status, int adcValue) {
         return false;
     }
 
+    bool upsPresent = hasUpsModule(creds);
     HomePulse::PowerStatusReport report{
         deviceMac,
         static_cast<uint8_t>(status),
         adcValue,
-#if HAS_UPS_MODULE
-        lastBatteryAdcValue,
-        true,
-#else
-        -1,
-        false,
-#endif
+        upsPresent ? lastBatteryAdcValue : -1,
+        upsPresent,
         timestamp
     };
 
@@ -372,13 +371,13 @@ void setup() {
     Serial.printf("Initial ADC: %d, power status: %d\n", lastAdcValue, lastPowerStatus);
     updateStatusLed(led, lastPowerStatus);
 
-#if HAS_UPS_MODULE
-    // Prime battery cache before the first sendPowerStatus() call — without this,
-    // lastBatteryAdcValue would still hold its 0 initializer (no heartbeat has run yet)
-    // and the boot-time send would ship a literal 0mV battery reading.
-    lastBatteryAdcValue = readBatteryVoltage();
-    Serial.printf("Initial battery: %dmV\n", lastBatteryAdcValue);
-#endif
+    if (hasUpsModule(creds)) {
+        // Prime battery cache before the first sendPowerStatus() call — without this,
+        // lastBatteryAdcValue would still hold its 0 initializer (no heartbeat has run yet)
+        // and the boot-time send would ship a literal 0mV battery reading.
+        lastBatteryAdcValue = readBatteryVoltage();
+        Serial.printf("Initial battery: %dmV\n", lastBatteryAdcValue);
+    }
 
     // Send initial status with retries (first TCP connection after WiFi often fails — ARP not yet cached)
     bool initialSendOk = false;
@@ -511,11 +510,11 @@ void loop() {
             lastPowerStatus = decision.newCommitted;
             updateStatusLed(led, lastPowerStatus);
 
-#if HAS_UPS_MODULE
-            // Refresh battery cache before send — a heartbeat may not have fired since boot
-            // (e.g. device rebooted mid-outage), leaving lastBatteryAdcValue stale/0 otherwise.
-            lastBatteryAdcValue = readBatteryVoltage();
-#endif
+            if (hasUpsModule(creds)) {
+                // Refresh battery cache before send — a heartbeat may not have fired since boot
+                // (e.g. device rebooted mid-outage), leaving lastBatteryAdcValue stale/0 otherwise.
+                lastBatteryAdcValue = readBatteryVoltage();
+            }
 
             if (currentTime - lastSendTime >= MIN_STATE_CHANGE_MS) {
                 if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
@@ -538,12 +537,12 @@ void loop() {
     // Heartbeat — periodic sync to backend
     if (currentTime - lastHeartbeatTime >= HEARTBEAT_INTERVAL_MS) {
         lastHeartbeatTime = currentTime;
-#if HAS_UPS_MODULE
-        lastBatteryAdcValue = readBatteryVoltage();
-        Serial.printf("Heartbeat: status=%d, ADC=%d, battery=%dmV\n", lastPowerStatus, lastAdcValue, lastBatteryAdcValue);
-#else
-        Serial.printf("Heartbeat: status=%d, ADC=%d\n", lastPowerStatus, lastAdcValue);
-#endif
+        if (hasUpsModule(creds)) {
+            lastBatteryAdcValue = readBatteryVoltage();
+            Serial.printf("Heartbeat: status=%d, ADC=%d, battery=%dmV\n", lastPowerStatus, lastAdcValue, lastBatteryAdcValue);
+        } else {
+            Serial.printf("Heartbeat: status=%d, ADC=%d\n", lastPowerStatus, lastAdcValue);
+        }
         if (sendPowerStatus(lastPowerStatus, lastAdcValue)) {
             lastSendTime = currentTime;
             Serial.println("Heartbeat sent");
@@ -579,9 +578,8 @@ void loop() {
         }
     }
 
-#if HAS_UPS_MODULE
     // SOS — battery low alert during power outage
-    if (lastPowerStatus == POWER_STATUS_OFF) {
+    if (hasUpsModule(creds) && lastPowerStatus == POWER_STATUS_OFF) {
         lastBatteryAdcValue = readBatteryVoltage();
         if (lastBatteryAdcValue > 0 && lastBatteryAdcValue < BATTERY_VOLTAGE_LOW_MV) {
             if (currentTime - lastSosTime >= SOS_COOLDOWN_MS) {
@@ -596,7 +594,6 @@ void loop() {
             }
         }
     }
-#endif
 
 #ifdef ENABLE_DEEP_SLEEP
     // Enter deep sleep for battery operation

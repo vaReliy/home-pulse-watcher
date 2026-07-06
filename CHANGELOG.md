@@ -4,6 +4,7 @@
 
 ### Fixes
 
+- **CLI now runnable via `npx nx run api:cli --`**: added `cli` target to `apps/api/package.json` (`nx:run-commands`, `dependsOn: [build]`, `cwd: apps/api`). Rebuilds `dist/cli.js` if stale and relies on Nx's built-in root-`.env` loading, so no more `export $(grep -v '^#' .env | xargs)` before every invocation. Manual `node apps/api/dist/cli.js` path documented as a fallback in `docs/cli-reference.md`.
 - **Admin upload guard misconfig no longer 500s**: `AdminTokenGuard.canActivate` threw a raw `Error('ADMIN_UPLOAD_TOKEN not configured')` when the env var was missing → Nest returned HTTP 500 with a leaking stack trace. Now throws `ServiceUnavailableException` (503) with a generic client body (`'Admin firmware upload is temporarily unavailable'`) and logs the specific reason server-side only. Also promoted `ADMIN_UPLOAD_TOKEN` from optional to a production-required env var (`env.validation.ts` `PRODUCTION_REQUIRED_VARS`, mirroring `TELEGRAM_WEBHOOK_SECRET`) so prod misconfiguration fails fast at startup instead of at first request.
 - **Env validation**: `TELEGRAM_WEBHOOK_SECRET` was unconditionally required at startup, so local/test `nx serve api` without the var exited(1) even though dev uses Telegram polling, not the webhook route. Moved it to a prod-only required-vars list checked only when `NODE_ENV=production` (mirrors the webhook-only usage guarded in `TelegramController`).
 
@@ -18,6 +19,7 @@
   - **`firmware:list` CLI command**: shows current live releases per board/channel, helps admin avoid accidental downgrades/duplicates.
   - **`GET/POST /admin/firmware` route** in existing `apps/api`: browser-based firmware upload with static HTML form (drag-drop file, DB-sourced version/board/channel dropdowns). Auth via single `ADMIN_UPLOAD_TOKEN` bearer-token env var; reuses `UploadFirmwareService`, no duplicated upload logic. 4MB upload limit, server-side filename validation.
   - Two Prisma migrations: `20260703120000_add_device_type`, `20260703121500_add_device_ota_force_check_requested`.
+- **Firmware hardware variant provisioning**: `HAS_UPS_MODULE` converted from compile-time `#define` to NVS-backed runtime flag (`hasUps`), settable via captive-portal setup page alongside device secret. Single firmware binary per board (ESP32-C3/C6) now supports both UPS and MAINS hardware variants; eliminates separate build-and-flash cycles per hardware variant.
 
 ### Chore
 
@@ -25,6 +27,7 @@
 - **AI config**: CLAUDE.md slimmed to a self-contained dispatcher core (no `@` force-loads); rules now read on-demand. Quality gate is now conditional (`tester`+`reviewer` always, `security-scanner`/`qa` only when relevant); `.claude/rules/workflow.md` updated to match and frontend-agent references removed (none installed in this repo).
 - **AI config**: Slimmed `.claude/agents/*.md` frontmatter `description:` fields (removed `<example>` blocks, compressed UA trigger keyword lists to 4–5 terms) — these are loaded into every message, so smaller is cheaper. Downgraded `ba`, `devil`, `security-scanner` from `opus` to `sonnet` (kept `opus` for `ddd-architect` and `debugger`, where wrong answers/retries are costlier). Added a mandatory "Report Format" section to every agent body for terse, structured reports back to the orchestrator.
 - **AI config**: Pruned frontend agents/skills (`vue-developer`/`react-developer`/`angular-developer`, `vue-expert`/`react-expert`/`angular-expert` — no UI in this repo) and duplicate skills (`playwright-skill`, `postgresql`, `database-optimizer`); removed non-TS examples from `github-actions` skill; fixed broken `description:` frontmatter on `playwright-expert` and `security-reviewer` skills that prevented correct trigger matching.
+- **Firmware Docker build pipeline**: Added `firmware/Dockerfile` + `scripts/firmware-docker-build.sh <board> <version>` for reproducible, PlatformIO-free firmware binary builds. Produces `firmware.bin` for either board; named containers (`home-pulse-firmware-build-<board>`) enable idempotent re-runs.
 
 ### Tests
 
@@ -40,6 +43,7 @@
 - **Telegram bot**: UPS devices now show battery percentage in "power restored" notifications, matching "power lost" output. Root cause: `power-status.listener.ts` dropped `event.batteryVoltage` when invoking `formatPowerRestored`, and the formatter had no battery parameter. Fixed by extracting a shared `appendBatteryLine` helper used by both `formatPowerLost` and `formatPowerRestored`.
 - **Telegram bot / firmware**: Fixed UPS notifications showing impossible battery readings ("0.00V (0%)") right after a real outage. Two root causes: (1) firmware only refreshed its cached battery voltage on heartbeat/SOS sends, so a device rebooting mid-outage shipped a stale/zero-initialized reading on its next boot-time or status-change send (`firmware/common/main.cpp` now samples `readBatteryVoltage()` before every `sendPowerStatus()` call site); (2) the backend treated `batteryVoltage === 0` as a valid reading instead of the "no reading" sentinel already used elsewhere (`ProcessPowerStatusService`'s SOS guard), so `message.formatter.ts` rendered it to users instead of hiding the line — now guards `<= 0` in `appendBatteryLine`/`formatDeviceStatus`, and `Device.hasUps` was fixed for the same consistency gap.
 - **Database migrations**: Removed two pre-existing `FirmwareRelease` rows with legacy `gcsPath` format (`esp32c6/3.5.1.bin`) that violated the Phase 5.6 CHECK constraint regex. Resolved failed migration ledger entry so `20260505000002_fix_firmware_release_gcs_path_constraint` reapplies cleanly (no migration files modified).
+- **Documentation accuracy corrections**: Fixed stale/incorrect statements across firmware and OTA documentation (`firmware/README.md`, `firmware/docs/FLASHING_GUIDE.md`, `docs/firmware-release-manual-insert.md`, `docs/admin-guide.md`, `PROJECT_CONTEXT.md`). Added "Building and Uploading OTA Firmware Releases" section to `firmware/README.md` documenting full build→upload→channel-promotion workflow.
 
 ### Security
 

@@ -146,10 +146,11 @@ static void handleScan() {
 static void handleConfig() {
     DeviceCredentials creds;
     loadCredentials(&creds);
-    Serial.printf("[Portal] /config: ssid=%u url=%u hasSecret=%d\n",
+    Serial.printf("[Portal] /config: ssid=%u url=%u hasSecret=%d hasUps=%d\n",
         (unsigned)strlen(creds.wifi_ssid),
         (unsigned)strlen(creds.backend_url),
-        creds.device_secret[0] != '\0');
+        creds.device_secret[0] != '\0',
+        hasUpsModule(creds));
     // Inject CSRF token into the credentials JSON (strip trailing } and append)
     String json = buildConfigJson(creds);
     json = json.substring(0, json.length() - 1) +
@@ -204,6 +205,10 @@ static void handleSave() {
         }
         channelArg.toCharArray(submitted.ota_channel, CRED_OTA_CHAN_MAX);
     }
+
+    // Checkbox semantics: absent/unchecked means false. No "keep existing" carry-forward
+    // needed (unlike secret/url) — every save explicitly states the hardware variant.
+    submitted.has_ups_module = _webServer.hasArg("has_ups") && _webServer.arg("has_ups") == "1";
 
     DeviceCredentials merged = mergeSubmittedCredentials(existing, submitted, secretProvided, urlProvided);
 

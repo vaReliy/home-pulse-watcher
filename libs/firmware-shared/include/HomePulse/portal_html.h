@@ -61,6 +61,9 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
              background:none;border:none;color:#555;cursor:pointer;
              font-size:18px;padding:4px;line-height:1}
   .pw-toggle:hover{color:#aaa}
+  .checkbox-row{display:flex;align-items:center;gap:10px;margin-top:16px}
+  .checkbox-row input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:#2a7aff}
+  .checkbox-row label{margin:0;font-size:14px;color:#ccc}
 </style>
 </head>
 <body>
@@ -118,6 +121,11 @@ static const char PORTAL_HTML[] PROGMEM = R"rawhtml(
     <option value="BETA">BETA</option>
     <option value="ALPHA">ALPHA</option>
   </select>
+
+  <div class="checkbox-row">
+    <input type="checkbox" id="has-ups" name="has_ups">
+    <label for="has-ups">This device has a UPS/battery module fitted</label>
+  </div>
 
   <div id="status"></div>
   <button type="submit" id="save-btn">Save &amp; Connect</button>
@@ -209,6 +217,7 @@ function loadConfig() {
       if (c.otaChannel) {
         document.getElementById('ota-channel').value = c.otaChannel;
       }
+      document.getElementById('has-ups').checked = !!c.hasUps;
       if (c.hasSecret) {
         var secretEl = document.getElementById('secret');
         secretEl.value = SECRET_PLACEHOLDER;
@@ -266,6 +275,7 @@ function doSave(e) {
   data.append('secret',      secretVal);
   data.append('url',         document.getElementById('url').value.trim());
   data.append('ota_channel', document.getElementById('ota-channel').value);
+  data.append('has_ups',     document.getElementById('has-ups').checked ? '1' : '');
 
   fetch('/save', { method: 'POST', body: data,
                    headers: {'Content-Type': 'application/x-www-form-urlencoded'} })

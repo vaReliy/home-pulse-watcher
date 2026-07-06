@@ -62,7 +62,8 @@
         "runTarget": {
           "name": "docker:run"
         }
-      }
+      },
+      "exclude": ["firmware/**/*"]
     }
   ],
   "targetDefaults": {

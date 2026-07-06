@@ -288,6 +288,37 @@ void test_merge_preserves_existing_channel_when_submitted_empty(void) {
   TEST_ASSERT_EQUAL_STRING("ALPHA", result.ota_channel);
 }
 
+// ─── has_ups_module (runtime NVS flag) ──────────────────────────────────────
+
+void test_has_ups_module_round_trip(void) {
+  // Save with has_ups_module = true, reload — must come back true and
+  // hasUpsModule() must reflect it.
+  DeviceCredentials orig;
+  memset(&orig, 0, sizeof(orig));
+  strncpy(orig.wifi_ssid,     "Net",           CRED_SSID_MAX - 1);
+  strncpy(orig.device_secret, "sec",           CRED_SECRET_MAX - 1);
+  strncpy(orig.backend_url,   "http://h/api",  CRED_URL_MAX - 1);
+  orig.has_ups_module = true;
+
+  TEST_ASSERT_TRUE(saveCredentials(&orig));
+
+  DeviceCredentials loaded;
+  memset(&loaded, 0, sizeof(loaded));
+  loadCredentials(&loaded);
+  TEST_ASSERT_TRUE(loaded.has_ups_module);
+  TEST_ASSERT_TRUE(hasUpsModule(loaded));
+}
+
+void test_has_ups_module_defaults_false_on_fresh_nvs(void) {
+  // Fresh NVS (setUp calls resetAll) — has_ups_module must default to false
+  // (MAINS-only), matching prefs.getBool()'s own default.
+  DeviceCredentials loaded;
+  memset(&loaded, 0, sizeof(loaded));
+  loadCredentials(&loaded);
+  TEST_ASSERT_FALSE(loaded.has_ups_module);
+  TEST_ASSERT_FALSE(hasUpsModule(loaded));
+}
+
 void test_isValidOtaChannel_rejects_unknown(void) {
   TEST_ASSERT_TRUE(isValidOtaChannel("STABLE"));
   TEST_ASSERT_TRUE(isValidOtaChannel("BETA"));
@@ -334,6 +365,9 @@ int main(void) {
   RUN_TEST(test_ota_channel_round_trip);
   RUN_TEST(test_merge_preserves_existing_channel_when_submitted_empty);
   RUN_TEST(test_isValidOtaChannel_rejects_unknown);
+
+  RUN_TEST(test_has_ups_module_round_trip);
+  RUN_TEST(test_has_ups_module_defaults_false_on_fresh_nvs);
 
   return UNITY_END();
 }

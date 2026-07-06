@@ -100,19 +100,136 @@ See `secrets.h.example` for the full template.
 
 ### config.h (Hardware-specific)
 
-| Setting                  | Default        | Description                                |
-| ------------------------ | -------------- | ------------------------------------------ |
-| `FIRMWARE_VERSION`       | `"3.5.0"`      | Reported to backend on every status ping   |
-| `POWER_SENSE_PIN`        | 2              | GPIO for power detection                   |
-| `STATUS_LED_PIN`         | 8              | Onboard WS2812B RGB LED                    |
-| `LED_BRIGHTNESS`         | 10             | WS2812 LED brightness (0-255)              |
-| `CHECK_INTERVAL_MS`      | 200            | Power check interval (ms)                  |
-| `NTP_SERVER`             | pool.ntp.org   | Time sync server                           |
-| `WIFI_RETRY_DURATION_MS` | 300000 (5 min) | WiFi retry window before rebooting (setup) |
+| Setting                  | Default          | Description                                |
+| ------------------------ | ---------------- | ------------------------------------------ |
+| `FIRMWARE_VERSION`       | (see `config.h`) | Reported to backend on every status ping   |
+| `POWER_SENSE_PIN`        | 2                | GPIO for power detection                   |
+| `STATUS_LED_PIN`         | 8                | Onboard WS2812B RGB LED                    |
+| `LED_BRIGHTNESS`         | 10               | WS2812 LED brightness (0-255)              |
+| `CHECK_INTERVAL_MS`      | 200              | Power check interval (ms)                  |
+| `NTP_SERVER`             | pool.ntp.org     | Time sync server                           |
+| `WIFI_RETRY_DURATION_MS` | 300000 (5 min)   | WiFi retry window before rebooting (setup) |
 
 ## Device Setup
 
 To register a device, obtain credentials, and configure `secrets.h`, follow the [Admin Guide](../docs/admin-guide.md).
+
+## Building and Uploading OTA Firmware Releases
+
+This section describes how to build and deploy a new firmware version for OTA distribution. Both ESP32-C3 and ESP32-C6 compile to a single binary per board — no per-hardware-variant rebuilds needed.
+
+### Step 1: Bump the Version
+
+Edit the `config.h` in the board directory:
+
+```bash
+# For ESP32-C3
+nano firmware/esp32c3/src/config.h
+
+# For ESP32-C6
+nano firmware/esp32c6/src/config.h
+```
+
+Update the `FIRMWARE_VERSION` constant:
+
+```cpp
+#define FIRMWARE_VERSION "3.5.3"  // Change this to your new version
+```
+
+Use semantic versioning (e.g., `3.5.3`, `3.6.0-beta.1`). The version string is reported to the backend on every device heartbeat and is used by the OTA check endpoint to determine if an update is available.
+
+### Step 2: Make Firmware Changes
+
+Edit `firmware/common/main.cpp` and any board-specific files in `libs/firmware-shared/` as needed. Since the shared sketch is identical for both boards, any logic change applies to both ESP32-C3 and ESP32-C6 automatically — no `#ifdef` board-specific code paths in the source (each board's `platformio.ini` includes `config.h` from its `src/` directory, which provides board-specific constants like GPIO pins).
+
+### Step 3: Build via Docker
+
+Use the Docker-based build pipeline for release builds (replaces manual local `pio run`):
+
+```bash
+./scripts/firmware-docker-build.sh esp32c3 3.5.3
+./scripts/firmware-docker-build.sh esp32c6 3.5.3
+```
+
+This builds both boards in isolated Docker containers with explicit PlatformIO configuration. Output binaries go to `tmp/firmware/<board>/<version>/firmware.bin`. The script prints a confirmation message with the exact upload command to use next.
+
+**Development alternative:** For day-to-day local builds and USB flashing (not release distribution), continue using local PlatformIO:
+
+```bash
+cd firmware/esp32c3
+pio run -t upload
+pio device monitor
+```
+
+### Step 4: Upload to GCS and Register Release
+
+Upload the built binaries to GCS and register them as firmware releases via the CLI or admin web UI.
+
+**Option A: CLI (automated)**
+
+```bash
+npx nx run api:cli -- firmware:upload \
+  --file tmp/firmware/esp32c3/3.5.3/firmware.bin \
+  --version 3.5.3 \
+  --board esp32c3 \
+  --channel ALPHA
+```
+
+**Option B: Admin Web UI (browser-based)**
+
+Navigate to `/admin/firmware` (requires `ADMIN_UPLOAD_TOKEN` env var):
+
+1. Drag-drop the binary file
+2. Select version, board, and channel from dropdowns
+3. Click "Upload"
+
+Both methods upload the binary to GCS at path `firmware/esp32c3/3.5.3/firmware.bin` (where board and version are derived from the request) and register a `FirmwareRelease` record in the database with metadata including the checksum and download URL.
+
+### Step 5: Validate on ALPHA Channel
+
+Devices on the ALPHA channel pick up the new release automatically on their next OTA check (default interval: every 6 hours, or immediately if forced via admin CLI: `device:request-ota-check --mac <mac>`).
+
+Monitor the backend logs for `/api/ota/check` requests and device OTA download activity. Watch device serial output (if connected) for `[OTA]` log lines indicating download progress and validation status.
+
+**Validation criteria:**
+
+- Device receives the release and downloads it without errors
+- OTA validation passes: ≥3 successful heartbeats AND ≥5 minutes uptime since boot
+- Device marks the new firmware valid and persists across power cycles
+- No unexpected reboots or watchdog resets
+
+### Step 6: Promote to BETA and STABLE
+
+Once ALPHA validation passes, re-upload the same binary to BETA:
+
+```bash
+npx nx run api:cli -- firmware:upload \
+  --file tmp/firmware/esp32c3/3.5.3/firmware.bin \
+  --version 3.5.3 \
+  --board esp32c3 \
+  --channel BETA
+```
+
+The system creates a separate `FirmwareRelease` record per channel. A device on BETA will see both BETA and STABLE releases (in waterfall order); a device on ALPHA sees ALPHA, BETA, and STABLE.
+
+After similar validation on BETA, promote to STABLE:
+
+```bash
+npx nx run api:cli -- firmware:upload \
+  --file tmp/firmware/esp32c3/3.5.3/firmware.bin \
+  --version 3.5.3 \
+  --board esp32c3 \
+  --channel STABLE
+```
+
+All production devices will receive the new firmware on their next OTA check.
+
+### Key Points
+
+- **One binary per board per version** — no hardware-variant rebuilds. The UPS checkbox on the captive portal is a runtime NVS flag, not a compile-time choice.
+- **Device-to-release provisioning** is automatic via `Device.releaseChannel` (set per-device at provisioning time or via admin API). The device firmware never controls which channel it sees; the server enforces it.
+- **Per-device secret and UPS flag** are set during provisioning (captive portal) and are untouched by the OTA release process.
+- **Rollout is waterfall-based**: ALPHA devices see all releases; BETA devices see BETA and STABLE; STABLE devices see only STABLE.
 
 ## Troubleshooting
 
@@ -153,8 +270,9 @@ On first boot (or after a factory reset), the device starts a WiFi access point 
 | WiFi Password | Your router password (leave blank for open networks)       |
 | Device Secret | 64-character hex secret from `device:register` CLI command |
 | Backend URL   | `https://your-server.com/api/device/status`                |
+| Has UPS       | Checkbox: enable battery monitoring (UPS Edition hardware) |
 
-After saving, credentials are written to NVS (flash) and the device reboots to connect. Credentials persist across power cycles.
+After saving, all settings (including the UPS flag) are written to NVS (flash) and the device reboots to connect. Credentials persist across power cycles. **Changing the UPS checkbox does not require a rebuild** — it is a runtime NVS setting, not a compile-time choice.
 
 ### Factory Reset (10-Second BOOT Button Hold)
 

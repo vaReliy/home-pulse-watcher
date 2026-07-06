@@ -147,7 +147,7 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 
 #### Battery Monitoring (V2.3 UPS Edition)
 
-- **GPIO3** with 100k/100k divider for battery voltage sensing (enabled via `HAS_UPS_MODULE true` in `config.h`)
+- **GPIO3** with 100k/100k divider for battery voltage sensing — **enabled at runtime** via NVS flag `hasUps` (set during captive-portal provisioning, checkbox labeled "Has UPS")
 - Uses `analogReadMilliVolts()` (factory-calibrated ADC) × divider ratio via `HomePulse::calculateBatteryMv(mvAvg, NUM, DEN)`
   - ESP32-C6: `BATTERY_DIVIDER_RATIO_NUM=1993`, `BATTERY_DIVIDER_RATIO_DEN=1000` (empirically calibrated from 4 measurements)
   - ESP32-C3: `BATTERY_DIVIDER_RATIO_NUM=2000`, `BATTERY_DIVIDER_RATIO_DEN=1000` (nominal 100k/100k)
@@ -155,6 +155,7 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 - SOS cooldown: 15 min (`SOS_COOLDOWN_MS`) — firmware only sends SOS when power is OFF
 - Backend emits `BATTERY_LOW_EVENT` when `batteryVoltage < 3400 && batteryVoltage > 0`
 - `/status` shows battery line for UPS devices: `🔋 Battery: 3.85V (79%)`
+- **No rebuild needed to switch hardware**: Single compiled binary per board (C3/C6) works for both Standard and UPS variants — the distinction is a captive-portal provisioning step
 
 #### Future Optimizations (TODO)
 
@@ -306,10 +307,9 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 ## Firmware Version Tracking
 
-- Current firmware version: **3.5.1** (ESP32-C3) / **3.5.2** (ESP32-C6)
-- Defined in `FIRMWARE_VERSION` constant in each `config.h`
+- **Current firmware version**: See `FIRMWARE_VERSION` constant in `firmware/esp32c3/src/config.h` and `firmware/esp32c6/src/config.h` (both versions may differ)
 - Devices report `firmwareVersion` in the JSON body of every status ping
-- Devices with `HAS_UPS_MODULE true` also report `batteryVoltage` in the JSON body
+- **Battery voltage reporting**: Devices with the "Has UPS" flag enabled (set via captive-portal checkbox, stored as NVS `hasUps`) also report `batteryVoltage` in the JSON body
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
 
@@ -317,16 +317,16 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 **Prisma Model: `FirmwareRelease`**
 
-| Field        | Type      | Purpose                                                                     |
-| ------------ | --------- | --------------------------------------------------------------------------- |
-| `id`         | String    | Primary key (UUID)                                                          |
-| `version`    | String    | Semantic version (e.g., "3.5.0")                                            |
-| `boardType`  | BoardType | Target hardware: `ESP32_C3` or `ESP32_C6`                                   |
-| `channel`    | Channel   | Release stability: `ALPHA`, `BETA`, or `STABLE`                             |
-| `checksum`   | String    | SHA256 hex digest of the binary                                             |
-| `gcsPath`    | String    | Cloud Storage path (e.g., `gs://home-pulse-ota-releases/esp32c3/3.5.0.bin`) |
-| `isCritical` | Boolean   | Marks security/stability-critical releases requiring forced upgrade         |
-| `createdAt`  | DateTime  | Metadata creation timestamp                                                 |
+| Field        | Type      | Purpose                                                             |
+| ------------ | --------- | ------------------------------------------------------------------- |
+| `id`         | String    | Primary key (UUID)                                                  |
+| `version`    | String    | Semantic version (e.g., "3.5.0")                                    |
+| `boardType`  | BoardType | Target hardware: `ESP32_C3` or `ESP32_C6`                           |
+| `channel`    | Channel   | Release stability: `ALPHA`, `BETA`, or `STABLE`                     |
+| `checksum`   | String    | SHA256 hex digest of the binary                                     |
+| `gcsPath`    | String    | Cloud Storage path (e.g., `firmware/esp32c3/3.5.0/firmware.bin`)    |
+| `isCritical` | Boolean   | Marks security/stability-critical releases requiring forced upgrade |
+| `createdAt`  | DateTime  | Metadata creation timestamp                                         |
 
 **TypeScript Enums (libs/core)**
 
@@ -375,7 +375,7 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 **Device Model Fields (Fleet Autonomy)**
 
 - `releaseChannel`: String (default `"STABLE"`) — server-controlled firmware tier; device never forces downgrade via request tampering. Typed as `as const` object in `libs/core`.
-- `deviceType`: String (`"UPS"` | `"MAINS"`, no default) — hardware category, write-once at provisioning via captive portal or compile-time `secrets.h`. Distinguishes UPS-backed devices (battery monitoring) from mains-only. No admin-edit path for v1.
+- `deviceType`: String (`"UPS"` | `"MAINS"`, default `"MAINS"`) — backend-side hardware category, write-once at provisioning via CLI (`--device-type` flag) or captive portal. For tracking and potential future per-device logic. **Firmware-side equivalent:** NVS flag `hasUps` (set via captive-portal checkbox) — both should be kept in sync during provisioning, but the firmware uses `hasUps` for all battery-monitoring decisions.
 - `otaForceCheckRequested`: Boolean (default `false`) — sticky flag set by admin CLI (`device:request-ota-check --mac <mac>`), cleared after being served once in the status response.
 
 **OTA Discovery API & Force-check Mechanism**

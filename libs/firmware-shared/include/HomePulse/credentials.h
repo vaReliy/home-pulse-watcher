@@ -20,6 +20,7 @@
 #define NVS_KEY_SECRET  "dev_secret"
 #define NVS_KEY_URL     "backend_url"
 #define NVS_KEY_OTA_CHAN "ota_channel"
+#define NVS_KEY_HAS_UPS "has_ups"
 
 /**
  * Device credentials loaded from NVS.
@@ -31,6 +32,7 @@ struct DeviceCredentials {
     char device_secret[CRED_SECRET_MAX];
     char backend_url[CRED_URL_MAX];
     char ota_channel[CRED_OTA_CHAN_MAX];  ///< "STABLE", "BETA", or "ALPHA"
+    bool has_ups_module;  ///< true when device has UPS/battery hardware fitted (runtime hw variant flag)
 };
 
 /**
@@ -50,6 +52,7 @@ inline bool loadCredentials(DeviceCredentials* creds) {
     String secret  = prefs.getString(NVS_KEY_SECRET,  "");
     String url     = prefs.getString(NVS_KEY_URL,     "");
     String channel = prefs.getString(NVS_KEY_OTA_CHAN, "");
+    bool hasUps    = prefs.getBool(NVS_KEY_HAS_UPS, false);
 
     prefs.end();
 
@@ -58,6 +61,7 @@ inline bool loadCredentials(DeviceCredentials* creds) {
     secret.toCharArray(creds->device_secret, CRED_SECRET_MAX);
     url.toCharArray(creds->backend_url,     CRED_URL_MAX);
     channel.toCharArray(creds->ota_channel, CRED_OTA_CHAN_MAX);
+    creds->has_ups_module = hasUps;
 
     // Channel is optional config — default to STABLE when not yet persisted.
     if (creds->ota_channel[0] == '\0') {
@@ -83,6 +87,7 @@ inline bool saveCredentials(const DeviceCredentials* creds) {
     prefs.putString(NVS_KEY_SECRET,  creds->device_secret);
     prefs.putString(NVS_KEY_URL,     creds->backend_url);
     prefs.putString(NVS_KEY_OTA_CHAN, creds->ota_channel);
+    prefs.putBool(NVS_KEY_HAS_UPS,   creds->has_ups_module);
 
     prefs.end();
     return true;
@@ -145,6 +150,27 @@ inline DeviceCredentials mergeSubmittedCredentials(
         result.ota_channel[CRED_OTA_CHAN_MAX - 1] = '\0';
     }
     return result;
+}
+
+/**
+ * Returns true when this device has UPS/battery hardware fitted.
+ *
+ * Replaces the old compile-time HAS_UPS_MODULE #define: the same binary now
+ * ships for both UPS and MAINS-only hardware, and the distinction is a
+ * runtime NVS flag set during provisioning (captive portal checkbox).
+ * Defaults to false (MAINS-only) when unset, matching prefs.getBool()'s
+ * own default — a freshly-flashed or factory-reset device never assumes
+ * battery hardware is present.
+ *
+ * Takes the already-loaded credentials struct (no extra NVS hit per call) —
+ * mirrors how buildConfigJson() derives hasSecret from creds.device_secret
+ * rather than re-reading NVS.
+ *
+ * @param creds Credentials previously populated via loadCredentials()
+ * @return true if UPS/battery hardware is present
+ */
+inline bool hasUpsModule(const DeviceCredentials& creds) {
+    return creds.has_ups_module;
 }
 
 /**
@@ -230,14 +256,15 @@ inline bool applyCompileTimeSecrets(DeviceCredentials& creds,
  * included so it cannot be captured over the open AP.
  *
  * @param creds  Credentials loaded from NVS
- * @return JSON string: {"ssid":"...","url":"...","hasSecret":true|false}
+ * @return JSON string: {"ssid":"...","url":"...","hasSecret":true|false,"hasUps":true|false}
  */
 inline String buildConfigJson(const DeviceCredentials& creds) {
     bool hasSecret = creds.device_secret[0] != '\0';
     return String("{\"ssid\":\"") + jsonEscapeStr(creds.wifi_ssid) +
            "\",\"url\":\"" + jsonEscapeStr(creds.backend_url) +
            "\",\"hasSecret\":" + (hasSecret ? "true" : "false") +
-           ",\"otaChannel\":\"" + String(creds.ota_channel) + "\"}";
+           ",\"otaChannel\":\"" + String(creds.ota_channel) + "\"" +
+           ",\"hasUps\":" + (hasUpsModule(creds) ? "true" : "false") + "}";
 }
 
 #endif  // HOMEPULSE_CREDENTIALS_H

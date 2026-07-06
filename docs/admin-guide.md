@@ -226,7 +226,7 @@ Two hardware variants are supported. Choose based on your needs:
 | **Standard V2.1**    | Grid-only monitoring (no battery)                  | [docs/hardware/standard.md](hardware/standard.md) |
 | **UPS Edition V2.3** | Battery backup — ESP32 stays online during outages | [docs/hardware/ups.md](hardware/ups.md)           |
 
-Both variants use the same firmware (V3.4.0) and identical ADC sensing logic. The UPS edition adds a dual-diode OR-gate for battery failover while keeping the power sensor isolated from the backup supply.
+Both variants use the **same compiled firmware binary** — there is a single binary per board type (ESP32-C3 or ESP32-C6). The hardware variant (Standard vs. UPS) is provisioned at setup time via a captive-portal checkbox, which sets a runtime NVS flag (`hasUps`). No rebuild needed when switching hardware. The UPS edition adds a dual-diode OR-gate for battery failover while keeping the power sensor isolated from the backup supply.
 
 > For ADC thresholds, voltage divider formula, and calibration — see the hardware guide for your variant.
 

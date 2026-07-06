@@ -12,7 +12,7 @@
  */
 
 // Firmware Version (reported to backend on every status ping)
-#define FIRMWARE_VERSION "3.5.2"
+#define FIRMWARE_VERSION "3.5.3-alpha.1"
 
 // GPIO Configuration (ESP32-C6 SuperMini pinout)
 #define POWER_SENSE_PIN 2       // GPIO for power detection (connect to optocoupler output)
@@ -69,8 +69,10 @@
 #define HMAC_HEX_LENGTH 64          // Hex-encoded signature length (2 chars/byte)
 #define HMAC_SIGNATURE_BUFFER 65    // HMAC_HEX_LENGTH + null terminator
 
-// UPS Battery Monitoring (enable for V2.3 UPS Edition hardware)
-#define HAS_UPS_MODULE false
+// UPS Battery Monitoring is now a RUNTIME flag, not a compile-time #define.
+// One binary serves both UPS and MAINS-only hardware; the variant is set
+// during provisioning via the captive portal checkbox (persisted to NVS as
+// NVS_KEY_HAS_UPS, read back via hasUpsModule(creds) — see credentials.h).
 
 // Battery ADC (100k/100k divider on GPIO3)
 // Uses analogReadMilliVolts() which under-reads on ESP32-C6.

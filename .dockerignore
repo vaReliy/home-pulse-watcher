@@ -34,8 +34,17 @@ libs/*/out-tsc
 **/.spec.swcrc
 apps/api-e2e
 
-# Firmware (not needed for API deployment)
-/firmware
+# Firmware build artifacts (keep source for firmware Docker builds)
+# Note: .dockerignore is shared across both root Dockerfile (API) and firmware/Dockerfile.
+# Firmware source (*.cpp, *.h, platformio.ini) intentionally flows into context for
+# firmware builds; it incidentally enters API image context (small, low-impact).
+# Use recursive patterns to match nested directories (e.g., firmware/esp32c6/.pio)
+firmware/**/.pio/
+firmware/**/.history/
+firmware/**/.vscode/
+firmware/**/.claude/
+# Explicit secret file exclusion — must never enter Docker build context
+firmware/**/include/secrets.h
 
 # Documentation (not needed in image)
 docs

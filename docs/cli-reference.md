@@ -2,28 +2,20 @@
 
 HomePulse Watcher provides CLI commands for device provisioning and user management.
 
-## Prerequisites
-
-1. Build the application:
-
-   ```bash
-   npx nx build api
-   ```
-
-2. Ensure environment variables are set:
-
-   ```bash
-   export $(grep -v '^#' .env | xargs)
-   ```
-
-   Or use Docker (recommended for production).
-
 ## Running CLI Commands
 
-### Local Development
+### Local Development (recommended)
+
+`npx nx run api:cli` builds `dist/cli.js` if stale and auto-loads the root `.env` — no manual export needed:
 
 ```bash
-# Load environment and run
+npx nx run api:cli -- <command> [options]
+```
+
+### Local Development (manual)
+
+```bash
+npx nx build api
 export $(grep -v '^#' .env | xargs)
 node apps/api/dist/cli.js <command> [options]
 ```

@@ -66,8 +66,10 @@
 #define HMAC_HEX_LENGTH 64          // Hex-encoded signature length (2 chars/byte)
 #define HMAC_SIGNATURE_BUFFER 65    // HMAC_HEX_LENGTH + null terminator
 
-// UPS Battery Monitoring (disabled by default — enable for V2.3 UPS Edition)
-#define HAS_UPS_MODULE false
+// UPS Battery Monitoring is now a RUNTIME flag, not a compile-time #define.
+// One binary serves both UPS and MAINS-only hardware; the variant is set
+// during provisioning via the captive portal checkbox (persisted to NVS as
+// NVS_KEY_HAS_UPS, read back via hasUpsModule(creds) — see credentials.h).
 
 // Battery ADC (100k/100k divider on GPIO3)
 // Nominal ratio 2:1; calibrate empirically if readings drift.

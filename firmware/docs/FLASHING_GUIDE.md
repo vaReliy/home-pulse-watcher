@@ -169,6 +169,16 @@ pio run -t upload
 
 No need to re-configure `secrets.h` unless credentials changed.
 
+**Note:** This is for local development. For release builds and OTA distribution, see [Building and Uploading OTA Firmware Releases](../README.md#building-and-uploading-ota-firmware-releases) in the main firmware README.
+
+## Hardware Variants (Standard vs. UPS)
+
+Both ESP32-C3 and ESP32-C6 compile to a single binary that works with either Standard (MAINS-only) or UPS (battery-backed) hardware. The distinction is **not a compile-time choice** — it is a **runtime provisioning step**.
+
+When you first boot the device (or after a factory reset), the captive portal at `http://192.168.4.1/` includes a **"Has UPS"** checkbox. Check it if your device has the UPS battery backup module installed, leave it unchecked for Standard hardware. This setting is stored in NVS flash and controls whether the firmware monitors GPIO3 for battery voltage.
+
+**No rebuild is needed to switch between hardware variants** — flash the same binary to all devices, then set the UPS flag per-device at provisioning time.
+
 ## Factory Reset
 
 To completely reset the ESP32:
@@ -178,4 +188,4 @@ pio run -t erase
 pio run -t upload
 ```
 
-This erases all flash including WiFi credentials stored by the framework.
+This erases all flash including WiFi credentials stored by the framework. After reset, the device will restart the captive portal for re-provisioning (including the "Has UPS" setting).

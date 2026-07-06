@@ -34,6 +34,22 @@ public:
         return putString(key, value.c_str());
     }
 
+    bool getBool(const char* key, bool defaultValue = false) {
+        auto nsIt = store().find(_ns);
+        if (nsIt != store().end()) {
+            auto it = nsIt->second.find(key ? std::string(key) : "");
+            if (it != nsIt->second.end()) {
+                return it->second == "1";
+            }
+        }
+        return defaultValue;
+    }
+
+    bool putBool(const char* key, bool value) {
+        store()[_ns][key ? std::string(key) : ""] = value ? "1" : "0";
+        return true;
+    }
+
     bool clear() {
         store()[_ns].clear();
         return true;

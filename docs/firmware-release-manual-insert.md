@@ -60,7 +60,7 @@ INSERT INTO "FirmwareRelease" (
   'esp32c6',
   'STABLE',
   'aabe31969eb5e32d823e731aea76118bb49ec51cd8a108d10824d1680c3fa177',
-  'esp32c6/3.5.1.bin',
+  'firmware/esp32c6/3.5.1/firmware.bin',
   false,
   CURRENT_TIMESTAMP
 );
@@ -116,23 +116,23 @@ DELETE FROM "FirmwareRelease" WHERE version = '3.5.1' AND "boardType" = 'esp32c6
 
 ## Field Constraints
 
-| Field        | Type      | Constraint                                                | Example                                                     |
-| ------------ | --------- | --------------------------------------------------------- | ----------------------------------------------------------- |
-| `id`         | text      | NOT NULL, unique (PK)                                     | `gen_random_uuid()::text`                                   |
-| `version`    | text      | NOT NULL, semver format                                   | `'3.5.1'`                                                   |
-| `boardType`  | text      | NOT NULL, CHECK: `esp32c3` \| `esp32c6`                   | `'esp32c6'`                                                 |
-| `channel`    | text      | NOT NULL, CHECK: `ALPHA` \| `BETA` \| `STABLE`            | `'STABLE'`                                                  |
-| `checksum`   | text      | NOT NULL, UNIQUE, CHECK: 64-char lowercase SHA-256 hex    | `'aabe31969eb5e32d823e731aea76118bb49ec51cd8a108d10824...'` |
-| `gcsPath`    | text      | NOT NULL, UNIQUE, CHECK: `^(esp32c3\|esp32c6)/[...].bin$` | `'esp32c6/3.5.1.bin'`                                       |
-| `isCritical` | boolean   | default: `false`                                          | `false` or `true`                                           |
-| `createdAt`  | timestamp | default: `CURRENT_TIMESTAMP`                              | auto-populated                                              |
+| Field        | Type      | Constraint                                                           | Example                                                     |
+| ------------ | --------- | -------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `id`         | text      | NOT NULL, unique (PK)                                                | `gen_random_uuid()::text`                                   |
+| `version`    | text      | NOT NULL, semver format                                              | `'3.5.1'`                                                   |
+| `boardType`  | text      | NOT NULL, CHECK: `esp32c3` \| `esp32c6`                              | `'esp32c6'`                                                 |
+| `channel`    | text      | NOT NULL, CHECK: `ALPHA` \| `BETA` \| `STABLE`                       | `'STABLE'`                                                  |
+| `checksum`   | text      | NOT NULL, UNIQUE, CHECK: 64-char lowercase SHA-256 hex               | `'aabe31969eb5e32d823e731aea76118bb49ec51cd8a108d10824...'` |
+| `gcsPath`    | text      | NOT NULL, UNIQUE, CHECK: `^firmware/[a-z0-9_-]+/[semver]/[...].bin$` | `'firmware/esp32c6/3.5.1/firmware.bin'`                     |
+| `isCritical` | boolean   | default: `false`                                                     | `false` or `true`                                           |
+| `createdAt`  | timestamp | default: `CURRENT_TIMESTAMP`                                         | auto-populated                                              |
 
 **Key points:**
 
 - `version` and `checksum` must be unique together (no duplicates across board types)
 - `gcsPath` is unique globally (no path reuse across versions/boards)
 - `checksum` must be exactly 64 hex characters (lowercase)
-- `gcsPath` format: `<boardType>/<filename>.bin` — no `firmware/` prefix
+- `gcsPath` format: `firmware/<boardType>/<version>/<filename>.bin` (e.g., `firmware/esp32c6/3.5.1/firmware.bin`)
 - `boardType` and `channel` are case-sensitive (must match CHECK values exactly)
 
 ### Computing the correct checksum
