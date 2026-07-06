@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Chore
+
+- **Clarified GCS object rename gotcha**: User reported firmware CLI upload path as buggy (`firmware/{board}/{version}/{filename}.bin` vs `{board}/{version}.bin`). Investigation found the path convention is correct (enforced by DB CHECK constraint, matches docs, matches all code). Real issue: if someone manually renames a GCS object without updating the matching `FirmwareRelease.gcsPath` DB row, `CheckOtaUpdateService` reads the stale path verbatim and generates a signed URL that 404s. Documented fix: align the GCS object location to the stored DB path, or update the DB row — never change the path-builder code. Added to `docs/KNOWLEDGE_INBOX.md` for distillation into `PROJECT_CONTEXT.md` later.
+
 ### Fixes
 
 - **CLI now runnable via `npx nx run api:cli --`**: added `cli` target to `apps/api/package.json` (`nx:run-commands`, `dependsOn: [build]`, `cwd: apps/api`). Rebuilds `dist/cli.js` if stale and relies on Nx's built-in root-`.env` loading, so no more `export $(grep -v '^#' .env | xargs)` before every invocation. Manual `node apps/api/dist/cli.js` path documented as a fallback in `docs/cli-reference.md`.

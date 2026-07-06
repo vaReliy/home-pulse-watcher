@@ -7,6 +7,7 @@ import type {
 import { PowerStatus } from '@home-pulse-watcher/core';
 import {
   NotFoundError,
+  semverVersionRule,
   type LivrRules,
   type ServiceContext,
 } from '@home-pulse-watcher/shared';
@@ -74,7 +75,10 @@ export class ProcessPowerStatusService extends BaseService<
     return {
       status: ['required', 'powerStatus'],
       voltage: ['integer', { minNumber: 0 }, { maxNumber: 4095 }],
-      firmwareVersion: [{ maxLength: 20 }],
+      // No format constraint here — sanitizeFirmwareVersion() below is the
+      // authoritative check (semver, silent-drop on failure). Rule kept only
+      // so LIVR passes the field through (unlisted fields are stripped).
+      firmwareVersion: ['string'],
       batteryVoltage: ['integer', { minNumber: 0 }, { maxNumber: 5000 }],
     };
   }
@@ -140,11 +144,22 @@ export class ProcessPowerStatusService extends BaseService<
     });
 
     // 4. Update device status (and firmware version / battery voltage if reported)
+    //
+    // firmwareVersion is validated against the same semver pattern the OTA endpoint
+    // enforces, but *without* rejecting the whole status payload on failure — the
+    // power event/telemetry still needs to be recorded regardless. An invalid value
+    // (e.g. a dev-flash artifact like "test") is dropped, leaving the previously
+    // stored version untouched (repository only writes when !== undefined), so it
+    // never silently poisons Device.firmwareVersion and breaks OTA checks later.
+    const firmwareVersion = this.sanitizeFirmwareVersion(
+      params.firmwareVersion,
+    );
+
     const updatedDevice = await this.deviceRepository.updateStatus(deviceId, {
       lastStatus: newStatus,
       lastSeenAt: timestamp,
       ...(isStatusChange && { statusChangedAt: timestamp }),
-      firmwareVersion: params.firmwareVersion ?? undefined,
+      firmwareVersion,
       batteryVoltage: params.batteryVoltage,
     });
 
@@ -208,5 +223,25 @@ export class ProcessPowerStatusService extends BaseService<
       debounced,
       forceOtaCheck,
     };
+  }
+
+  /**
+   * Validates a reported firmwareVersion against the semver pattern shared with
+   * the OTA endpoint. Returns the value if valid, `undefined` if missing/invalid —
+   * never throws, so a garbage value never blocks recording the power event/telemetry.
+   */
+  private sanitizeFirmwareVersion(
+    firmwareVersion: string | null,
+  ): string | undefined {
+    if (firmwareVersion === null || firmwareVersion === undefined) {
+      return undefined;
+    }
+
+    const error = semverVersionRule()()(firmwareVersion);
+    if (error) {
+      return undefined;
+    }
+
+    return firmwareVersion;
   }
 }

@@ -424,6 +424,134 @@ describe('ProcessPowerStatusService', () => {
     });
   });
 
+  describe('firmwareVersion sanitization', () => {
+    it('should pass through a valid semver firmwareVersion unchanged', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(createMockDevice());
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({
+          lastStatus: PowerStatus.ON,
+          firmwareVersion: '3.5.2',
+        }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(null);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      await service.run(
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: '3.5.2',
+          batteryVoltage: null,
+        },
+        validContext,
+      );
+
+      expect(deviceRepo.updateStatus).toHaveBeenCalledWith(
+        'device-123',
+        expect.objectContaining({ firmwareVersion: '3.5.2' }),
+      );
+    });
+
+    it('should pass through a valid semver firmwareVersion with prerelease unchanged', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(createMockDevice());
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({
+          lastStatus: PowerStatus.ON,
+          firmwareVersion: '3.5.3-alpha.1',
+        }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(null);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      await service.run(
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: '3.5.3-alpha.1',
+          batteryVoltage: null,
+        },
+        validContext,
+      );
+
+      expect(deviceRepo.updateStatus).toHaveBeenCalledWith(
+        'device-123',
+        expect.objectContaining({ firmwareVersion: '3.5.3-alpha.1' }),
+      );
+    });
+
+    it('should drop an invalid firmwareVersion, passing undefined and preserving telemetry', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(createMockDevice());
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.ON }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(null);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      const result = await service.run(
+        {
+          status: PowerStatus.ON,
+          voltage: 3500,
+          firmwareVersion: 'test',
+          batteryVoltage: null,
+        },
+        validContext,
+      );
+
+      expect(deviceRepo.updateStatus).toHaveBeenCalledWith(
+        'device-123',
+        expect.objectContaining({ firmwareVersion: undefined }),
+      );
+      const updateCall = deviceRepo.updateStatus.mock.calls[0][1];
+      expect(updateCall.firmwareVersion).not.toBeNull();
+
+      // Rest of the status update must still proceed normally.
+      expect(eventRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ status: PowerStatus.ON }),
+      );
+      expect(result.data.event).toEqual(mockPowerEvent);
+    });
+
+    it('should pass undefined firmwareVersion through unchanged when not provided', async () => {
+      const deviceRepo = createMockDeviceRepository();
+      const eventRepo = createMockPowerEventRepository();
+
+      deviceRepo.findById.mockResolvedValue(createMockDevice());
+      deviceRepo.updateStatus.mockResolvedValue(
+        createMockDevice({ lastStatus: PowerStatus.ON }),
+      );
+      eventRepo.findLatestByDeviceId.mockResolvedValue(null);
+      eventRepo.create.mockResolvedValue(mockPowerEvent);
+
+      const service = new ProcessPowerStatusService(deviceRepo, eventRepo);
+      await service.run(
+        {
+          status: PowerStatus.ON,
+          voltage: null,
+          firmwareVersion: null,
+          batteryVoltage: null,
+        },
+        validContext,
+      );
+
+      expect(deviceRepo.updateStatus).toHaveBeenCalledWith(
+        'device-123',
+        expect.objectContaining({ firmwareVersion: undefined }),
+      );
+    });
+  });
+
   describe('event emission', () => {
     it('should emit PowerStatusChangedEvent on status change', async () => {
       const deviceRepo = createMockDeviceRepository();
