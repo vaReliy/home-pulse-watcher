@@ -47,10 +47,6 @@ Belongs in (guess): PROJECT_CONTEXT (infra/rate-limiting section) or rules/valid
 Why: `@FileInterceptor('file')` without `storage: memoryStorage()` writes the uploaded file to disk and passes `req.file.path` (string path) to the handler, not `req.file.buffer`. If the consumer expects a `Buffer` (e.g., `UploadFirmwareService` takes a `Buffer` argument for GCS upload), the handler receives a path string, fails type checking, and breaks at runtime. Fix: inject `multer`'s `memoryStorage()` into the interceptor options or accept `Readable` stream / path string and read it in the handler. Unit D's admin route initially hit this (typo in interceptor config) — now uses `storage: memoryStorage()` to match the UseCase contract.
 Belongs in (guess): rules/validation-authorization.md (HTTP boundary layer) or a new rule about upload handler patterns
 
-## 2026-07-03 — `BaseService` validation strips unrepresented fields from input
-
-Why: `BaseService<Input, Output>` calls `validationRules()` to build an LIVR schema, then validates input against it. LIVR silently drops any key not present in the schema — there's no "pass-through unknowns" option. A service needing to accept a `Buffer` (which LIVR has no type for) cannot extend `BaseService` without a workaround: merge the Buffer separately after LIVR validation completes, pass it as a separate service parameter outside the Input object, or skip validation for that field entirely. Unit C worked around this by having `UploadFirmwareService` accept `file: Buffer` as a separate constructor param, not a field on the validated Input type.
-Belongs in (guess): rules/validation-authorization.md (LIVR limitation section) or a new architectural note on mixing structured/unstructured input
 
 ## 2026-07-03 — CHECK constraints on new columns with DEFAULT are always safe to add
 
@@ -82,7 +78,3 @@ Belongs in (guess): PROJECT_CONTEXT or rules/docker-commands.md
 Why: Repeated Docker builds (e.g. multi-stage PlatformIO + ESP-IDF via `firmware/Dockerfile`) accumulate GBs of intermediate layers and can fill the host disk to ENOSPC without cleanup. Named images/containers built by a task must be explicitly removed with `docker rm -f <name>` / `docker rmi -f <image>:<tag>` immediately after the task. For broader intermediate cleanup, use only non-aggressive `docker image prune -f` / `docker builder prune -f` (no `-a` flag, no `--volumes`). **Never run** `docker system prune -a --volumes` or `docker system prune -af --volumes` without explicit user confirmation — it destroys cached layers and named volumes from unrelated projects, not just the current task's artifacts. Full scoping rule and rationale in `rules/docker-commands.md` section "Docker Cleanup".
 Belongs in (guess): rules/docker-commands.md (done)
 
-## 2026-07-06 — GCS object rename without DB sync silently breaks OTA
-
-Why: `CheckOtaUpdateService.checkForUpdate()` reads `FirmwareRelease.gcsPath` from DB and uses it **verbatim** to generate a signed URL via `GcsService.getSignedUrl()` — it does not reconstruct the path from `boardType`/`version` at read time. If someone manually moves/renames the binary in GCS (e.g., due to a typo in the original upload) without updating the matching `FirmwareRelease.gcsPath` DB row, the signed URL will reference a non-existent object, causing a 404 when devices attempt to download. Fix: either (1) move the GCS object back to the stored path, or (2) update the DB row to match the new object location. Never change the path-builder code — `firmware/{board}/{version}/{filename}.bin` is the enforced, correct convention per the DB CHECK constraint.
-Belongs in (guess): PROJECT_CONTEXT (OTA / firmware release deployment section)

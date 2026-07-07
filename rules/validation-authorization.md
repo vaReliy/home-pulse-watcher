@@ -21,6 +21,8 @@ if (!validData) {
 }
 ```
 
+**LIVR silently drops fields it has no schema key for** — there's no "pass through unknowns" option. `BaseService<Input, Output>` builds its LIVR schema from `validationRules()` and validates the full `Input` against it, so any field LIVR can't represent (e.g. a `Buffer`) is stripped from `validData` even if present on `input`. A service that needs such a field cannot put it on the validated `Input` type — pass it as a separate constructor/method parameter outside the LIVR-validated object instead (see `UploadFirmwareService`, which takes `file: Buffer` this way rather than as an `Input` field).
+
 ### Zod (Alternative)
 
 ```typescript
