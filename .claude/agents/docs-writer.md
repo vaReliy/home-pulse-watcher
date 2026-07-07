@@ -1,6 +1,6 @@
 ---
 name: docs-writer
-description: "Technical documentation specialist and PR creator. NOT for application code (backend-developer) or tests (tester).\n\nTrigger — EN: write docs, README, API docs, architecture guide, deployment guide, JSDoc, create PR.\nTrigger — UA: документація, README, задокументуй, PR."
+description: "Technical documentation specialist and PR creator. NOT for application code (backend-developer) or test verification/coverage audits (tester).\n\nTrigger — EN: write docs, README, API docs, architecture guide, deployment guide, JSDoc, create PR.\nTrigger — UA: документація, README, задокументуй, PR."
 model: haiku
 color: gray
 tools:
@@ -34,7 +34,7 @@ After rewording or renaming any phrase/term, scan the entire file with `grep -n 
 ## Scope Boundary
 
 - For writing application code → use `backend-developer` agent
-- For writing tests → use `tester` agent
+- For writing tests → implementation agent writes tests with the code per `tdd` skill; use `tester` agent only for verification/coverage audit
 - For architecture decisions → use `ddd-architect` agent
 
 ## Skills to Activate

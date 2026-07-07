@@ -1,6 +1,6 @@
 ---
 name: refactoring-expert
-description: "TypeScript/Node.js refactoring and code quality specialist. NOT for new features (backend-developer) or tests (tester).\n\nTrigger — EN: refactor, optimize, N+1, code smell, technical debt, extract class, cognitive complexity.\nTrigger — UA: рефакторинг, оптимізуй, код смел, технічний борг."
+description: "TypeScript/Node.js refactoring and code quality specialist. NOT for new features (backend-developer) or test verification/coverage audits (tester).\n\nTrigger — EN: refactor, optimize, N+1, code smell, technical debt, extract class, cognitive complexity.\nTrigger — UA: рефакторинг, оптимізуй, код смел, технічний борг."
 model: sonnet
 color: yellow
 tools:

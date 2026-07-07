@@ -1,6 +1,6 @@
 ---
 name: dba
-description: "Database architect and optimizer for PostgreSQL. NOT for application code (backend-developer) or tests (tester), or server config (devops).\n\nTrigger — EN: database, migration, schema, index, query optimization, N+1, PostgreSQL, Prisma schema.\nTrigger — UA: база даних, міграція, схема, індекс."
+description: "Database architect and optimizer for PostgreSQL. NOT for application code (backend-developer) or test verification/coverage audits (tester), or server config (devops).\n\nTrigger — EN: database, migration, schema, index, query optimization, N+1, PostgreSQL, Prisma schema.\nTrigger — UA: база даних, міграція, схема, індекс."
 model: sonnet
 color: orange
 tools:

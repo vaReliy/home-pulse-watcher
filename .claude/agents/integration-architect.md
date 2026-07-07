@@ -1,6 +1,6 @@
 ---
 name: integration-architect
-description: "External service integration specialist. NOT for application code (backend-developer) or tests (tester).\n\nTrigger — EN: integrate, webhook, OAuth, API client, external service, third-party, payment gateway, social login.\nTrigger — UA: інтеграція, вебхук, OAuth, зовнішній сервіс."
+description: "External service integration specialist. NOT for application code (backend-developer) or test verification/coverage audits (tester).\n\nTrigger — EN: integrate, webhook, OAuth, API client, external service, third-party, payment gateway, social login.\nTrigger — UA: інтеграція, вебхук, OAuth, зовнішній сервіс."
 model: sonnet
 color: cyan
 tools:

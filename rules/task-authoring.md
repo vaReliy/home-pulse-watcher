@@ -11,6 +11,8 @@ Every plan, grill, or grooming session must emit one or more task files into the
 
 Both locations are **git-excluded** (private working artifacts). The committed, durable record is: commit history + `KNOWLEDGE_INBOX.md` + `CHANGELOG.md`. The rule file itself is committed; the task files it governs are private.
 
+Because these directories are git-excluded, always move task files with plain `mv`, never `git mv` — git does not track these paths, so `git mv` fails on them.
+
 ## Naming Convention
 
 `YYYY-MM-DD-NN-slug.md`
@@ -39,7 +41,7 @@ These sort before `…-N.md` because `-` (0x2D) < `.` (0x2E) in ASCII/C collatio
 | Planning       | ba: <state>, devil: <state> · ddd-architect: <state>          |
 | Generation     | **G0**, **G1**, **G2**, …                                     |
 | Depends on     | 2026-06-14-13-approve-user-service, 2026-06-14-14-reject-user |
-| On completion  | Suggest a commit message. **Do NOT commit.**                  |
+| On completion  | Suggest a commit message. **Do NOT commit. Do NOT move this file.** |
 ```
 
 **Planning tier:** Levels T0–T3 per the tiered planning ladder in `rules/workflow.md`. Example: **T2** (executable rules = seam by own triage rule).
@@ -74,12 +76,13 @@ When a task exhausts the quality-gate restart budget (2 full cycles with open `#
 | Planning       | **done**                                     |
 | Generation     | *inherited from original*                    |
 | Depends on     | `<original-task-filename>` + upstream deps   |
-| On completion  | Suggest a commit message. **Do NOT commit.** |
+| On completion  | Suggest a commit message. **Do NOT commit. Do NOT move this file.** |
 ```
 
 **Planning row:** Planning already happened at original authoring; do not re-run ba/devil/ddd-architect roles. All roles are marked `done` (inherited state from the original task).
 
 **Body sections:**
+
 1. `# Task — <original-title> (continuation)`
 2. `## Context / Why` — reference the original task and the `handoff` skill
 3. `## Open Fix Now items` — copied from the last gate report
@@ -120,7 +123,11 @@ A parked task (blocked on an upstream seam decision) must:
 
 ## Standing Completion Rule
 
-The executing agent suggests a one-line commit message and does NOT commit. The owner reviews `git diff`, commits, and moves the file from `todo/` to `done/`.
+The executing agent does NOT commit and does NOT move the task file — moving it to `done/` is the owner's confirmation step, performed after reviewing and committing. The agent finishes by reporting completion explicitly, in this shape:
+
+> All acceptance criteria met. Suggested commit message: `<one-line message>`. After committing, move this task file to `done/`.
+
+The owner then reviews `git diff`, commits, and moves the file with plain `mv` (`tasks/` is gitignored — never `git mv`).
 
 ## Dependencies
 

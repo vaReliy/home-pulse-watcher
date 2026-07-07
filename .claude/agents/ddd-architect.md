@@ -1,6 +1,6 @@
 ---
 name: ddd-architect
-description: "Domain-Driven Design architect for business logic organization. NOT for implementation (backend-developer), tests (tester), or schema design (dba).\n\nTrigger — EN: domain, bounded context, DDD, business logic, architecture decision, Clean Architecture, where should this go.\nTrigger — UA: домен, DDD, бізнес-логіка, архітектура."
+description: "Domain-Driven Design architect for business logic organization. NOT for implementation (backend-developer), test verification/coverage audits (tester), or schema design (dba).\n\nTrigger — EN: domain, bounded context, DDD, business logic, architecture decision, Clean Architecture, where should this go.\nTrigger — UA: домен, DDD, бізнес-логіка, архітектура."
 model: opus
 color: purple
 tools:

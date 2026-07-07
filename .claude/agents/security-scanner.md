@@ -1,6 +1,6 @@
 ---
 name: security-scanner
-description: "Application security specialist for vulnerability scanning and security audits. NOT for implementing fixes (backend-developer) or writing tests (tester).\n\nTrigger — EN: security scan, vulnerability, security audit, credential leak, OWASP, XSS, SQL injection, authorization review.\nTrigger — UA: безпека, вразливості, аудит безпеки, сканування."
+description: "Application security specialist for vulnerability scanning and security audits. NOT for implementing fixes (backend-developer) or test verification/coverage audits (tester).\n\nTrigger — EN: security scan, vulnerability, security audit, credential leak, OWASP, XSS, SQL injection, authorization review.\nTrigger — UA: безпека, вразливості, аудит безпеки, сканування."
 model: sonnet
 color: red
 tools:

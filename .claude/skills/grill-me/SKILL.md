@@ -18,6 +18,6 @@ Interview me relentlessly about every aspect of this plan until we reach a share
 
 Ask the questions one at a time, waiting for feedback on each question before continuing. Asking multiple questions at once is bewildering.
 
-If a *fact* can be found by exploring the codebase, look it up rather than asking. The *decisions*, though, are the user's — put each one to them and wait for their answer.
+If a _fact_ can be found by exploring the codebase, look it up rather than asking. The _decisions_, though, are the user's — put each one to them and wait for their answer.
 
 Do not enact the plan until the user confirms a shared understanding has been reached.

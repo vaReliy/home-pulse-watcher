@@ -1,6 +1,6 @@
 ---
 name: queue-specialist
-description: "Queue and job processing specialist for BullMQ/Redis queues. NOT for application code (backend-developer) or tests (tester).\n\nTrigger — EN: job, queue, worker, failed job, dispatch, BullMQ, retry strategy, async processing.\nTrigger — UA: джоба, черга, воркер, BullMQ."
+description: "Queue and job processing specialist for BullMQ/Redis queues. NOT for application code (backend-developer) or test verification/coverage audits (tester).\n\nTrigger — EN: job, queue, worker, failed job, dispatch, BullMQ, retry strategy, async processing.\nTrigger — UA: джоба, черга, воркер, BullMQ."
 model: sonnet
 color: orange
 tools:

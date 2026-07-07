@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: "Bug investigation and root-cause analysis specialist. NOT for new features (backend-developer) or tests (tester).\n\nTrigger — EN: bug, error, debug, exception, stack trace, not working, 500, root cause.\nTrigger — UA: баг, помилка, дебаг, не працює."
+description: "Bug investigation and root-cause analysis specialist. NOT for new features (backend-developer) or test verification/coverage audits (tester).\n\nTrigger — EN: bug, error, debug, exception, stack trace, not working, 500, root cause.\nTrigger — UA: баг, помилка, дебаг, не працює."
 model: opus
 color: red
 tools:

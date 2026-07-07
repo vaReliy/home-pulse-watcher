@@ -149,31 +149,38 @@ CONFLICTS=()
 # ones get standard conflict markers left in the file for the operator to
 # resolve by hand — `-p` keeps it from touching "./$rel" until we've seen
 # whether the merge was clean.
-# Cleanup below is explicit `rm -f` before each `return`, not a `trap ...
-# RETURN` — that trap is shell-global in bash, not scoped to this function,
-# so it would re-fire (with $base/$result out of scope) on the next function
-# return anywhere later in the script and crash under `set -u`. Don't
-# reintroduce it without giving it a matching `trap - RETURN` before every
-# return path.
+# Cleanup uses an EXIT trap, not `trap ... RETURN` — RETURN is shell-global
+# in bash (not scoped to this function), so it would re-fire (with the temp
+# paths out of scope) on the next function return anywhere later in the
+# script and crash under `set -u`. The EXIT trap is always cleared with
+# `trap - EXIT` before the function returns normally; it only ever fires for
+# real if `git show`/`cp` fail and `set -e` is unwinding the whole script
+# anyway, which is exactly when the leaked temp files need to be caught.
+# MERGE_BASE/MERGE_RESULT are deliberately globals, not `local` — when
+# errexit unwinds out of this function to run the EXIT trap, bash has
+# already torn down the function's local scope, so a trap referencing
+# locals dies with "unbound variable" under `set -u` at the worst possible
+# moment (mid-failure, right when cleanup is needed).
 merge_one() {
-  local rel="$1" base result clean=0
-  base=$(mktemp); result=$(mktemp)
-  git -C "$SRC_DIR" show "$OLD_SHA:$rel" > "$base"
-  git merge-file -p "./$rel" "$base" "$SRC_DIR/$rel" > "$result" 2>/dev/null && clean=1
+  local rel="$1" clean=0
+  MERGE_BASE=$(mktemp); MERGE_RESULT=$(mktemp)
+  trap 'rm -f "$MERGE_BASE" "$MERGE_RESULT"' EXIT
+  git -C "$SRC_DIR" show "$OLD_SHA:$rel" > "$MERGE_BASE"
+  git merge-file -p "./$rel" "$MERGE_BASE" "$SRC_DIR/$rel" > "$MERGE_RESULT" 2>/dev/null && clean=1
   if [ "$DRY_RUN" = 1 ]; then
     if [ "$clean" = 1 ]; then echo "merge (dry-run): $rel"; else echo "conflict (dry-run): $rel"; fi
-    rm -f "$base" "$result"
-    return
-  fi
-  cp "$result" "./$rel"
-  rm -f "$base" "$result"
-  if [ "$clean" = 1 ]; then
-    MERGED+=("$rel")
-    echo "merged: $rel"
   else
-    CONFLICTS+=("$rel")
-    echo "CONFLICT: $rel"
+    cp "$MERGE_RESULT" "./$rel"
+    if [ "$clean" = 1 ]; then
+      MERGED+=("$rel")
+      echo "merged: $rel"
+    else
+      CONFLICTS+=("$rel")
+      echo "CONFLICT: $rel"
+    fi
   fi
+  rm -f "$MERGE_BASE" "$MERGE_RESULT"
+  trap - EXIT
 }
 
 copy_one() {

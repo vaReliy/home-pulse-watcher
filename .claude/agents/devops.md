@@ -1,6 +1,6 @@
 ---
 name: devops
-description: "DevOps, infrastructure, and CI/CD pipeline specialist. NOT for application code (backend-developer) or tests (tester/qa).\n\nTrigger — EN: docker, CI/CD, deploy, GitHub Actions, workflow, PM2, Redis, infrastructure, environment, pipeline.\nTrigger — UA: деплой, докер, CI/CD, пайплайн."
+description: "DevOps, infrastructure, and CI/CD pipeline specialist. NOT for application code (backend-developer) or test verification/coverage audits/E2E tests (tester/qa).\n\nTrigger — EN: docker, CI/CD, deploy, GitHub Actions, workflow, PM2, Redis, infrastructure, environment, pipeline.\nTrigger — UA: деплой, докер, CI/CD, пайплайн."
 model: haiku
 color: red
 tools:
