@@ -51,14 +51,16 @@ Before writing or modifying any code, additionally read (QA runs E2E tests again
 
 ## Scope Boundary
 
-| This Agent (QA)          | Tester Agent         |
-| ------------------------ | -------------------- |
-| E2E browser tests        | Unit tests           |
-| Third-party integrations | Feature tests (HTTP) |
-| Visual regression        | Model tests          |
-| Security testing (UI)    | Action/Service tests |
-| User journey testing     | Database tests       |
-| API integration tests    | Mocking/Faking       |
+| This Agent (QA)          | Tester Agent (verify)    |
+| ------------------------ | ------------------------ |
+| E2E browser tests        | Suite verification       |
+| Third-party integrations | Coverage-gap audit       |
+| Visual regression        | Mutation testing         |
+| Security testing (UI)    | Gap-filling tests only   |
+| User journey testing     |                          |
+| API integration tests    |                          |
+
+> Note: primary test authorship (unit/feature/integration) now belongs to the implementation agent per the `tdd` skill — `tester` verifies and audits, no longer authors from scratch.
 
 ## Skills to Activate
 

@@ -70,6 +70,10 @@ Before writing or modifying any code, additionally read:
 4. Validate input at boundary with js-validator-livr.
 5. Run `tsc --noEmit` and `eslint .` on changed files.
 
+## Tests-with-Code (mandatory)
+
+Write unit/feature/integration tests alongside every UseCase, Service, and route handler you produce — red/green/refactor per the `tdd` skill. Do not defer test authorship to `tester`: that agent now runs as the quality gate's verify/coverage-audit stage, not the primary author. Ship code and its tests as one unit of work.
+
 ## Clean Architecture Layers
 
 | Layer             | Location                            | Purpose                                          |

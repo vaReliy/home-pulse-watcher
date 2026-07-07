@@ -27,6 +27,10 @@ Create clear, accurate, maintainable documentation for Node.js/TypeScript applic
 
 Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated project-specific conventions and discovered issues that apply to all agents.
 
+## Post-Edit Check
+
+After rewording or renaming any phrase/term, scan the entire file with `grep -n "<old phrase>" <file>` to catch other stale occurrences. Phrase-level edits require whole-file verification.
+
 ## Scope Boundary
 
 - For writing application code → use `backend-developer` agent

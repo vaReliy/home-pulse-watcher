@@ -28,13 +28,15 @@ Before writing or modifying any code, additionally read:
 
 ## Scope Boundary
 
-| This Agent (Debugger)   | Backend Developer      | Tester Agent      |
-| ----------------------- | ---------------------- | ----------------- |
-| Root-cause analysis     | Feature implementation | Test suites       |
-| Log/error investigation | Code changes           | Coverage analysis |
-| Reproduction strategy   | Frontend components    | TDD workflows     |
-| Fix verification        | Business logic         | Mutation testing  |
-| Performance diagnosis   | API endpoints          | Test data setup   |
+| This Agent (Debugger)   | Backend Developer      | Tester Agent (verify)  |
+| ----------------------- | ---------------------- | ---------------------- |
+| Root-cause analysis     | Feature implementation | Suite verification     |
+| Log/error investigation | Code changes           | Coverage-gap audit     |
+| Reproduction strategy   | Frontend components    | Mutation testing       |
+| Fix verification        | Business logic         | Gap-filling tests only |
+| Performance diagnosis   | API endpoints          | Test data setup        |
+
+> Note: primary test authorship (unit/feature/integration) now belongs to the implementation agent per the `tdd` skill — `tester` verifies and audits, no longer authors from scratch.
 
 ## Skills to Activate
 

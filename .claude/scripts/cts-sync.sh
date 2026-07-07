@@ -12,7 +12,7 @@ IGNORE_FILE=".ctsignore"
 
 usage() {
   cat <<'EOF'
-Usage: cts-sync.sh <init|update> [--source <path-or-url>] [--branch <name>] [--dry-run] [--force]
+Usage: cts-sync.sh <init|update> [--source <path-or-url>] [--branch <name>] [--dry-run] [--force] [--no-merge]
 
   init    Install the CTS payload into the current project (must be a git repo)
   update  Re-sync the CTS payload, skipping paths listed in .ctsignore
@@ -22,18 +22,20 @@ Options:
   --branch <name>         Branch to track when --source is a URL (default: main)
   --dry-run               Print what would change without copying anything
   --force                 init: overwrite an existing CLAUDE.md/AGENTS.md/.claude/
+  --no-merge              update: never 3-way merge — preserve diverged files as-is
 EOF
 }
 
 [ $# -ge 1 ] || { usage; exit 1; }
 CMD="$1"; shift
-SOURCE="$DEFAULT_SOURCE"; BRANCH="$DEFAULT_BRANCH"; DRY_RUN=0; FORCE=0
+SOURCE="$DEFAULT_SOURCE"; BRANCH="$DEFAULT_BRANCH"; DRY_RUN=0; FORCE=0; NO_MERGE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --source) SOURCE="$2"; shift 2 ;;
     --branch) BRANCH="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     --force) FORCE=1; shift ;;
+    --no-merge) NO_MERGE=1; shift ;;
     *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
   esac
 done
@@ -60,6 +62,29 @@ NEW_SHA=$(git -C "$SRC_DIR" rev-parse HEAD 2>/dev/null || echo "local")
 
 mapfile -t PAYLOAD < <(grep -vE '^[[:space:]]*(#|$)' "$SRC_DIR/$PAYLOAD_FILE")
 
+# Defense-in-depth: some files are project-local and must never be shipped to
+# consumers (docs/KNOWLEDGE_INBOX.md — see the "Explicitly NOT payload" note
+# in cts-payload.txt). That's currently enforced only by never listing it as
+# a payload entry; this guard turns a future careless edit (e.g. listing
+# "docs/" as a whole directory instead of individual files) into a loud
+# failure instead of a silent leak.
+NEVER_PAYLOAD=(docs/KNOWLEDGE_INBOX.md)
+covers_forbidden() {
+  local entry="$1" forbidden="$2"
+  [ "$entry" = "$forbidden" ] && return 0
+  [ -d "$SRC_DIR/$entry" ] || return 1
+  case "$forbidden" in "$entry"/*) return 0 ;; *) return 1 ;; esac
+}
+for entry in "${PAYLOAD[@]}"; do
+  entry="${entry%/}"
+  for forbidden in "${NEVER_PAYLOAD[@]}"; do
+    if covers_forbidden "$entry" "$forbidden"; then
+      echo "Error: $forbidden must never be a payload entry (project-local, never synced to consumers)." >&2
+      exit 1
+    fi
+  done
+done
+
 # Gitignore-style check: a bare pattern matches exact paths and "dir/" prefixes
 # anywhere in the tree; a leading "/" anchors it to the project root only
 # (so "/AGENTS.md" protects the root file without shadowing nested ones).
@@ -80,6 +105,18 @@ is_ignored() {
   return 1
 }
 
+# Payload paths and file listings come from the chosen --source, which can be
+# a URL or a local checkout the operator doesn't fully control (e.g. a fork).
+# Refuse anything that could resolve outside the project root before it
+# reaches a write sink (cp/mkdir -p) in copy_one or merge_one.
+is_safe_rel() {
+  case "$1" in
+    /*|*/../*|../*|*/..) return 1 ;;
+    ..) return 1 ;;
+  esac
+  return 0
+}
+
 LOCALLY_MODIFIED=()
 
 # During update, a file is only fast-forwarded if the working copy still
@@ -95,13 +132,65 @@ is_locally_modified() {
   ! git -C "$SRC_DIR" show "$OLD_SHA:$rel" 2>/dev/null | cmp -s - "./$rel"
 }
 
+# True once a diverged file (see is_locally_modified) has also moved
+# upstream since OLD_SHA — the case that needs a 3-way merge rather than
+# a plain skip-and-report.
+upstream_changed() {
+  local rel="$1"
+  ! git -C "$SRC_DIR" show "$OLD_SHA:$rel" 2>/dev/null | cmp -s - "$SRC_DIR/$rel"
+}
+
+MERGED=()
+CONFLICTS=()
+
+# Three-way merge a payload file both the project and upstream CTS have
+# changed since the last sync (base = OLD_SHA content). git merge-file does
+# the line-level work: non-overlapping hunks combine silently, overlapping
+# ones get standard conflict markers left in the file for the operator to
+# resolve by hand — `-p` keeps it from touching "./$rel" until we've seen
+# whether the merge was clean.
+# Cleanup below is explicit `rm -f` before each `return`, not a `trap ...
+# RETURN` — that trap is shell-global in bash, not scoped to this function,
+# so it would re-fire (with $base/$result out of scope) on the next function
+# return anywhere later in the script and crash under `set -u`. Don't
+# reintroduce it without giving it a matching `trap - RETURN` before every
+# return path.
+merge_one() {
+  local rel="$1" base result clean=0
+  base=$(mktemp); result=$(mktemp)
+  git -C "$SRC_DIR" show "$OLD_SHA:$rel" > "$base"
+  git merge-file -p "./$rel" "$base" "$SRC_DIR/$rel" > "$result" 2>/dev/null && clean=1
+  if [ "$DRY_RUN" = 1 ]; then
+    if [ "$clean" = 1 ]; then echo "merge (dry-run): $rel"; else echo "conflict (dry-run): $rel"; fi
+    rm -f "$base" "$result"
+    return
+  fi
+  cp "$result" "./$rel"
+  rm -f "$base" "$result"
+  if [ "$clean" = 1 ]; then
+    MERGED+=("$rel")
+    echo "merged: $rel"
+  else
+    CONFLICTS+=("$rel")
+    echo "CONFLICT: $rel"
+  fi
+}
+
 copy_one() {
   local rel="$1"
+  if ! is_safe_rel "$rel"; then
+    echo "refusing unsafe path from source: $rel" >&2
+    return
+  fi
   if [ "$CMD" = update ] && is_ignored "$rel"; then
     if [ "$DRY_RUN" = 1 ]; then echo "skip (ignored): $rel"; fi
     return
   fi
   if is_locally_modified "$rel"; then
+    if [ "$NO_MERGE" != 1 ] && upstream_changed "$rel"; then
+      merge_one "$rel"
+      return
+    fi
     LOCALLY_MODIFIED+=("$rel")
     if [ "$DRY_RUN" = 1 ]; then echo "skip (locally modified): $rel"; fi
     return
@@ -152,6 +241,9 @@ else
   for rel in "${LOCALLY_MODIFIED[@]}"; do
     echo "locally modified, not overwritten — diff manually: $rel"
     echo "  git -C $SRC_DIR diff $OLD_SHA..$NEW_SHA -- $rel"
+  done
+  for rel in "${CONFLICTS[@]}"; do
+    echo "unresolved conflict markers left in: $rel — resolve by hand, then stage it"
   done
   for entry in "${PAYLOAD[@]}"; do
     entry="${entry%/}"

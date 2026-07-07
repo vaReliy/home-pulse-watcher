@@ -41,14 +41,16 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 ## Scope Boundary
 
-| This Agent (BA)       | Backend Developer   | Tester Agent      |
-| --------------------- | ------------------- | ----------------- |
-| Requirements analysis | Code implementation | Writing tests     |
-| User stories          | UseCases + Services | Test coverage     |
-| Acceptance criteria   | DTOs + Validation   | TDD workflows     |
-| Implementation plans  | Data flows          | Mutation testing  |
-| Feasibility analysis  | API endpoints       | Test debugging    |
-| Roadmaps              | Frontend components | Coverage analysis |
+| This Agent (BA)       | Backend Developer   | Tester Agent (verify)    |
+| --------------------- | ------------------- | ------------------------ |
+| Requirements analysis | Code implementation | Suite verification       |
+| User stories          | UseCases + Services | Coverage-gap audit       |
+| Acceptance criteria   | DTOs + Validation   | Mutation testing         |
+| Implementation plans  | Data flows          | Gap-filling tests only   |
+| Feasibility analysis  | API endpoints       | Test debugging           |
+| Roadmaps              | Frontend components | Coverage analysis        |
+
+> Note: primary test authorship (unit/feature/integration) now belongs to the implementation agent per the `tdd` skill — `tester` verifies and audits, no longer authors from scratch.
 
 - Be thorough but pragmatic — focus on delivering actionable insights
 - Consider enterprise-scale concerns: performance at scale, security, audit trails
