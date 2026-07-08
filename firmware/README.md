@@ -98,6 +98,30 @@ Each environment (dev/prod) has its own database, so devices must be registered 
 
 See `secrets.h.example` for the full template.
 
+### HPW_USE_TLS (Transport security)
+
+Telemetry POSTs and OTA-check requests use `WiFiClientSecure` with the pinned
+GTS Root R1 CA (`libs/firmware-shared/include/HomePulse/gts_root_ca.h`) when
+built with `HPW_USE_TLS=1` — this is the default for the release envs
+(`esp32c3` / `esp32c6`) used by `scripts/firmware-docker-build.sh` and the
+`pio run -t upload` build in this guide. HMAC signs the payload but does not
+encrypt it — without TLS, the MAC address, power status, and battery voltage
+are visible to any network observer, and OTA-check responses can be blocked
+or replayed by an active MITM.
+
+For local development against a plaintext HTTP backend (e.g. `nx serve api`
+on your LAN), use the `_dev` env variant instead, which flips the flag to `0`
+(plain `WiFiClient`, no TLS):
+
+```bash
+cd firmware/esp32c3   # or esp32c6
+pio run -e esp32c3_dev -t upload   # or esp32c6_dev
+pio device monitor
+```
+
+The OTA **binary download** (`Ota::applyUpdate`) always uses
+`WiFiClientSecure` regardless of this flag — GCS signed URLs are HTTPS-only.
+
 ### config.h (Hardware-specific)
 
 | Setting                  | Default          | Description                                |

@@ -4,7 +4,7 @@
 
 namespace HomePulse {
 
-HttpResult postSignedPayload(WiFiClient& client,
+HttpResult postSignedPayload(NetworkClient& client,
                              const String& url,
                              const String& payload,
                              const String& signature,

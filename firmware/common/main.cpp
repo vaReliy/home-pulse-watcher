@@ -27,10 +27,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
-// DEV: HTTP (local development) — active by default
-#include <WiFiClient.h>
-// PROD: HTTPS (Cloud Run) — uncomment below, comment above
-// #include <WiFiClientSecure.h>
 #include <time.h>
 #include <mbedtls/md.h>
 #include <esp_task_wdt.h>
@@ -48,6 +44,7 @@
 #include <HomePulse/PowerUtils.h>
 #include <HomePulse/telemetry.h>
 #include <HomePulse/telemetry_http.h>
+#include <HomePulse/transport_client.h>
 #include <HomePulse/debounce.h>
 // UPS/battery support is always compiled in — one binary now serves both
 // UPS and MAINS-only hardware; hasUpsModule(creds) gates it at runtime
@@ -93,10 +90,12 @@ static unsigned long lastOtaCheckTime = 0;
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(LED_COUNT, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
 
-// DEV: HTTP client (local development) — active by default
-static WiFiClient client;
-// PROD: HTTPS client — uncomment below, comment above
-// static WiFiClientSecure secureClient;
+// Transport client (plaintext or TLS selected at compile time via HPW_USE_TLS
+// — see HomePulse/transport_client.h). Single shared instance reused by both
+// telemetry POST (sendPowerStatus) and OTA-check POST (Ota::checkForUpdate)
+// instead of holding two concurrent TLS sessions — matters for heap headroom
+// on the C3's 400KB RAM.
+static HomePulse::TransportClient client;
 
 
 /**
@@ -261,9 +260,16 @@ bool sendPowerStatus(int status, int adcValue) {
 
     // Blue during request
     setLedColor(led, 0, 0, 255);
+#if HPW_USE_TLS
+    uint32_t heapBeforeHandshake = ESP.getFreeHeap();
+#endif
     HomePulse::HttpResult result = HomePulse::postSignedPayload(
         client, String(creds.backend_url) + "/api/device/status",
         body, signature, deviceMac, timestamp, HTTP_TIMEOUT_MS);
+#if HPW_USE_TLS
+    Serial.printf("[TLS] Telemetry free heap before/after handshake: %u / %u\n",
+                  heapBeforeHandshake, ESP.getFreeHeap());
+#endif
     updateStatusLed(led, status);
 
     Serial.printf("HTTP %d: %s\n", result.statusCode, result.body.c_str());
@@ -348,9 +354,9 @@ void setup() {
         }
     }
 
-    // DEV: HTTP — no TLS setup needed
-    // PROD: HTTPS — uncomment below
-    // secureClient.setInsecure();
+    // Pins the shared GTS Root R1 CA when built with TLS (HPW_USE_TLS=1); no-op
+    // for the plaintext dev client.
+    HomePulse::configureTransportClient(client);
 
     if (!initializeTime()) {
         Serial.println("Failed to sync time. Restarting...");
@@ -424,7 +430,7 @@ void setup() {
         Serial.println("[OTA] Checking for update...");
         HomePulse::Ota::UpdateInfo otaInfo;
         auto otaResult = HomePulse::Ota::checkForUpdate(
-            creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);
+            client, creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);
         switch (otaResult) {
             case HomePulse::Ota::CheckResult::UpdateAvailable:
                 Serial.println("[OTA] Update available: " + otaInfo.version);
@@ -565,7 +571,7 @@ void loop() {
         lastOtaCheckTime = millis();
         HomePulse::Ota::UpdateInfo otaInfo;
         auto otaResult = HomePulse::Ota::checkForUpdate(
-            creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);
+            client, creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);
         if (otaResult == HomePulse::Ota::CheckResult::UpdateAvailable) {
             Serial.println("[OTA] Periodic: update available " + otaInfo.version);
             esp_task_wdt_delete(NULL);

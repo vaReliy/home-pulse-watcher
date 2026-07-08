@@ -408,6 +408,12 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - **HMAC guard catches canonical builder exceptions** (`hmac-auth.guard.ts`): All throws from `@HmacCanonical()` builder → `AuthenticationError(INVALID_CREDENTIALS)` → 401. Builders can validate fields explicitly (`throw` if missing/unparseable) without risk of unhandled 500s.
 - **`gcsPath` is read verbatim, never reconstructed** — `CheckOtaUpdateService.checkForUpdate()` uses `FirmwareRelease.gcsPath` from the DB as-is to generate the signed URL; it does not rebuild the path from `boardType`/`version` at read time. Manually renaming/moving the GCS object without updating the matching DB row causes a 404 on device download. Fix is either: move the object back to the stored path, or update the DB row — never change the path-builder convention (`firmware/{board}/{version}/{filename}.bin`, enforced by a DB CHECK constraint).
 
+**Transport Security: TLS as a Build-Time Flag (2026-07-08)**
+
+- `HPW_USE_TLS` compile-time macro (`libs/firmware-shared/include/HomePulse/transport_client.h`) selects `WiFiClientSecure` (pinned GTS Root R1 CA, single-sourced) vs plaintext `WiFiClient` for both telemetry POSTs and OTA-check requests — previously plaintext by default (HMAC gives integrity, not confidentiality; MAC/power-status/battery-voltage were visible to any network observer). OTA binary download already used `WiFiClientSecure` independently and is unaffected.
+- Release envs (`esp32c3`/`esp32c6` in `platformio.ini`) hardcode `-DHPW_USE_TLS=1`. Plaintext is reachable only via explicit `_dev`-suffixed envs (`esp32c3_dev`/`esp32c6_dev`), never invoked by the Docker/CI build pipeline (`scripts/firmware-docker-build.sh` always builds the plain env name) — no runtime/NVS/remote toggle exists, so a release-flashed device cannot be downgraded to plaintext.
+- Single shared `TransportClient` instance reused sequentially across telemetry → OTA-check (never held concurrently) to conserve heap on the ESP32-C3's 400KB RAM; OTA binary download deliberately uses its own separate `WiFiClientSecure` instance rather than the shared one, so exactly one TLS session is ever open at a time.
+
 **OTA Response Authentication (C-1 fix)**
 
 - Response signed with HMAC-SHA256; canonical string: `version|url|checksum|isCritical|expiresAt|ts`

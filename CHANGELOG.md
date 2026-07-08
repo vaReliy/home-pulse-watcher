@@ -52,6 +52,7 @@
 ### Security
 
 - **firmware/ota**: Detect silent URL buffer truncation in `parseOtaResponse` — if `url[1024]` fills to capacity (strlen == 1023), return `ParseError` and abort OTA rather than proceeding with a truncated signed URL. Added `snprintf` return-value guard on `respCanonical[1280]` in `checkForUpdate` as a secondary defence.
+- **firmware**: Made TLS transport a build-time flag (`HPW_USE_TLS`), killing the plaintext-HTTP default for telemetry POSTs and OTA-check requests (audit HIGH #1, 2026-07-07). Release envs (`esp32c3`/`esp32c6`) now hardcode `HPW_USE_TLS=1`, selecting `WiFiClientSecure` with the same pinned GTS Root R1 CA already used for OTA binary download (single-sourced in `libs/firmware-shared`); a `WiFiClient` plaintext fallback survives only behind explicit `_dev` envs never reachable from the release build pipeline. Deleted the old hand-toggled "uncomment for PROD" comment blocks. Added a native regression test proving the exact incident this fixes: `ota.cpp:166` previously shipped a bare `WiFiClient` to an HTTPS backend, producing a silent `HTTPClient -5 connection lost` on every OTA check (confirmed on physical device serial log). Quality gate (tester/reviewer/security-scanner) passed clean; physical-hardware serial-log verification still pending owner sign-off. Emitted follow-up: `tmp/tasks/todo/2026-07-08-02-tls-flag-native-test-coverage-gaps.md` (native test coverage gaps, non-blocking).
 
 ## Phase 5.6 — OTA Updates: Secure Remote Delivery (Complete)
 

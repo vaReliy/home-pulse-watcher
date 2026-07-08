@@ -11,7 +11,7 @@
 #include "HomePulse/telemetry_http.h"
 #include "HomePulse/SecurityUtils.h"
 #include "HomePulse/gts_root_ca.h"
-#include <WiFiClient.h>
+#include "HomePulse/transport_client.h"
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Update.h>
@@ -144,7 +144,8 @@ bool shouldMarkAppValid(bool pendingValidation,
 
 #ifndef UNIT_TEST
 
-CheckResult checkForUpdate(const DeviceCredentials& cred,
+CheckResult checkForUpdate(TransportClient& client,
+                           const DeviceCredentials& cred,
                            const char* mac,
                            const char* boardType,
                            const char* currentVersion,
@@ -162,11 +163,19 @@ CheckResult checkForUpdate(const DeviceCredentials& cred,
                            cred.ota_channel, canonical, sizeof(canonical));
     String sig = calculateSignature(String(canonical), cred.device_secret);
 
-    // POST using the shared signed-request helper
-    WiFiClient client;
+    // POST using the shared signed-request helper. `client` is the same
+    // instance the caller uses for telemetry — reused here rather than
+    // opening a second concurrent TLS session (see checkForUpdate() doc).
     String url = String(cred.backend_url) + "/api/ota/check";
+#if HPW_USE_TLS
+    uint32_t heapBeforeHandshake = ESP.getFreeHeap();
+#endif
     HttpResult res = postSignedPayload(client, url, String(bodyBuf),
                                       sig, String(mac), ts, 10000);
+#if HPW_USE_TLS
+    Serial.printf("[TLS] OTA-check free heap before/after handshake: %u / %u\n",
+                  heapBeforeHandshake, ESP.getFreeHeap());
+#endif
 
     Serial.printf("[OTA] HTTP %d, body len: %d\n", res.statusCode, res.body.length());
     if (res.body.length() > 0) {
@@ -266,7 +275,7 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     // mbedtls_ssl_get_bytes_avail() returns > 0 without touching the next record.
     // close_notify only appears when the record is empty and we peek forward.
     // We exit the loop at remaining == 0, before that next available() call.
-    WiFiClient* stream = http.getStreamPtr();
+    NetworkClient* stream = http.getStreamPtr();
     size_t remaining = (size_t)contentLength;
     uint8_t buf[4096];
     size_t downloaded = 0;

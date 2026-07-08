@@ -3,6 +3,7 @@
 
 #ifndef UNIT_TEST
 #include <Adafruit_NeoPixel.h>
+#include "HomePulse/transport_client.h"
 #endif
 
 namespace HomePulse {
@@ -76,9 +77,13 @@ bool shouldMarkAppValid(bool pendingValidation,
  * POST /api/ota/check with HMAC-signed request.
  * On UpdateAvailable, populates outInfo.url (valid ~900s — download immediately).
  *
+ * @param client Shared transport client (same instance used for telemetry POSTs)
+ *               — reused rather than opening a second concurrent TLS session,
+ *               which matters for heap headroom on the C3's 400KB RAM.
  * @param mac Device MAC address (colon-separated; uppercased internally)
  */
-CheckResult checkForUpdate(const DeviceCredentials& cred,
+CheckResult checkForUpdate(TransportClient& client,
+                           const DeviceCredentials& cred,
                            const char* mac,
                            const char* boardType,
                            const char* currentVersion,
