@@ -24,6 +24,9 @@ import {
   CheckOtaUpdateService,
   UploadFirmwareService,
   ListFirmwareReleasesService,
+  GetUserDevicesOverviewService,
+  GetDeviceNotificationRecipientsService,
+  UpdateUserSettingsService,
 } from '@home-pulse-watcher/application';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REPOSITORY_TOKENS } from '../repositories/repository.tokens.js';
@@ -181,5 +184,27 @@ export const serviceProviders: Provider[] = [
     useFactory: (firmwareRepo: IFirmwareReleaseRepository) =>
       new ListFirmwareReleasesService(firmwareRepo),
     inject: [REPOSITORY_TOKENS.FIRMWARE_RELEASE],
+  },
+  {
+    provide: SERVICE_TOKENS.GET_USER_DEVICES_OVERVIEW,
+    useFactory: (
+      userDeviceRepo: IUserDeviceRepository,
+      deviceRepo: IDeviceRepository,
+    ) => new GetUserDevicesOverviewService(userDeviceRepo, deviceRepo),
+    inject: [REPOSITORY_TOKENS.USER_DEVICE, REPOSITORY_TOKENS.DEVICE],
+  },
+  {
+    provide: SERVICE_TOKENS.GET_DEVICE_NOTIFICATION_RECIPIENTS,
+    useFactory: (
+      userDeviceRepo: IUserDeviceRepository,
+      userRepo: IUserRepository,
+    ) => new GetDeviceNotificationRecipientsService(userDeviceRepo, userRepo),
+    inject: [REPOSITORY_TOKENS.USER_DEVICE, REPOSITORY_TOKENS.USER],
+  },
+  {
+    provide: SERVICE_TOKENS.UPDATE_USER_SETTINGS,
+    useFactory: (userRepo: IUserRepository) =>
+      new UpdateUserSettingsService(userRepo),
+    inject: [REPOSITORY_TOKENS.USER],
   },
 ];

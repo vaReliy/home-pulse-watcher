@@ -15,4 +15,9 @@ export const SERVICE_TOKENS = {
   CHECK_OTA_UPDATE: Symbol('CheckOtaUpdateService'),
   UPLOAD_FIRMWARE: Symbol('UploadFirmwareService'),
   LIST_FIRMWARE_RELEASES: Symbol('ListFirmwareReleasesService'),
+  GET_USER_DEVICES_OVERVIEW: Symbol('GetUserDevicesOverviewService'),
+  GET_DEVICE_NOTIFICATION_RECIPIENTS: Symbol(
+    'GetDeviceNotificationRecipientsService',
+  ),
+  UPDATE_USER_SETTINGS: Symbol('UpdateUserSettingsService'),
 } as const;

@@ -1,9 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type {
-  IDeviceRepository,
-  IUserDeviceRepository,
-} from '@home-pulse-watcher/core';
-import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
+import type { GetUserDevicesOverviewService } from '@home-pulse-watcher/application';
+import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { TranslationService } from '../i18n/index.js';
 import {
   escapeMarkdownV2,
@@ -22,10 +19,8 @@ export class DevicesHandler {
   private readonly logger = new Logger(DevicesHandler.name);
 
   constructor(
-    @Inject(REPOSITORY_TOKENS.DEVICE)
-    private readonly deviceRepository: IDeviceRepository,
-    @Inject(REPOSITORY_TOKENS.USER_DEVICE)
-    private readonly userDeviceRepository: IUserDeviceRepository,
+    @Inject(SERVICE_TOKENS.GET_USER_DEVICES_OVERVIEW)
+    private readonly getUserDevicesOverviewService: GetUserDevicesOverviewService,
     private readonly translationService: TranslationService,
   ) {}
 
@@ -43,9 +38,11 @@ export class DevicesHandler {
     const msgs = this.translationService.getMessages(user.locale);
 
     try {
-      const userDevices = await this.userDeviceRepository.findByUserId(user.id);
+      const { data } = await this.getUserDevicesOverviewService.run({
+        userId: user.id,
+      });
 
-      if (userDevices.length === 0) {
+      if (data.devices.length === 0) {
         await ctx.reply(msgs.NO_DEVICES, {
           parse_mode: 'MarkdownV2',
           ...buildMainMenuKeyboard(msgs),
@@ -56,21 +53,18 @@ export class DevicesHandler {
       // Build device list message
       const lines = [`${boldMd(escapeMarkdownV2(msgs.YOUR_DEVICES_HEADER))}\n`];
 
-      for (const ud of userDevices) {
-        const device = await this.deviceRepository.findById(ud.deviceId);
-        if (device) {
-          const rawLabel = ud.customName ?? device.label ?? device.macAddress;
-          const label = escapeMarkdownV2(rawLabel);
-          const online = device.isOnline() ? '🟢' : '🔴';
-          lines.push(`${online} ${boldMd(label)}`);
-          lines.push(`   ${msgs.MAC_LABEL} ${codeMd(device.macAddress)}`);
-          lines.push(`   ${msgs.ROLE_LABEL} ${escapeMarkdownV2(ud.role)}`);
-          const firmwareVersion =
-            device.firmwareVersion ?? msgs.FIRMWARE_VERSION_UNKNOWN;
-          lines.push(
-            `   ${msgs.FIRMWARE_LABEL} ${escapeMarkdownV2(firmwareVersion)}\n`,
-          );
-        }
+      for (const { device, customName, role } of data.devices) {
+        const rawLabel = customName ?? device.label ?? device.macAddress;
+        const label = escapeMarkdownV2(rawLabel);
+        const online = device.isOnline() ? '🟢' : '🔴';
+        lines.push(`${online} ${boldMd(label)}`);
+        lines.push(`   ${msgs.MAC_LABEL} ${codeMd(device.macAddress)}`);
+        lines.push(`   ${msgs.ROLE_LABEL} ${escapeMarkdownV2(role)}`);
+        const firmwareVersion =
+          device.firmwareVersion ?? msgs.FIRMWARE_VERSION_UNKNOWN;
+        lines.push(
+          `   ${msgs.FIRMWARE_LABEL} ${escapeMarkdownV2(firmwareVersion)}\n`,
+        );
       }
 
       await ctx.reply(lines.join('\n'), {

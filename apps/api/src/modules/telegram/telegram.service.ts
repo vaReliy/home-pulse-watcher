@@ -8,7 +8,9 @@ import {
 } from '@nestjs/common';
 import type { Telegraf } from 'telegraf';
 import type { IUserRepository } from '@home-pulse-watcher/core';
+import type { UpdateUserSettingsService } from '@home-pulse-watcher/application';
 import { REPOSITORY_TOKENS } from '../repositories/repository.tokens.js';
+import { SERVICE_TOKENS } from '../services/service.tokens.js';
 import { TELEGRAM_TOKENS } from './telegram.tokens.js';
 import type { TelegramConfig } from './telegram.config.js';
 import type { TelegramContext } from './types/telegram-context.type.js';
@@ -53,6 +55,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     private readonly config: TelegramConfig | null,
     @Inject(REPOSITORY_TOKENS.USER)
     private readonly userRepository: IUserRepository,
+    @Inject(SERVICE_TOKENS.UPDATE_USER_SETTINGS)
+    private readonly updateUserSettingsService: UpdateUserSettingsService,
     private readonly startHandler: StartHandler,
     private readonly statusHandler: StatusHandler,
     private readonly devicesHandler: DevicesHandler,
@@ -317,7 +321,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const user = await this.resolveUser(ctx as TelegramContext);
         if (!user) return;
 
-        await this.userRepository.update(user.id, { locale: newLocale });
+        await this.updateUserSettingsService.run({
+          userId: user.id,
+          locale: newLocale,
+        });
 
         const newMsgs = this.translationService.getMessages(newLocale);
         await ctx.editMessageText(newMsgs.SETTINGS_LANGUAGE_UPDATED, {
@@ -349,7 +356,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const user = await this.resolveUser(ctx as TelegramContext);
         if (!user) return;
 
-        await this.userRepository.update(user.id, { timezone: newTimezone });
+        await this.updateUserSettingsService.run({
+          userId: user.id,
+          timezone: newTimezone,
+        });
 
         const userMsgs = this.translationService.getMessages(user.locale);
         const confirmation = `${userMsgs.SETTINGS_TIMEZONE_UPDATED}\n${escapeMarkdownV2(newTimezone)}`;

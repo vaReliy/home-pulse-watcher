@@ -41,6 +41,13 @@ export {
 } from './device/delete-device.service.js';
 
 export {
+  GetUserDevicesOverviewService,
+  type GetUserDevicesOverviewInput,
+  type GetUserDevicesOverviewOutput,
+  type UserDeviceOverview,
+} from './device/get-user-devices-overview.service.js';
+
+export {
   RotateDeviceSecretService,
   type RotateDeviceSecretInput,
   type RotateDeviceSecretOutput,
@@ -63,6 +70,12 @@ export {
   type ListUsersInput,
   type ListUsersOutput,
 } from './user/list-users.service.js';
+
+export {
+  UpdateUserSettingsService,
+  type UpdateUserSettingsInput,
+  type UpdateUserSettingsOutput,
+} from './user/update-user-settings.service.js';
 
 // OTA services
 export {
@@ -89,3 +102,11 @@ export {
   type GetPowerHistoryInput,
   type GetPowerHistoryOutput,
 } from './power-event/get-power-history.service.js';
+
+// Notification services
+export {
+  GetDeviceNotificationRecipientsService,
+  type GetDeviceNotificationRecipientsInput,
+  type GetDeviceNotificationRecipientsOutput,
+  type NotificationRecipient,
+} from './notification/index.js';

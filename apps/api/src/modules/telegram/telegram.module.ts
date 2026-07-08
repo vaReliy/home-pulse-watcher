@@ -19,6 +19,7 @@ import { HistoryHandler } from './handlers/history.handler.js';
 import { SettingsHandler } from './handlers/settings.handler.js';
 import { PowerStatusListener } from './listeners/power-status.listener.js';
 import { BatteryLowListener } from './listeners/battery-low.listener.js';
+import { NotificationDispatcher } from './notifications/notification-dispatcher.js';
 import type { TelegramContext } from './types/telegram-context.type.js';
 
 @Module({
@@ -60,6 +61,8 @@ import type { TelegramContext } from './types/telegram-context.type.js';
     HelpHandler,
     HistoryHandler,
     SettingsHandler,
+    // Notification delivery (Telegraf-bound, Interface layer)
+    NotificationDispatcher,
     // Event Listeners
     PowerStatusListener,
     BatteryLowListener,

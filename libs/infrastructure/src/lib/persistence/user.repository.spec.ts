@@ -4,6 +4,7 @@ import { User } from '@home-pulse-watcher/core';
 const mockPrismaClient = {
   user: {
     findUnique: jest.fn(),
+    findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
@@ -63,6 +64,41 @@ describe('PrismaUserRepository', () => {
       expect(mockPrismaClient.user.findUnique).toHaveBeenCalledWith({
         where: { telegramId: BigInt(123456789) },
       });
+    });
+  });
+
+  describe('findByIds', () => {
+    it('should return found users for given ids', async () => {
+      const prismaUsers = [
+        {
+          id: 'user-1',
+          telegramId: BigInt(111),
+          username: 'a',
+          createdAt: new Date('2024-01-01'),
+        },
+        {
+          id: 'user-2',
+          telegramId: BigInt(222),
+          username: 'b',
+          createdAt: new Date('2024-01-01'),
+        },
+      ];
+      mockPrismaClient.user.findMany.mockResolvedValue(prismaUsers);
+
+      const result = await repository.findByIds(['user-1', 'user-2']);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(User);
+      expect(mockPrismaClient.user.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['user-1', 'user-2'] } },
+      });
+    });
+
+    it('should return empty array without querying when ids is empty', async () => {
+      const result = await repository.findByIds([]);
+
+      expect(result).toEqual([]);
+      expect(mockPrismaClient.user.findMany).not.toHaveBeenCalled();
     });
   });
 

@@ -1,10 +1,9 @@
 import type {
-  IDeviceRepository,
-  IUserDeviceRepository,
-  User,
-  Device,
-} from '@home-pulse-watcher/core';
-import { PowerStatus, DeviceRole, UserDevice } from '@home-pulse-watcher/core';
+  GetUserDevicesOverviewService,
+  GetUserDevicesOverviewOutput,
+} from '@home-pulse-watcher/application';
+import type { User, Device } from '@home-pulse-watcher/core';
+import { PowerStatus, DeviceRole } from '@home-pulse-watcher/core';
 import { DevicesHandler } from './devices.handler.js';
 import { TranslationService } from '../i18n/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
@@ -34,36 +33,18 @@ describe('DevicesHandler', () => {
       isOnline: () => true,
     }) as Device;
 
-  const mockUserDevice = new UserDevice({
-    userId: 'user-1',
-    deviceId: 'device-1',
-    role: DeviceRole.OWNER,
-    customName: null,
+  const createMockOverviewService = (): jest.Mocked<
+    Pick<GetUserDevicesOverviewService, 'run'>
+  > => ({
+    run: jest.fn(),
   });
 
-  const createMockDeviceRepo = (): jest.Mocked<IDeviceRepository> => ({
-    findById: jest.fn(),
-    findByMacAddress: jest.fn(),
-    findByUserId: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    updateStatus: jest.fn(),
-    delete: jest.fn(),
-    existsByMacAddress: jest.fn(),
-    consumeOtaForceCheckRequest: jest.fn(),
-    requestOtaForceCheck: jest.fn(),
-  });
-
-  const createMockUserDeviceRepo = (): jest.Mocked<IUserDeviceRepository> => ({
-    findByUserId: jest.fn(),
-    findByDeviceId: jest.fn(),
-    findByUserAndDevice: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    exists: jest.fn(),
-    countByDeviceId: jest.fn(),
-  });
+  const mockRun = (
+    service: jest.Mocked<Pick<GetUserDevicesOverviewService, 'run'>>,
+    output: GetUserDevicesOverviewOutput,
+  ): void => {
+    service.run.mockResolvedValue({ data: output });
+  };
 
   const createMockContext = (user?: User): TelegramContext =>
     ({
@@ -73,9 +54,9 @@ describe('DevicesHandler', () => {
     }) as unknown as TelegramContext;
 
   it('should reply NOT_REGISTERED when no user', async () => {
+    const overviewService = createMockOverviewService();
     const handler = new DevicesHandler(
-      createMockDeviceRepo(),
-      createMockUserDeviceRepo(),
+      overviewService as unknown as GetUserDevicesOverviewService,
       translationService,
     );
 
@@ -90,12 +71,11 @@ describe('DevicesHandler', () => {
   });
 
   it('should reply NO_DEVICES when user has no devices', async () => {
-    const userDeviceRepo = createMockUserDeviceRepo();
-    userDeviceRepo.findByUserId.mockResolvedValue([]);
+    const overviewService = createMockOverviewService();
+    mockRun(overviewService, { devices: [], total: 0 });
 
     const handler = new DevicesHandler(
-      createMockDeviceRepo(),
-      userDeviceRepo,
+      overviewService as unknown as GetUserDevicesOverviewService,
       translationService,
     );
 
@@ -113,15 +93,20 @@ describe('DevicesHandler', () => {
     const msgs = translationService.getMessages(locale);
 
     it('renders escaped firmware version when set', async () => {
-      const deviceRepo = createMockDeviceRepo();
-      const userDeviceRepo = createMockUserDeviceRepo();
-
-      userDeviceRepo.findByUserId.mockResolvedValue([mockUserDevice]);
-      deviceRepo.findById.mockResolvedValue(buildDevice('1.2.3-beta'));
+      const overviewService = createMockOverviewService();
+      mockRun(overviewService, {
+        devices: [
+          {
+            device: buildDevice('1.2.3-beta'),
+            customName: null,
+            role: DeviceRole.OWNER,
+          },
+        ],
+        total: 1,
+      });
 
       const handler = new DevicesHandler(
-        deviceRepo,
-        userDeviceRepo,
+        overviewService as unknown as GetUserDevicesOverviewService,
         translationService,
       );
 
@@ -137,15 +122,20 @@ describe('DevicesHandler', () => {
     });
 
     it('falls back to unknown firmware label when firmwareVersion is null', async () => {
-      const deviceRepo = createMockDeviceRepo();
-      const userDeviceRepo = createMockUserDeviceRepo();
-
-      userDeviceRepo.findByUserId.mockResolvedValue([mockUserDevice]);
-      deviceRepo.findById.mockResolvedValue(buildDevice(null));
+      const overviewService = createMockOverviewService();
+      mockRun(overviewService, {
+        devices: [
+          {
+            device: buildDevice(null),
+            customName: null,
+            role: DeviceRole.OWNER,
+          },
+        ],
+        total: 1,
+      });
 
       const handler = new DevicesHandler(
-        deviceRepo,
-        userDeviceRepo,
+        overviewService as unknown as GetUserDevicesOverviewService,
         translationService,
       );
 
@@ -160,12 +150,11 @@ describe('DevicesHandler', () => {
   });
 
   it('should reply ERROR_GENERIC on unexpected error', async () => {
-    const userDeviceRepo = createMockUserDeviceRepo();
-    userDeviceRepo.findByUserId.mockRejectedValue(new Error('DB error'));
+    const overviewService = createMockOverviewService();
+    overviewService.run.mockRejectedValue(new Error('DB error'));
 
     const handler = new DevicesHandler(
-      createMockDeviceRepo(),
-      userDeviceRepo,
+      overviewService as unknown as GetUserDevicesOverviewService,
       translationService,
     );
 

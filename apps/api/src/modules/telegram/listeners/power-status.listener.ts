@@ -2,30 +2,26 @@ import {
   POWER_STATUS_CHANGED_EVENT,
   PowerStatusChangedEvent,
 } from '@home-pulse-watcher/application';
-import type {
-  IDeviceRepository,
-  IUserDeviceRepository,
-  IUserRepository,
-} from '@home-pulse-watcher/core';
+import type { GetDeviceNotificationRecipientsService } from '@home-pulse-watcher/application';
 import { PowerStatus } from '@home-pulse-watcher/core';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import type { Telegraf } from 'telegraf';
-import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
+import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import type { PowerEventMessageParams } from '../formatters/message.formatter.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
 import { TranslationService } from '../i18n/index.js';
-import { DEFAULT_LOCALE, DEFAULT_TIMEZONE } from '../i18n/locale.config.js';
 import {
   buildCheckStatusButton,
   buildViewHistoryButton,
 } from '../keyboards/index.js';
+import type {
+  DispatchMessage,
+  RecipientGroup,
+} from '../notifications/notification-dispatcher.js';
+import { NotificationDispatcher } from '../notifications/notification-dispatcher.js';
 import { TELEGRAM_TOKENS } from '../telegram.tokens.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
-
-/** Rate limiting constants for Telegram API */
-const BATCH_SIZE = 25;
-const BATCH_DELAY_MS = 1000;
 
 function resolveMessageType(event: PowerStatusChangedEvent): string {
   if (event.isPowerLost) return 'power_lost';
@@ -33,12 +29,6 @@ function resolveMessageType(event: PowerStatusChangedEvent): string {
   return event.newStatus === PowerStatus.ON
     ? 'device_online'
     : 'device_offline';
-}
-
-interface RecipientGroup {
-  locale: string;
-  timezone: string;
-  recipients: Array<{ chatId: string; userId: string }>;
 }
 
 /**
@@ -52,12 +42,9 @@ export class PowerStatusListener {
     @Optional()
     @Inject(TELEGRAM_TOKENS.BOT)
     private readonly bot: Telegraf<TelegramContext> | null,
-    @Inject(REPOSITORY_TOKENS.USER)
-    private readonly userRepository: IUserRepository,
-    @Inject(REPOSITORY_TOKENS.USER_DEVICE)
-    private readonly userDeviceRepository: IUserDeviceRepository,
-    @Inject(REPOSITORY_TOKENS.DEVICE)
-    private readonly deviceRepository: IDeviceRepository,
+    @Inject(SERVICE_TOKENS.GET_DEVICE_NOTIFICATION_RECIPIENTS)
+    private readonly getDeviceNotificationRecipientsService: GetDeviceNotificationRecipientsService,
+    private readonly notificationDispatcher: NotificationDispatcher,
     private readonly messageFormatter: MessageFormatter,
     private readonly translationService: TranslationService,
   ) {}
@@ -77,82 +64,54 @@ export class PowerStatusListener {
     );
 
     try {
-      // 1. Find all users subscribed to this device
-      const userDevices = await this.userDeviceRepository.findByDeviceId(
-        event.deviceId,
-      );
+      // 1. Resolve recipients (chatId/locale/timezone) in 2 queries.
+      const { data } = await this.getDeviceNotificationRecipientsService.run({
+        deviceId: event.deviceId,
+      });
 
-      if (userDevices.length === 0) {
+      if (data.recipients.length === 0) {
         this.logger.debug(
           'No users subscribed to device, skipping notification',
         );
         return;
       }
 
-      // 2. Get device info for label
-      const device = await this.deviceRepository.findById(event.deviceId);
-      const deviceLabel =
-        event.deviceLabel ?? device?.label ?? 'Unknown Device';
+      const deviceLabel = event.deviceLabel ?? 'Unknown Device';
 
-      // 3. Get outage duration from domain event
+      // 2. Get outage duration from domain event
       const durationSeconds = event.isPowerRestored
         ? event.durationSeconds
         : null;
 
-      // 4. Group recipients by locale/timezone
-      const groups = new Map<string, RecipientGroup>();
-
-      for (const ud of userDevices) {
-        const user = await this.userRepository.findById(ud.userId);
-        if (!user) continue;
-
-        const locale = user.locale ?? DEFAULT_LOCALE;
-        const timezone = user.timezone ?? DEFAULT_TIMEZONE;
-        const key = `${locale}:${timezone}`;
-
-        if (!groups.has(key)) {
-          groups.set(key, { locale, timezone, recipients: [] });
-        }
-        groups.get(key)!.recipients.push({
-          chatId: user.telegramId.toString(),
-          userId: ud.userId,
-        });
-      }
-
       const messageType = resolveMessageType(event);
 
-      const totalRecipients = [...groups.values()].reduce(
-        (sum, g) => sum + g.recipients.length,
-        0,
-      );
       this.logger.log(
-        `Sending notification: type=${messageType} device=${deviceLabel} recipients=${totalRecipients}`,
+        `Sending notification: type=${messageType} device=${deviceLabel} recipients=${data.recipients.length}`,
       );
 
-      // 5. Format and send one message per locale/timezone group
-      for (const group of groups.values()) {
-        const message = this.formatNotificationMessage(
-          event,
-          deviceLabel,
-          durationSeconds,
-          group.locale,
-          group.timezone,
-        );
+      // 3. Group by locale/timezone, format and send one message per group.
+      await this.notificationDispatcher.dispatch(
+        bot,
+        data.recipients,
+        (group: RecipientGroup): DispatchMessage => {
+          const text = this.formatNotificationMessage(
+            event,
+            deviceLabel,
+            durationSeconds,
+            group.locale,
+            group.timezone,
+          );
 
-        const msgs = this.translationService.getMessages(group.locale);
-        const inlineKeyboard = event.isPowerLost
-          ? buildCheckStatusButton(msgs)
-          : event.isPowerRestored
-            ? buildViewHistoryButton(msgs)
-            : undefined;
+          const msgs = this.translationService.getMessages(group.locale);
+          const inlineKeyboard = event.isPowerLost
+            ? buildCheckStatusButton(msgs)
+            : event.isPowerRestored
+              ? buildViewHistoryButton(msgs)
+              : undefined;
 
-        await this.sendWithRateLimit(
-          bot,
-          message,
-          group.recipients,
-          inlineKeyboard,
-        );
-      }
+          return { text, extra: inlineKeyboard };
+        },
+      );
 
       this.logger.log(
         `Notification delivered: type=${messageType} device=${deviceLabel}`,
@@ -162,42 +121,6 @@ export class PowerStatusListener {
         'Failed to process power status notification',
         error instanceof Error ? error.stack : String(error),
       );
-    }
-  }
-
-  /**
-   * Send messages in batches to respect Telegram rate limits (~30 msgs/sec).
-   */
-  private async sendWithRateLimit(
-    bot: Telegraf<TelegramContext>,
-    message: string,
-    recipients: Array<{ chatId: string; userId: string }>,
-    inlineKeyboard?: ReturnType<typeof buildCheckStatusButton>,
-  ): Promise<void> {
-    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-      const batch = recipients.slice(i, i + BATCH_SIZE);
-
-      const sendPromises = batch.map(async ({ chatId, userId }) => {
-        try {
-          await bot.telegram.sendMessage(chatId, message, {
-            parse_mode: 'MarkdownV2',
-            ...(inlineKeyboard ? inlineKeyboard : {}),
-          });
-          this.logger.debug(`Notification sent to user ${chatId}`);
-        } catch (error) {
-          this.logger.warn(
-            `Failed to send notification to user ${userId}`,
-            error instanceof Error ? error.stack : String(error),
-          );
-        }
-      });
-
-      await Promise.allSettled(sendPromises);
-
-      // Add delay between batches to respect rate limits
-      if (i + BATCH_SIZE < recipients.length) {
-        await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
-      }
     }
   }
 

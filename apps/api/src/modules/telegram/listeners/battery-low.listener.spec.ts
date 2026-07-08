@@ -1,40 +1,26 @@
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { BatteryLowListener } from './battery-low.listener.js';
-import { BatteryLowEvent } from '@home-pulse-watcher/application';
-import { User, UserDevice, DeviceRole } from '@home-pulse-watcher/core';
-import type {
-  IUserRepository,
-  IUserDeviceRepository,
-} from '@home-pulse-watcher/core';
-import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
+import {
+  BatteryLowEvent,
+  type GetDeviceNotificationRecipientsService,
+  type NotificationRecipient,
+} from '@home-pulse-watcher/application';
+import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { TELEGRAM_TOKENS } from '../telegram.tokens.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
+import { NotificationDispatcher } from '../notifications/notification-dispatcher.js';
 
-function makeUser(
-  overrides: Partial<ConstructorParameters<typeof User>[0]> = {},
-): User {
-  return new User({
-    id: 'user-1',
-    telegramId: BigInt(111111),
-    username: 'testuser',
+function makeRecipient(
+  overrides: Partial<NotificationRecipient> = {},
+): NotificationRecipient {
+  return {
+    userId: 'user-1',
+    chatId: '111111',
     locale: 'en',
     timezone: 'Europe/Kyiv',
-    createdAt: new Date(),
     ...overrides,
-  });
-}
-
-function makeUserDevice(
-  overrides: Partial<ConstructorParameters<typeof UserDevice>[0]> = {},
-): UserDevice {
-  return new UserDevice({
-    userId: 'user-1',
-    deviceId: 'device-1',
-    customName: null,
-    role: DeviceRole.VIEWER,
-    ...overrides,
-  });
+  };
 }
 
 function makeBatteryLowEvent(
@@ -52,20 +38,17 @@ function makeBatteryLowEvent(
 describe('BatteryLowListener', () => {
   let listener: BatteryLowListener;
   let mockBot: { telegram: { sendMessage: jest.Mock } } | null;
-  let mockUserRepository: jest.Mocked<IUserRepository>;
-  let mockUserDeviceRepository: jest.Mocked<IUserDeviceRepository>;
+  let mockGetRecipientsService: jest.Mocked<
+    Pick<GetDeviceNotificationRecipientsService, 'run'>
+  >;
   let mockMessageFormatter: jest.Mocked<
     Pick<MessageFormatter, 'formatBatteryLowAlert'>
   >;
 
   const createModule = async (bot: typeof mockBot): Promise<TestingModule> => {
-    mockUserRepository = {
-      findById: jest.fn(),
-    } as unknown as jest.Mocked<IUserRepository>;
-
-    mockUserDeviceRepository = {
-      findByDeviceId: jest.fn(),
-    } as unknown as jest.Mocked<IUserDeviceRepository>;
+    mockGetRecipientsService = {
+      run: jest.fn(),
+    };
 
     mockMessageFormatter = {
       formatBatteryLowAlert: jest
@@ -77,11 +60,11 @@ describe('BatteryLowListener', () => {
       providers: [
         BatteryLowListener,
         { provide: TELEGRAM_TOKENS.BOT, useValue: bot },
-        { provide: REPOSITORY_TOKENS.USER, useValue: mockUserRepository },
         {
-          provide: REPOSITORY_TOKENS.USER_DEVICE,
-          useValue: mockUserDeviceRepository,
+          provide: SERVICE_TOKENS.GET_DEVICE_NOTIFICATION_RECIPIENTS,
+          useValue: mockGetRecipientsService,
         },
+        NotificationDispatcher,
         { provide: MessageFormatter, useValue: mockMessageFormatter },
       ],
     }).compile();
@@ -98,7 +81,7 @@ describe('BatteryLowListener', () => {
     it('should return early without errors', async () => {
       const event = makeBatteryLowEvent();
       await expect(listener.handleBatteryLow(event)).resolves.toBeUndefined();
-      expect(mockUserDeviceRepository.findByDeviceId).not.toHaveBeenCalled();
+      expect(mockGetRecipientsService.run).not.toHaveBeenCalled();
     });
   });
 
@@ -109,7 +92,9 @@ describe('BatteryLowListener', () => {
     });
 
     it('should return early when no users are subscribed', async () => {
-      mockUserDeviceRepository.findByDeviceId.mockResolvedValue([]);
+      mockGetRecipientsService.run.mockResolvedValue({
+        data: { recipients: [] },
+      });
 
       await listener.handleBatteryLow(makeBatteryLowEvent());
 
@@ -117,11 +102,9 @@ describe('BatteryLowListener', () => {
     });
 
     it('should send SOS alert to a single subscribed user', async () => {
-      const user = makeUser();
-      mockUserDeviceRepository.findByDeviceId.mockResolvedValue([
-        makeUserDevice(),
-      ]);
-      mockUserRepository.findById.mockResolvedValue(user);
+      mockGetRecipientsService.run.mockResolvedValue({
+        data: { recipients: [makeRecipient()] },
+      });
 
       await listener.handleBatteryLow(makeBatteryLowEvent());
 
@@ -138,26 +121,24 @@ describe('BatteryLowListener', () => {
     });
 
     it('should group recipients by locale and timezone', async () => {
-      const userEn = makeUser({
-        id: 'user-1',
-        telegramId: BigInt(111111),
-        locale: 'en',
-        timezone: 'America/New_York',
+      mockGetRecipientsService.run.mockResolvedValue({
+        data: {
+          recipients: [
+            makeRecipient({
+              userId: 'user-1',
+              chatId: '111111',
+              locale: 'en',
+              timezone: 'America/New_York',
+            }),
+            makeRecipient({
+              userId: 'user-2',
+              chatId: '222222',
+              locale: 'uk',
+              timezone: 'Europe/Kyiv',
+            }),
+          ],
+        },
       });
-      const userUk = makeUser({
-        id: 'user-2',
-        telegramId: BigInt(222222),
-        locale: 'uk',
-        timezone: 'Europe/Kyiv',
-      });
-
-      mockUserDeviceRepository.findByDeviceId.mockResolvedValue([
-        makeUserDevice({ userId: 'user-1' }),
-        makeUserDevice({ userId: 'user-2' }),
-      ]);
-      mockUserRepository.findById
-        .mockResolvedValueOnce(userEn)
-        .mockResolvedValueOnce(userUk);
 
       await listener.handleBatteryLow(makeBatteryLowEvent());
 
@@ -175,20 +156,6 @@ describe('BatteryLowListener', () => {
         'Europe/Kyiv',
       );
       expect(mockBot!.telegram.sendMessage).toHaveBeenCalledTimes(2);
-    });
-
-    it('should skip users that cannot be found', async () => {
-      mockUserDeviceRepository.findByDeviceId.mockResolvedValue([
-        makeUserDevice({ userId: 'user-1' }),
-        makeUserDevice({ userId: 'user-deleted' }),
-      ]);
-      mockUserRepository.findById
-        .mockResolvedValueOnce(makeUser())
-        .mockResolvedValueOnce(null);
-
-      await listener.handleBatteryLow(makeBatteryLowEvent());
-
-      expect(mockBot!.telegram.sendMessage).toHaveBeenCalledTimes(1);
     });
   });
 });

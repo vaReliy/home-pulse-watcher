@@ -1,9 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type {
-  IDeviceRepository,
-  IUserDeviceRepository,
-} from '@home-pulse-watcher/core';
-import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
+import type { GetUserDevicesOverviewService } from '@home-pulse-watcher/application';
+import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
 import { TranslationService } from '../i18n/index.js';
 import { buildMainMenuKeyboard } from '../keyboards/index.js';
@@ -18,10 +15,8 @@ export class StatusHandler {
   private readonly logger = new Logger(StatusHandler.name);
 
   constructor(
-    @Inject(REPOSITORY_TOKENS.DEVICE)
-    private readonly deviceRepository: IDeviceRepository,
-    @Inject(REPOSITORY_TOKENS.USER_DEVICE)
-    private readonly userDeviceRepository: IUserDeviceRepository,
+    @Inject(SERVICE_TOKENS.GET_USER_DEVICES_OVERVIEW)
+    private readonly getUserDevicesOverviewService: GetUserDevicesOverviewService,
     private readonly messageFormatter: MessageFormatter,
     private readonly translationService: TranslationService,
   ) {}
@@ -40,10 +35,11 @@ export class StatusHandler {
     const msgs = this.translationService.getMessages(user.locale);
 
     try {
-      // Get user's device associations
-      const userDevices = await this.userDeviceRepository.findByUserId(user.id);
+      const { data } = await this.getUserDevicesOverviewService.run({
+        userId: user.id,
+      });
 
-      if (userDevices.length === 0) {
+      if (data.devices.length === 0) {
         await ctx.reply(msgs.NO_DEVICES, {
           parse_mode: 'MarkdownV2',
           ...buildMainMenuKeyboard(msgs),
@@ -51,17 +47,10 @@ export class StatusHandler {
         return;
       }
 
-      // Fetch full device data
-      const devicesWithNames = await Promise.all(
-        userDevices.map(async (ud) => {
-          const device = await this.deviceRepository.findById(ud.deviceId);
-          return device ? { device, customName: ud.customName } : null;
-        }),
-      );
-
-      const validDevices = devicesWithNames.filter(
-        (d): d is NonNullable<typeof d> => d !== null,
-      );
+      const validDevices = data.devices.map(({ device, customName }) => ({
+        device,
+        customName,
+      }));
 
       const message = this.messageFormatter.formatAllDevicesStatus(
         validDevices,

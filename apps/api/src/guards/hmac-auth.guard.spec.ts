@@ -33,6 +33,7 @@ describe('HmacAuthGuard', () => {
   const createMockRepository = (): jest.Mocked<IDeviceRepository> => ({
     findById: jest.fn(),
     findByMacAddress: jest.fn(),
+    findByIds: jest.fn(),
     findByUserId: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),

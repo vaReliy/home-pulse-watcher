@@ -1,5 +1,6 @@
 import type { Telegraf } from 'telegraf';
 import type { IUserRepository } from '@home-pulse-watcher/core';
+import type { UpdateUserSettingsService } from '@home-pulse-watcher/application';
 import type { TelegramConfig } from './telegram.config';
 import type { TelegramContext } from './types/telegram-context.type';
 import { TelegramService } from './telegram.service';
@@ -31,6 +32,7 @@ describe('TelegramService', () => {
 
   const createMockDeps = () => ({
     userRepository: {} as IUserRepository,
+    updateUserSettingsService: {} as UpdateUserSettingsService,
     startHandler: {} as StartHandler,
     statusHandler: {} as StatusHandler,
     devicesHandler: {} as DevicesHandler,
@@ -48,6 +50,7 @@ describe('TelegramService', () => {
       bot,
       config,
       deps.userRepository,
+      deps.updateUserSettingsService,
       deps.startHandler,
       deps.statusHandler,
       deps.devicesHandler,

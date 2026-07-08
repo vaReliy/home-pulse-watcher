@@ -16,6 +16,14 @@ export interface IUserRepository {
   findByTelegramId(telegramId: bigint): Promise<User | null>;
 
   /**
+   * Find multiple users by internal ID in a single query.
+   * Returns only found rows — order is NOT guaranteed to match `ids`.
+   * Callers must build an id→entity Map, never zip by index.
+   * Empty `ids` short-circuits to `[]` without querying.
+   */
+  findByIds(ids: string[]): Promise<User[]>;
+
+  /**
    * Create a new user.
    */
   create(data: {

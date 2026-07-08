@@ -152,6 +152,7 @@ describe('OtaController (integration)', () => {
     mockDeviceRepository = {
       findById: jest.fn().mockResolvedValue(mockDevice),
       findByMacAddress: jest.fn().mockResolvedValue(mockDevice),
+      findByIds: jest.fn(),
       findByUserId: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),

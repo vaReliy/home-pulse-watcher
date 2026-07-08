@@ -1,12 +1,11 @@
 import type {
-  IDeviceRepository,
-  IUserDeviceRepository,
-  IPowerEventRepository,
-  User,
-  Device,
-  PowerEvent,
-} from '@home-pulse-watcher/core';
-import { PowerStatus, DeviceRole, UserDevice } from '@home-pulse-watcher/core';
+  GetPowerHistoryService,
+  GetPowerHistoryOutput,
+  GetUserDevicesOverviewService,
+  GetUserDevicesOverviewOutput,
+} from '@home-pulse-watcher/application';
+import type { User, Device, PowerEvent } from '@home-pulse-watcher/core';
+import { PowerStatus, DeviceRole } from '@home-pulse-watcher/core';
 import { HistoryHandler } from './history.handler.js';
 import { MessageFormatter } from '../formatters/message.formatter.js';
 import { TranslationService } from '../i18n/index.js';
@@ -36,13 +35,6 @@ describe('HistoryHandler', () => {
     isOnline: () => true,
   } as Device;
 
-  const mockUserDevice = new UserDevice({
-    userId: 'user-1',
-    deviceId: 'device-1',
-    role: DeviceRole.OWNER,
-    customName: null,
-  });
-
   const mockEvents: PowerEvent[] = [
     {
       id: 'ev-1',
@@ -62,40 +54,37 @@ describe('HistoryHandler', () => {
     } as PowerEvent,
   ];
 
-  const createMockDeviceRepo = (): jest.Mocked<IDeviceRepository> => ({
-    findById: jest.fn(),
-    findByMacAddress: jest.fn(),
-    findByUserId: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    updateStatus: jest.fn(),
-    delete: jest.fn(),
-    existsByMacAddress: jest.fn(),
-    consumeOtaForceCheckRequest: jest.fn(),
-    requestOtaForceCheck: jest.fn(),
+  const createMockOverviewService = (): jest.Mocked<
+    Pick<GetUserDevicesOverviewService, 'run'>
+  > => ({
+    run: jest.fn(),
   });
 
-  const createMockUserDeviceRepo = (): jest.Mocked<IUserDeviceRepository> => ({
-    findByUserId: jest.fn(),
-    findByDeviceId: jest.fn(),
-    findByUserAndDevice: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    exists: jest.fn(),
-    countByDeviceId: jest.fn(),
+  const createMockPowerHistoryService = (): jest.Mocked<
+    Pick<GetPowerHistoryService, 'run'>
+  > => ({
+    run: jest.fn(),
   });
 
-  const createMockPowerEventRepo = (): jest.Mocked<IPowerEventRepository> => ({
-    findById: jest.fn(),
-    findMany: jest.fn(),
-    findLatestByDeviceId: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    deleteByDeviceId: jest.fn(),
-    count: jest.fn(),
-  });
+  const mockOverview = (
+    service: jest.Mocked<Pick<GetUserDevicesOverviewService, 'run'>>,
+    output: GetUserDevicesOverviewOutput,
+  ): void => {
+    service.run.mockResolvedValue({ data: output });
+  };
+
+  const mockHistory = (
+    service: jest.Mocked<Pick<GetPowerHistoryService, 'run'>>,
+    events: PowerEvent[],
+  ): void => {
+    const output: GetPowerHistoryOutput = {
+      events,
+      total: events.length,
+      limit: 100,
+      offset: 0,
+    };
+    service.run.mockResolvedValue({ data: output });
+  };
 
   const createMockContext = (user?: User): TelegramContext =>
     ({
@@ -106,9 +95,8 @@ describe('HistoryHandler', () => {
 
   it('should reply NOT_REGISTERED when no user', async () => {
     const handler = new HistoryHandler(
-      createMockDeviceRepo(),
-      createMockUserDeviceRepo(),
-      createMockPowerEventRepo(),
+      createMockOverviewService() as unknown as GetUserDevicesOverviewService,
+      createMockPowerHistoryService() as unknown as GetPowerHistoryService,
       messageFormatter,
       translationService,
     );
@@ -127,13 +115,12 @@ describe('HistoryHandler', () => {
   });
 
   it('should reply NO_DEVICES when user has no devices', async () => {
-    const userDeviceRepo = createMockUserDeviceRepo();
-    userDeviceRepo.findByUserId.mockResolvedValue([]);
+    const overviewService = createMockOverviewService();
+    mockOverview(overviewService, { devices: [], total: 0 });
 
     const handler = new HistoryHandler(
-      createMockDeviceRepo(),
-      userDeviceRepo,
-      createMockPowerEventRepo(),
+      overviewService as unknown as GetUserDevicesOverviewService,
+      createMockPowerHistoryService() as unknown as GetPowerHistoryService,
       messageFormatter,
       translationService,
     );
@@ -152,18 +139,20 @@ describe('HistoryHandler', () => {
   });
 
   it('should display history for user devices in Ukrainian', async () => {
-    const deviceRepo = createMockDeviceRepo();
-    const userDeviceRepo = createMockUserDeviceRepo();
-    const powerEventRepo = createMockPowerEventRepo();
+    const overviewService = createMockOverviewService();
+    const powerHistoryService = createMockPowerHistoryService();
 
-    userDeviceRepo.findByUserId.mockResolvedValue([mockUserDevice]);
-    deviceRepo.findById.mockResolvedValue(mockDevice);
-    powerEventRepo.findMany.mockResolvedValue(mockEvents);
+    mockOverview(overviewService, {
+      devices: [
+        { device: mockDevice, customName: null, role: DeviceRole.OWNER },
+      ],
+      total: 1,
+    });
+    mockHistory(powerHistoryService, mockEvents);
 
     const handler = new HistoryHandler(
-      deviceRepo,
-      userDeviceRepo,
-      powerEventRepo,
+      overviewService as unknown as GetUserDevicesOverviewService,
+      powerHistoryService as unknown as GetPowerHistoryService,
       messageFormatter,
       translationService,
     );
@@ -171,7 +160,7 @@ describe('HistoryHandler', () => {
     const ctx = createMockContext(mockUser);
     await handler.handle(ctx);
 
-    expect(powerEventRepo.findMany).toHaveBeenCalledWith(
+    expect(powerHistoryService.run).toHaveBeenCalledWith(
       expect.objectContaining({
         deviceId: 'device-1',
         orderBy: 'asc',
@@ -189,18 +178,20 @@ describe('HistoryHandler', () => {
   });
 
   it('should show NO_HISTORY when no events this month', async () => {
-    const deviceRepo = createMockDeviceRepo();
-    const userDeviceRepo = createMockUserDeviceRepo();
-    const powerEventRepo = createMockPowerEventRepo();
+    const overviewService = createMockOverviewService();
+    const powerHistoryService = createMockPowerHistoryService();
 
-    userDeviceRepo.findByUserId.mockResolvedValue([mockUserDevice]);
-    deviceRepo.findById.mockResolvedValue(mockDevice);
-    powerEventRepo.findMany.mockResolvedValue([]);
+    mockOverview(overviewService, {
+      devices: [
+        { device: mockDevice, customName: null, role: DeviceRole.OWNER },
+      ],
+      total: 1,
+    });
+    mockHistory(powerHistoryService, []);
 
     const handler = new HistoryHandler(
-      deviceRepo,
-      userDeviceRepo,
-      powerEventRepo,
+      overviewService as unknown as GetUserDevicesOverviewService,
+      powerHistoryService as unknown as GetPowerHistoryService,
       messageFormatter,
       translationService,
     );
@@ -214,24 +205,24 @@ describe('HistoryHandler', () => {
   });
 
   it('should use customName over device label', async () => {
-    const deviceRepo = createMockDeviceRepo();
-    const userDeviceRepo = createMockUserDeviceRepo();
-    const powerEventRepo = createMockPowerEventRepo();
+    const overviewService = createMockOverviewService();
+    const powerHistoryService = createMockPowerHistoryService();
 
-    const udWithCustomName = new UserDevice({
-      userId: 'user-1',
-      deviceId: 'device-1',
-      role: DeviceRole.OWNER,
-      customName: 'My Sensor',
+    mockOverview(overviewService, {
+      devices: [
+        {
+          device: mockDevice,
+          customName: 'My Sensor',
+          role: DeviceRole.OWNER,
+        },
+      ],
+      total: 1,
     });
-    userDeviceRepo.findByUserId.mockResolvedValue([udWithCustomName]);
-    deviceRepo.findById.mockResolvedValue(mockDevice);
-    powerEventRepo.findMany.mockResolvedValue(mockEvents);
+    mockHistory(powerHistoryService, mockEvents);
 
     const handler = new HistoryHandler(
-      deviceRepo,
-      userDeviceRepo,
-      powerEventRepo,
+      overviewService as unknown as GetUserDevicesOverviewService,
+      powerHistoryService as unknown as GetPowerHistoryService,
       messageFormatter,
       translationService,
     );
@@ -245,13 +236,12 @@ describe('HistoryHandler', () => {
   });
 
   it('should reply ERROR_GENERIC on unexpected error', async () => {
-    const userDeviceRepo = createMockUserDeviceRepo();
-    userDeviceRepo.findByUserId.mockRejectedValue(new Error('DB error'));
+    const overviewService = createMockOverviewService();
+    overviewService.run.mockRejectedValue(new Error('DB error'));
 
     const handler = new HistoryHandler(
-      createMockDeviceRepo(),
-      userDeviceRepo,
-      createMockPowerEventRepo(),
+      overviewService as unknown as GetUserDevicesOverviewService,
+      createMockPowerHistoryService() as unknown as GetPowerHistoryService,
       messageFormatter,
       translationService,
     );

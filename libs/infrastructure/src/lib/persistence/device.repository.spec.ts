@@ -170,6 +170,47 @@ describe('PrismaDeviceRepository', () => {
     });
   });
 
+  describe('findByIds', () => {
+    it('should return found devices for given ids', async () => {
+      const devices = [
+        {
+          ...basePrismaDevice,
+          id: 'device-1',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+          label: 'Kitchen',
+          lastStatus: 1,
+          lastSeenAt: new Date(),
+          statusChangedAt: null,
+        },
+        {
+          ...basePrismaDevice,
+          id: 'device-2',
+          macAddress: '11:22:33:44:55:66',
+          label: 'Garage',
+          lastStatus: 0,
+          lastSeenAt: new Date(),
+          statusChangedAt: null,
+        },
+      ];
+      mockPrismaClient.device.findMany.mockResolvedValue(devices);
+
+      const result = await repository.findByIds(['device-1', 'device-2']);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(Device);
+      expect(mockPrismaClient.device.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['device-1', 'device-2'] } },
+      });
+    });
+
+    it('should return empty array without querying when ids is empty', async () => {
+      const result = await repository.findByIds([]);
+
+      expect(result).toEqual([]);
+      expect(mockPrismaClient.device.findMany).not.toHaveBeenCalled();
+    });
+  });
+
   describe('consumeOtaForceCheckRequest', () => {
     it('should return true and clear flag when it was set', async () => {
       mockPrismaClient.device.updateMany.mockResolvedValue({ count: 1 });

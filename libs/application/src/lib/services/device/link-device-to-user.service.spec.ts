@@ -44,6 +44,7 @@ describe('LinkDeviceToUserService', () => {
   const createMockUserRepository = (): jest.Mocked<IUserRepository> => ({
     findById: jest.fn(),
     findByTelegramId: jest.fn(),
+    findByIds: jest.fn(),
     findAll: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -54,6 +55,7 @@ describe('LinkDeviceToUserService', () => {
   const createMockDeviceRepository = (): jest.Mocked<IDeviceRepository> => ({
     findById: jest.fn(),
     findByMacAddress: jest.fn(),
+    findByIds: jest.fn(),
     findByUserId: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),

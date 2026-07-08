@@ -30,6 +30,14 @@ export class PrismaDeviceRepository implements IDeviceRepository {
     return device ? mapPrismaDeviceToEntity(device) : null;
   }
 
+  async findByIds(ids: string[]): Promise<Device[]> {
+    if (ids.length === 0) return [];
+    const devices = await withPrismaError('Device', () =>
+      this.prisma.device.findMany({ where: { id: { in: ids } } }),
+    );
+    return devices.map(mapPrismaDeviceToEntity);
+  }
+
   async create(data: {
     macAddress: string;
     encryptedSecret: string;

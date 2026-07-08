@@ -24,6 +24,14 @@ export class PrismaUserRepository implements IUserRepository {
     return user ? mapPrismaUserToEntity(user) : null;
   }
 
+  async findByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    const users = await withPrismaError('User', () =>
+      this.prisma.user.findMany({ where: { id: { in: ids } } }),
+    );
+    return users.map(mapPrismaUserToEntity);
+  }
+
   async create(data: {
     telegramId: bigint;
     username?: string | null;
