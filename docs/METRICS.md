@@ -29,3 +29,5 @@ Each completed task is one row in the table below.
 | 2026-07-07 | home-pulse-watcher | distill-gcs-rename-into-project-context           | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-07-07 | home-pulse-watcher | distill-livr-field-stripping-into-validation-rule | T2   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-07-08 | home-pulse-watcher | firmware-tls-build-flag                           | T2   | 0      | 0/0/0/0           | 1       | no       | standard |
+| 2026-07-08 | home-pulse-watcher | captive-portal-password-hardening                 | T1   | 0      | 0/1/1/0           | 0       | no       | standard |
+| 2026-07-08 | home-pulse-watcher | firmware-ota-parser-hardening                     | T1   | 0      | 0/1/0/0           | 1       | no       | standard |

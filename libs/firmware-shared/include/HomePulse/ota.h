@@ -48,10 +48,9 @@ struct UpdateInfo {
  * Parse JSON response body from /api/ota/check.
  * Exposed for unit testing; called internally by checkForUpdate.
  *
- * The internal JSON parser handles single-level \" and \\ escape sequences.
- * Sufficient for all current OTA response fields (semver, GCS signed URLs,
- * hex checksums). Full RFC 8259 escape decoding (\n, \uXXXX, etc.) is not
- * implemented — add it here if future fields require it.
+ * Uses ArduinoJson (full RFC 8259 decoding). Field-size caps (kMaxVersionLen,
+ * kMaxUrlLen, kMaxChecksumLen in ota.cpp) reject oversized values outright
+ * rather than silently truncating them.
  */
 CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo);
 
@@ -70,6 +69,21 @@ bool shouldMarkAppValid(bool pendingValidation,
                         uint32_t uptimeMs,
                         uint32_t minHeartbeats,
                         uint32_t minUptimeMs);
+
+/**
+ * Compare two "MAJOR.MINOR.PATCH[-PRERELEASE]" version strings.
+ * Exposed for unit testing; used internally by checkForUpdate as a
+ * defense-in-depth downgrade guard (the HMAC-signed response already
+ * authenticates the offer — this catches backend bugs/compromise offering
+ * a version the device should refuse to flash).
+ *
+ * Prerelease suffixes are not compared beyond their presence: for equal
+ * major.minor.patch, a release (no suffix) is considered newer than a
+ * prerelease (has a "-" suffix), matching SemVer precedence rules.
+ *
+ * @return negative if a < b, 0 if equal, positive if a > b
+ */
+int compareVersions(const char* a, const char* b);
 
 #ifndef UNIT_TEST
 

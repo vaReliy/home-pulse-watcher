@@ -1,5 +1,6 @@
 #include "HomePulse/ota.h"
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
@@ -41,84 +42,53 @@ bool fromString(const char* str, OtaChannel& outChannel) {
     return false;
 }
 
-// ─── Portable JSON helpers ────────────────────────────────────────────────────
-
-// Handles \" and \\ escape sequences; other \X sequences copy X (passthrough).
-// Sufficient for OTA response fields — full JSON escape decoding not required.
-static bool extractJsonString(const char* json, const char* key,
-                              char* out, size_t outSize) {
-    char searchKey[80];
-    snprintf(searchKey, sizeof(searchKey), "\"%s\":\"", key);
-    const char* found = strstr(json, searchKey);
-    if (!found) return false;
-    found += strlen(searchKey);
-
-    size_t i = 0;
-    const char* p = found;
-    while (*p && i < outSize - 1) {
-        if (*p == '\\' && *(p + 1) != '\0') {
-            out[i++] = *(p + 1);
-            p += 2;
-            continue;
-        }
-        if (*p == '"') break;
-        out[i++] = *p++;
-    }
-    if (*p != '"') return false;
-    out[i] = '\0';
-    return i > 0 || *found == '"';
-}
-
-// Parses an unsigned decimal integer immediately after "key": in JSON.
-static bool extractJsonUint32(const char* json, const char* key, uint32_t& out) {
-    char searchKey[80];
-    snprintf(searchKey, sizeof(searchKey), "\"%s\":", key);
-    const char* found = strstr(json, searchKey);
-    if (!found) return false;
-    found += strlen(searchKey);
-    // skip optional whitespace
-    while (*found == ' ' || *found == '\t') found++;
-    if (*found < '0' || *found > '9') return false;
-    char* end = nullptr;
-    unsigned long val = strtoul(found, &end, 10);
-    if (end == found) return false;
-    out = (uint32_t)val;
-    return true;
-}
-
-static bool extractJsonBool(const char* json, const char* key, bool& out) {
-    char truePattern[80], falsePattern[80];
-    snprintf(truePattern,  sizeof(truePattern),  "\"%s\":true",  key);
-    snprintf(falsePattern, sizeof(falsePattern), "\"%s\":false", key);
-    if (strstr(json, truePattern))  { out = true;  return true; }
-    if (strstr(json, falsePattern)) { out = false; return true; }
-    return false;
-}
-
-// ─── parseOtaResponse (always compiled — native-testable) ────────────────────
+// ─── JSON parsing (always compiled — native-testable) ─────────────────────────
+//
+// Replaces the earlier strstr-based field scanner (fixed searchKey[80], no
+// nesting awareness) with ArduinoJson. The OTA response drives trust
+// decisions (sig, ts, checksum) so it needs a real parser, not string
+// scanning. JsonDocument (v7) is a single elastic allocation freed at the
+// end of each parse — no persistent heap growth, no String concatenation.
+//
+// Field-size caps mirror the old fixed buffers so a value that would have
+// overflowed still gets rejected rather than silently accepted: version
+// max 31 chars, url max 1022 chars (GCS V4 signed URLs run long), checksum
+// max 64 chars (SHA-256 hex).
+static const size_t kMaxVersionLen  = 31;
+static const size_t kMaxUrlLen      = 1022;
+static const size_t kMaxChecksumLen = 64;
 
 CheckResult parseOtaResponse(const char* body, UpdateInfo& outInfo) {
     if (!body || body[0] == '\0') return CheckResult::ParseError;
 
-    bool hasUpdate = false;
-    if (!extractJsonBool(body, "hasUpdate", hasUpdate)) return CheckResult::ParseError;
-    if (!hasUpdate) return CheckResult::NoUpdate;
+    JsonDocument doc;
+    if (deserializeJson(doc, body) != DeserializationError::Ok) return CheckResult::ParseError;
 
-    char version[32]   = {};
-    char url[1024]     = {};
-    char checksum[65]  = {};
-    bool isCritical   = false;
+    if (!doc["hasUpdate"].is<bool>()) return CheckResult::ParseError;
+    if (!doc["hasUpdate"].as<bool>()) return CheckResult::NoUpdate;
 
-    if (!extractJsonString(body, "version",  version,  sizeof(version)))  return CheckResult::ParseError;
-    if (!extractJsonString(body, "url",      url,      sizeof(url)))      return CheckResult::ParseError;
-    if (strlen(url) == sizeof(url) - 1) {
+    if (!doc["version"].is<const char*>())  return CheckResult::ParseError;
+    if (!doc["url"].is<const char*>())      return CheckResult::ParseError;
+    if (!doc["checksum"].is<const char*>()) return CheckResult::ParseError;
+
+    const char* version  = doc["version"];
+    const char* url       = doc["url"];
+    const char* checksum  = doc["checksum"];
+
+    if (strlen(version)  > kMaxVersionLen)  return CheckResult::ParseError;
+    if (strlen(checksum) > kMaxChecksumLen) return CheckResult::ParseError;
+    if (strlen(url) > kMaxUrlLen) {
 #ifndef UNIT_TEST
-        Serial.printf("[OTA] URL buffer full — possible truncation, aborting\n");
+        Serial.printf("[OTA] URL exceeds max length — possible truncation upstream, aborting\n");
 #endif
         return CheckResult::ParseError;
     }
-    if (!extractJsonString(body, "checksum", checksum, sizeof(checksum))) return CheckResult::ParseError;
-    extractJsonBool(body, "isCritical", isCritical);  // optional; defaults to false
+
+    bool isCritical = false;
+    if (!doc["isCritical"].isNull()) {
+        if (!doc["isCritical"].is<bool>()) return CheckResult::ParseError;
+        isCritical = doc["isCritical"].as<bool>();
+    }
 
     outInfo.version    = String(version);
     outInfo.url        = String(url);
@@ -138,6 +108,44 @@ bool shouldMarkAppValid(bool pendingValidation,
     if (heartbeatsSinceBoot < minHeartbeats) return false;
     if (uptimeMs < minUptimeMs) return false;
     return true;
+}
+
+// ─── Version comparison (always compiled — native-testable) ──────────────────
+
+// Parses the "MAJOR.MINOR.PATCH[-PRERELEASE]" prefix of a version string.
+// Missing/non-numeric segments parse as 0 — malformed input just compares as
+// low rather than crashing; the signature check upstream is the real trust
+// boundary, this is a best-effort defense-in-depth guard.
+static void parseSemverCore(const char* v, int& major, int& minor, int& patch, bool& hasPrerelease) {
+    major = minor = patch = 0;
+    hasPrerelease = false;
+    if (!v) return;
+
+    char* end = nullptr;
+    const char* p = v;
+    major = (int)strtol(p, &end, 10);
+    if (end && *end == '.') {
+        p = end + 1;
+        minor = (int)strtol(p, &end, 10);
+    }
+    if (end && *end == '.') {
+        p = end + 1;
+        patch = (int)strtol(p, &end, 10);
+    }
+    if (end && *end == '-') hasPrerelease = true;
+}
+
+int compareVersions(const char* a, const char* b) {
+    int aMajor, aMinor, aPatch, bMajor, bMinor, bPatch;
+    bool aPrerelease, bPrerelease;
+    parseSemverCore(a, aMajor, aMinor, aPatch, aPrerelease);
+    parseSemverCore(b, bMajor, bMinor, bPatch, bPrerelease);
+
+    if (aMajor != bMajor) return aMajor - bMajor;
+    if (aMinor != bMinor) return aMinor - bMinor;
+    if (aPatch != bPatch) return aPatch - bPatch;
+    if (aPrerelease == bPrerelease) return 0;
+    return aPrerelease ? -1 : 1;  // same core version: release > prerelease
 }
 
 // ─── Device-only implementation ───────────────────────────────────────────────
@@ -190,18 +198,40 @@ CheckResult checkForUpdate(TransportClient& client,
 
     if (pr == CheckResult::UpdateAvailable) {
         // Verify server response signature before trusting update metadata.
+        // sig/ts/expiresAt live alongside the trust-decision fields parsed above,
+        // but aren't part of parseOtaResponse's public (natively-tested) contract —
+        // re-parse here rather than threading a JsonDocument out through UpdateInfo.
         char sigBuf[65]       = {};
         char expiresAtBuf[32] = {};
         uint32_t respTs       = 0;
 
-        if (!extractJsonString(res.body.c_str(), "sig", sigBuf, sizeof(sigBuf)) ||
-            !extractJsonUint32(res.body.c_str(), "ts",  respTs)) {
+        JsonDocument sigDoc;
+        if (deserializeJson(sigDoc, res.body) != DeserializationError::Ok) {
+            Serial.printf("[OTA] response re-parse failed\n");
+            return CheckResult::ParseError;
+        }
+        if (!sigDoc["sig"].is<const char*>() || !sigDoc["ts"].is<uint32_t>()) {
             Serial.printf("[OTA] response missing sig/ts field\n");
             return CheckResult::ParseError;
         }
 
+        const char* sig = sigDoc["sig"];
+        respTs = sigDoc["ts"].as<uint32_t>();
+
+        // Reject short/oversized signatures before the constant-time compare —
+        // constantTimeEquals trusts its caller to pass a real 64-hex-char buffer;
+        // a sig of any other length must never reach it.
+        if (strlen(sig) != kHmacHexLength) {
+            Serial.printf("[OTA] invalid signature length: %u\n", (unsigned)strlen(sig));
+            return CheckResult::AuthError;
+        }
+        strncpy(sigBuf, sig, sizeof(sigBuf) - 1);
+
         // expiresAt is optional — empty string if absent
-        extractJsonString(res.body.c_str(), "expiresAt", expiresAtBuf, sizeof(expiresAtBuf));
+        if (sigDoc["expiresAt"].is<const char*>()) {
+            const char* expiresAt = sigDoc["expiresAt"];
+            strncpy(expiresAtBuf, expiresAt, sizeof(expiresAtBuf) - 1);
+        }
 
         // Canonical string: version|url|checksum|isCritical|expiresAt|ts
         char respCanonical[1280];
@@ -218,9 +248,20 @@ CheckResult checkForUpdate(TransportClient& client,
         }
 
         String computed = calculateSignature(String(respCanonical), cred.device_secret);
-        if (!constantTimeEquals(computed.c_str(), sigBuf, 64)) {
+        if (!constantTimeEquals(computed.c_str(), sigBuf, kHmacHexLength)) {
             Serial.printf("[OTA] response signature invalid\n");
             return CheckResult::AuthError;
+        }
+
+        // Downgrade guard — defense-in-depth on top of the HMAC-verified response:
+        // the signature already authenticates the offer came from the backend, but
+        // this catches a backend bug or compromise offering a version the device
+        // should refuse to flash. No rollback semantics are defined yet (including
+        // for isCritical), so any offered version <= the running version is refused.
+        if (compareVersions(outInfo.version.c_str(), currentVersion) <= 0) {
+            Serial.printf("[OTA] Refusing downgrade/same-version offer: offered=%s running=%s\n",
+                          outInfo.version.c_str(), currentVersion);
+            return CheckResult::NoUpdate;
         }
 
         // Freshness check — skip if NTP not yet synced (time() returns 0 or -1)

@@ -33,13 +33,19 @@ ESP32-based power monitoring firmware for HomePulse Watcher.
    - Device MAC and secret (from `device:register` CLI command)
    - Backend URL
 
-4. **Build and flash**
+4. **Set the captive-portal AP password** (required — the build fails without it, see `Initial Configuration (Captive Portal)` below)
+
+   ```bash
+   export HPW_PORTAL_AP_PASSWORD=87654321   # or: set -a && source ../../.env && set +a
+   ```
+
+5. **Build and flash**
 
    ```bash
    pio run -t upload
    ```
 
-5. **Monitor serial output**
+6. **Monitor serial output**
    ```bash
    pio device monitor
    ```
@@ -283,7 +289,7 @@ The onboard WS2812B RGB LED shows device status:
 On first boot (or after a factory reset), the device starts a WiFi access point for provisioning:
 
 - **AP name:** `HomePulse-Setup-XXXX` — where `XXXX` is the last 4 hex characters of the device MAC address
-- **Password:** none (open network — connect directly)
+- **Password:** fixed, identical on every device — set via `HPW_PORTAL_AP_PASSWORD` in your local `.env` (see `.env.example`), never committed to source. This is a deliberate choice, not a security gap: HomePulse is currently single-operator (one person flashes and provisions every device), so a per-device secret password only adds typing friction with no real security benefit. Revisit if HomePulse ever ships to third parties (installer flashes, customer self-provisions). Building without `HPW_PORTAL_AP_PASSWORD` set fails at compile time (see `portal.h`) rather than shipping an accidentally-open AP.
 - **Config page:** `http://192.168.4.1/` (opens automatically on most phones as a captive portal)
 
 **UI fields:**

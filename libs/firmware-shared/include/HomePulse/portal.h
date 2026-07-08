@@ -23,6 +23,39 @@
 /** HTTP server port */
 #define PORTAL_HTTP_PORT    80
 
+/**
+ * Captive-portal AP password. Fixed and identical across every device — NOT
+ * A SECURITY GAP, a deliberate choice: HomePulse is currently single-operator
+ * (one person flashes and provisions every device, for themselves/family/
+ * friends), so a per-device secret password only adds typing friction (the
+ * earlier MAC-derived password was uppercase hex, awkward on a mobile
+ * keyboard) with no real security benefit for this threat model. Worst case
+ * if someone joins this AP: they can rewrite this one device's WiFi/backend-
+ * URL/secret via POST /save (CSRF-protected against cross-origin, not against
+ * a joined client) — annoying, not a home-network compromise. Revisit if
+ * HomePulse ever ships to third parties (installer flashes, customer
+ * self-provisions).
+ *
+ * Never hardcoded here — supplied at compile time via the PORTAL_AP_PASSWORD
+ * build flag (platformio.ini's `-DPORTAL_AP_PASSWORD=\"${sysenv.PORTAL_AP_PASSWORD}\"`),
+ * sourced from the PORTAL_AP_PASSWORD env var. Set HPW_PORTAL_AP_PASSWORD in
+ * your local .env (see .env.example) — scripts/firmware-docker-build.sh reads
+ * it and passes it through as a Docker build-arg; a bare `pio run` needs it
+ * exported in your shell too (`set -a && source .env && set +a`). Avoid `"`
+ * and `\` in the value — it's spliced unescaped into a -D compiler flag.
+ *
+ * PlatformIO silently substitutes an empty string for an unset sysenv var
+ * instead of failing the build — an empty WPA2 password isn't a compile
+ * error, it's an accidentally-open AP. The static_assert below is the real
+ * enforcement: an unset/too-short value fails compilation instead of shipping
+ * silently.
+ */
+#ifndef PORTAL_AP_PASSWORD
+#define PORTAL_AP_PASSWORD ""
+#endif
+static_assert(sizeof(PORTAL_AP_PASSWORD) - 1 >= 8,
+              "PORTAL_AP_PASSWORD must be >= 8 chars (WPA2-PSK minimum). "
+              "Set HPW_PORTAL_AP_PASSWORD in .env before building — see portal.h.");
 
 // ─── Internal state ───────────────────────────────────────────────────────────
 
@@ -33,31 +66,22 @@ static String     _csrfToken;  // anti-CSRF token, regenerated each AP session
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
+ * Return the captive-portal AP password. See PORTAL_AP_PASSWORD above for why
+ * this is a fixed, non-secret value rather than a per-device derivation.
+ *
+ * @return 8-character WPA2-PSK password string
+ */
+inline String buildApPassword() {
+    return String(PORTAL_AP_PASSWORD);
+}
+
+/**
  * Build the AP SSID from the device MAC address.
  * Format: "HomePulse-Setup-XXXX" where XXXX = last 4 hex chars of MAC.
  *
  * @param mac Full MAC string, e.g. "AA:BB:CC:DD:EE:FF"
  * @return SSID string
  */
-/**
- * Derive the WPA2-PSK AP password from the device MAC address.
- * Uses the last 8 hex chars of the MAC (last 4 bytes), uppercased.
- * Example: MAC "AA:BB:CC:DD:EE:FF" → password "DDEEFF" → "CCDDEEFF"
- *
- * Provides meaningful protection against remote attackers while keeping
- * provisioning feasible for the owner via Serial monitor.
- *
- * @param mac Full MAC string, e.g. "AA:BB:CC:DD:EE:FF"
- * @return 8-character WPA2-PSK password string
- */
-inline String buildApPassword(const String& mac) {
-    String clean = mac;
-    clean.replace(":", "");
-    String pw = clean.substring(clean.length() - 8);
-    pw.toUpperCase();
-    return pw;
-}
-
 inline String buildApSsid(const String& mac) {
     // Last 4 chars of MAC string without colons = last 2 bytes = "EEFF"
     String clean = mac;
@@ -251,7 +275,7 @@ static void handleSave() {
  */
 inline void startCaptivePortal(const String& deviceMac, Adafruit_NeoPixel& led) {
     String ssid = buildApSsid(deviceMac);
-    String pw   = buildApPassword(deviceMac);
+    String pw   = buildApPassword();
 
     // One-time CSRF token — regenerated each AP session via hardware TRNG
     char csrfBuf[9];
@@ -268,7 +292,7 @@ inline void startCaptivePortal(const String& deviceMac, Adafruit_NeoPixel& led) 
     gateway.fromString(PORTAL_AP_IP_STR);
     subnet.fromString("255.255.255.0");
     WiFi.softAPConfig(apIp, gateway, subnet);
-    WiFi.softAP(ssid.c_str(), pw.c_str());  // WPA2-PSK with MAC-derived password
+    WiFi.softAP(ssid.c_str(), pw.c_str());  // WPA2-PSK, fixed password (see PORTAL_AP_PASSWORD)
 
     delay(200);  // Allow AP to start before DNS binds
 

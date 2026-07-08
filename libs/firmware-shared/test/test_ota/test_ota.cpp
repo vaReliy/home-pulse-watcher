@@ -208,6 +208,56 @@ void test_extract_value_exceeding_buffer_returns_parse_error(void) {
     TEST_ASSERT_EQUAL_INT((int)CheckResult::ParseError, (int)r);
 }
 
+// ─── parseOtaResponse — malformed/mistyped-field rejection (ArduinoJson rewrite) ──
+
+void test_parse_not_an_object_returns_parse_error(void) {
+    UpdateInfo info;
+    CheckResult r = parseOtaResponse("[1,2,3]", info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::ParseError, (int)r);
+}
+
+void test_parse_has_update_wrong_type_returns_parse_error(void) {
+    // hasUpdate must be a real bool — a string "true" must not coerce.
+    UpdateInfo info;
+    const char* body = "{\"hasUpdate\":\"true\"}";
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::ParseError, (int)r);
+}
+
+void test_parse_is_critical_wrong_type_returns_parse_error(void) {
+    UpdateInfo info;
+    const char* body =
+        "{\"hasUpdate\":true,\"version\":\"1.0.0\","
+        "\"url\":\"https://example.com/fw.bin\","
+        "\"checksum\":\"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\","
+        "\"isCritical\":\"yes\"}";
+    CheckResult r = parseOtaResponse(body, info);
+    TEST_ASSERT_EQUAL_INT((int)CheckResult::ParseError, (int)r);
+}
+
+// ─── compareVersions — downgrade guard ────────────────────────────────────────
+
+void test_compare_versions_equal(void) {
+    TEST_ASSERT_EQUAL_INT(0, compareVersions("1.2.3", "1.2.3"));
+}
+
+void test_compare_versions_newer_major(void) {
+    TEST_ASSERT_TRUE(compareVersions("2.0.0", "1.9.9") > 0);
+}
+
+void test_compare_versions_older_patch_is_downgrade(void) {
+    TEST_ASSERT_TRUE(compareVersions("1.2.2", "1.2.3") < 0);
+}
+
+void test_compare_versions_prerelease_older_than_release(void) {
+    // Same core version: a prerelease is older than the release it precedes.
+    TEST_ASSERT_TRUE(compareVersions("3.5.3-alpha.1", "3.5.3") < 0);
+}
+
+void test_compare_versions_release_newer_than_its_prerelease(void) {
+    TEST_ASSERT_TRUE(compareVersions("3.5.3", "3.5.3-alpha.1") > 0);
+}
+
 // ─── Canonical string format (integration with buildOtaSignatureInput) ────────
 
 void test_ota_canonical_string_format(void) {
@@ -254,6 +304,14 @@ int main(void) {
     RUN_TEST(test_extract_escaped_quote_in_url);
     RUN_TEST(test_extract_escaped_backslash_in_url);
     RUN_TEST(test_extract_value_exceeding_buffer_returns_parse_error);
+    RUN_TEST(test_parse_not_an_object_returns_parse_error);
+    RUN_TEST(test_parse_has_update_wrong_type_returns_parse_error);
+    RUN_TEST(test_parse_is_critical_wrong_type_returns_parse_error);
+    RUN_TEST(test_compare_versions_equal);
+    RUN_TEST(test_compare_versions_newer_major);
+    RUN_TEST(test_compare_versions_older_patch_is_downgrade);
+    RUN_TEST(test_compare_versions_prerelease_older_than_release);
+    RUN_TEST(test_compare_versions_release_newer_than_its_prerelease);
 
     return UNITY_END();
 }

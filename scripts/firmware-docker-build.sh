@@ -33,6 +33,25 @@ case "$BOARD" in
     ;;
 esac
 
+# Source .env for HPW_PORTAL_AP_PASSWORD (captive-portal AP password — see
+# libs/firmware-shared/include/HomePulse/portal.h for why it's a fixed,
+# non-per-device value rather than a secret). Required: PlatformIO silently
+# substitutes an empty string for an unset ${sysenv.X} reference rather than
+# failing, so we fail fast here instead of shipping an accidentally-open AP.
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "${PROJECT_ROOT}/.env"
+  set +a
+fi
+if [ -z "${HPW_PORTAL_AP_PASSWORD:-}" ]; then
+  echo -e "${RED}Error: HPW_PORTAL_AP_PASSWORD not set${NC}"
+  echo "Set it in ${PROJECT_ROOT}/.env (see .env.example) — this is the captive-portal"
+  echo "AP WPA2-PSK password, must be >= 8 chars. Not a real secret (see portal.h),"
+  echo "just kept out of committed source per repo convention."
+  exit 1
+fi
+
 # Create output directory
 OUTPUT_DIR="${PROJECT_ROOT}/tmp/firmware/${BOARD}/${VERSION}"
 BUILD_OUTPUT="${PROJECT_ROOT}/firmware/build-output/${BOARD}/${VERSION}"
@@ -48,6 +67,7 @@ echo ""
 echo -e "${YELLOW}[1/3]${NC} Building Docker image..."
 docker build \
   --build-arg BOARD="$BOARD" \
+  --build-arg PORTAL_AP_PASSWORD="$HPW_PORTAL_AP_PASSWORD" \
   -f "${PROJECT_ROOT}/firmware/Dockerfile" \
   -t "${DOCKER_IMAGE}:${DOCKER_TAG}" \
   "${PROJECT_ROOT}"

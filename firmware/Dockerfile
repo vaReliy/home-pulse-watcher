@@ -21,6 +21,18 @@ ARG BOARD=esp32c3
 # (--env BOARD=... at `docker run` time will override this)
 ENV BOARD=${BOARD}
 
+# Captive-portal AP password — passed through to PlatformIO's
+# ${sysenv.PORTAL_AP_PASSWORD} build flag (see platformio.ini / portal.h).
+# No default: an empty value fails the PlatformIO build via static_assert
+# rather than silently shipping an accidentally-open AP.
+# Docker will warn "SecretsUsedInArgOrEnv" for this ARG/ENV — intentionally
+# ignored: this value is deliberately NOT a secret (see portal.h), so it
+# being visible in `docker history`/image layers isn't a concern. Do not
+# "fix" this by moving it to a Docker secret; that would just add complexity
+# for a value with no confidentiality requirement.
+ARG PORTAL_AP_PASSWORD=""
+ENV PORTAL_AP_PASSWORD=${PORTAL_AP_PASSWORD}
+
 # Copy firmware sources and shared library
 # (Build context is project root due to libs/firmware-shared dependency)
 COPY firmware/common /build/common
