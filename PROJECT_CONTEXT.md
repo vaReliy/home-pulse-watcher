@@ -66,6 +66,8 @@
 - Config injected via `ServiceContext`, never via `process.env` directly (testability)
 - All Prisma calls wrapped with `withPrismaError()` — raw Prisma errors never leak past repositories
 
+**Compliance Status** (as of 2026-07-09): Telegram module (Interface layer) fully conforms — zero direct Core-layer repo injections. All user lookups route through `GetUserByTelegramIdService` (Application layer). Other modules comply via dedicated Application services (`GetUserDevicesOverviewService`, `GetDeviceNotificationRecipientsService`, `UpdateUserSettingsService`, etc.). Audit finding resolved.
+
 ### Chista Service Pattern
 
 One service = one business action. All services extend `BaseService<Input, Output>`:

@@ -1,8 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { IUserRepository } from '@home-pulse-watcher/core';
-import type { CreateUserService } from '@home-pulse-watcher/application';
+import type {
+  CreateUserService,
+  GetUserByTelegramIdService,
+} from '@home-pulse-watcher/application';
 import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
-import { REPOSITORY_TOKENS } from '../../repositories/repository.tokens.js';
 import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { TranslationService } from '../i18n/index.js';
 import { buildMainMenuKeyboard } from '../keyboards/index.js';
@@ -19,8 +20,8 @@ export class StartHandler {
   constructor(
     @Inject(SERVICE_TOKENS.CREATE_USER)
     private readonly createUserService: CreateUserService,
-    @Inject(REPOSITORY_TOKENS.USER)
-    private readonly userRepository: IUserRepository,
+    @Inject(SERVICE_TOKENS.GET_USER_BY_TELEGRAM_ID)
+    private readonly getUserByTelegramId: GetUserByTelegramIdService,
     private readonly translationService: TranslationService,
   ) {}
 
@@ -36,9 +37,9 @@ export class StartHandler {
 
     try {
       // Check if already registered
-      const existing = await this.userRepository.findByTelegramId(
-        BigInt(telegramId),
-      );
+      const { data: existing } = await this.getUserByTelegramId.run({
+        telegramId: telegramId.toString(),
+      });
       if (existing) {
         const existingMsgs = this.translationService.getMessages(
           existing.locale,

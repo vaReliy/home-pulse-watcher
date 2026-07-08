@@ -77,6 +77,11 @@ export {
   type UpdateUserSettingsOutput,
 } from './user/update-user-settings.service.js';
 
+export {
+  GetUserByTelegramIdService,
+  type GetUserByTelegramIdInput,
+} from './user/get-user-by-telegram-id.service.js';
+
 // OTA services
 export {
   CheckOtaUpdateService,

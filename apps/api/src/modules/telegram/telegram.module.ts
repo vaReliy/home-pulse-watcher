@@ -1,6 +1,5 @@
 import { Module, Logger } from '@nestjs/common';
 import { Telegraf } from 'telegraf';
-import { RepositoriesModule } from '../repositories/repositories.module.js';
 import { ServicesModule } from '../services/services.module.js';
 import { TELEGRAM_TOKENS } from './telegram.tokens.js';
 import {
@@ -23,7 +22,7 @@ import { NotificationDispatcher } from './notifications/notification-dispatcher.
 import type { TelegramContext } from './types/telegram-context.type.js';
 
 @Module({
-  imports: [RepositoriesModule, ServicesModule],
+  imports: [ServicesModule],
   controllers: [TelegramController],
   providers: [
     // Configuration - returns null if TELEGRAM_BOT_TOKEN not set

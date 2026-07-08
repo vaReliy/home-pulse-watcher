@@ -7,9 +7,11 @@ import {
   Optional,
 } from '@nestjs/common';
 import type { Telegraf } from 'telegraf';
-import type { IUserRepository } from '@home-pulse-watcher/core';
-import type { UpdateUserSettingsService } from '@home-pulse-watcher/application';
-import { REPOSITORY_TOKENS } from '../repositories/repository.tokens.js';
+import type { User } from '@home-pulse-watcher/core';
+import type {
+  UpdateUserSettingsService,
+  GetUserByTelegramIdService,
+} from '@home-pulse-watcher/application';
 import { SERVICE_TOKENS } from '../services/service.tokens.js';
 import { TELEGRAM_TOKENS } from './telegram.tokens.js';
 import type { TelegramConfig } from './telegram.config.js';
@@ -53,10 +55,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     @Optional()
     @Inject(TELEGRAM_TOKENS.CONFIG)
     private readonly config: TelegramConfig | null,
-    @Inject(REPOSITORY_TOKENS.USER)
-    private readonly userRepository: IUserRepository,
     @Inject(SERVICE_TOKENS.UPDATE_USER_SETTINGS)
     private readonly updateUserSettingsService: UpdateUserSettingsService,
+    @Inject(SERVICE_TOKENS.GET_USER_BY_TELEGRAM_ID)
+    private readonly getUserByTelegramId: GetUserByTelegramIdService,
     private readonly startHandler: StartHandler,
     private readonly statusHandler: StatusHandler,
     private readonly devicesHandler: DevicesHandler,
@@ -211,9 +213,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           // Attach user if registered (for locale-aware help)
           const telegramId = ctx.from?.id;
           if (telegramId) {
-            const user = await this.userRepository.findByTelegramId(
-              BigInt(telegramId),
-            );
+            const { data: user } = await this.getUserByTelegramId.run({
+              telegramId: telegramId.toString(),
+            });
             if (user) {
               (ctx as TelegramContext).user = user;
             }
@@ -387,9 +389,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const telegramId = ctx.from?.id;
         if (!telegramId) return;
 
-        const user = await this.userRepository.findByTelegramId(
-          BigInt(telegramId),
-        );
+        const { data: user } = await this.getUserByTelegramId.run({
+          telegramId: telegramId.toString(),
+        });
         if (!user) return; // Ignore unregistered users
 
         const userMsgs = this.translationService.getMessages(user.locale);
@@ -423,7 +425,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     let user;
     try {
-      user = await this.userRepository.findByTelegramId(BigInt(telegramId));
+      ({ data: user } = await this.getUserByTelegramId.run({
+        telegramId: telegramId.toString(),
+      }));
     } catch (error) {
       this.logger.error(
         'Failed to look up user during authentication',
@@ -445,12 +449,13 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Resolves user from callback query context without sending NOT_REGISTERED. */
-  private async resolveUser(
-    ctx: TelegramContext,
-  ): Promise<Awaited<ReturnType<IUserRepository['findByTelegramId']>> | null> {
+  private async resolveUser(ctx: TelegramContext): Promise<User | null> {
     const telegramId = ctx.from?.id;
     if (!telegramId) return null;
-    return this.userRepository.findByTelegramId(BigInt(telegramId));
+    const { data: user } = await this.getUserByTelegramId.run({
+      telegramId: telegramId.toString(),
+    });
+    return user;
   }
 
   private async startBot(): Promise<void> {

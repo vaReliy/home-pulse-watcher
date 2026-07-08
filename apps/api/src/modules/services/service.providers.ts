@@ -27,6 +27,7 @@ import {
   GetUserDevicesOverviewService,
   GetDeviceNotificationRecipientsService,
   UpdateUserSettingsService,
+  GetUserByTelegramIdService,
 } from '@home-pulse-watcher/application';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { REPOSITORY_TOKENS } from '../repositories/repository.tokens.js';
@@ -205,6 +206,12 @@ export const serviceProviders: Provider[] = [
     provide: SERVICE_TOKENS.UPDATE_USER_SETTINGS,
     useFactory: (userRepo: IUserRepository) =>
       new UpdateUserSettingsService(userRepo),
+    inject: [REPOSITORY_TOKENS.USER],
+  },
+  {
+    provide: SERVICE_TOKENS.GET_USER_BY_TELEGRAM_ID,
+    useFactory: (userRepo: IUserRepository) =>
+      new GetUserByTelegramIdService(userRepo),
     inject: [REPOSITORY_TOKENS.USER],
   },
 ];

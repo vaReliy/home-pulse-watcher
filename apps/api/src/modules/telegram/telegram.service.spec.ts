@@ -1,6 +1,9 @@
 import type { Telegraf } from 'telegraf';
-import type { IUserRepository } from '@home-pulse-watcher/core';
-import type { UpdateUserSettingsService } from '@home-pulse-watcher/application';
+import type {
+  UpdateUserSettingsService,
+  GetUserByTelegramIdService,
+} from '@home-pulse-watcher/application';
+import type { User } from '@home-pulse-watcher/core';
 import type { TelegramConfig } from './telegram.config';
 import type { TelegramContext } from './types/telegram-context.type';
 import { TelegramService } from './telegram.service';
@@ -11,6 +14,9 @@ import type { DevicesHandler } from './handlers/devices.handler';
 import type { HelpHandler } from './handlers/help.handler';
 import type { HistoryHandler } from './handlers/history.handler';
 import type { SettingsHandler } from './handlers/settings.handler';
+
+type HearsCallback = (ctx: TelegramContext) => Promise<void>;
+type ActionCallback = (ctx: TelegramContext) => Promise<void>;
 
 describe('TelegramService', () => {
   const createMockBot = (): jest.Mocked<Telegraf<TelegramContext>> =>
@@ -31,15 +37,36 @@ describe('TelegramService', () => {
     }) as unknown as jest.Mocked<Telegraf<TelegramContext>>;
 
   const createMockDeps = () => ({
-    userRepository: {} as IUserRepository,
-    updateUserSettingsService: {} as UpdateUserSettingsService,
+    updateUserSettingsService: {
+      run: jest.fn(),
+    } as unknown as UpdateUserSettingsService,
+    getUserByTelegramId: {
+      run: jest.fn(),
+    } as unknown as jest.Mocked<GetUserByTelegramIdService>,
     startHandler: {} as StartHandler,
-    statusHandler: {} as StatusHandler,
-    devicesHandler: {} as DevicesHandler,
-    helpHandler: {} as HelpHandler,
-    historyHandler: {} as HistoryHandler,
-    settingsHandler: {} as SettingsHandler,
+    statusHandler: { handle: jest.fn() } as unknown as StatusHandler,
+    devicesHandler: { handle: jest.fn() } as unknown as DevicesHandler,
+    helpHandler: { handle: jest.fn() } as unknown as HelpHandler,
+    historyHandler: { handle: jest.fn() } as unknown as HistoryHandler,
+    settingsHandler: { handle: jest.fn() } as unknown as SettingsHandler,
   });
+
+  const mockUser: User = {
+    id: 'user-1',
+    telegramId: BigInt(12345),
+    username: 'testuser',
+    locale: 'uk',
+    timezone: 'Europe/Kyiv',
+    createdAt: new Date(),
+  } as User;
+
+  const createMockCtx = (): TelegramContext =>
+    ({
+      from: { id: 12345 },
+      reply: jest.fn(),
+      answerCbQuery: jest.fn(),
+      editMessageText: jest.fn(),
+    }) as unknown as TelegramContext;
 
   const createService = (
     bot: Telegraf<TelegramContext> | null,
@@ -49,8 +76,8 @@ describe('TelegramService', () => {
     return new TelegramService(
       bot,
       config,
-      deps.userRepository,
       deps.updateUserSettingsService,
+      deps.getUserByTelegramId,
       deps.startHandler,
       deps.statusHandler,
       deps.devicesHandler,
@@ -59,6 +86,36 @@ describe('TelegramService', () => {
       deps.settingsHandler,
       new TranslationService(),
     );
+  };
+
+  const createServiceWithDeps = (
+    bot: Telegraf<TelegramContext>,
+    config: TelegramConfig,
+  ): {
+    service: TelegramService;
+    deps: ReturnType<typeof createMockDeps>;
+  } => {
+    const deps = createMockDeps();
+    const service = new TelegramService(
+      bot,
+      config,
+      deps.updateUserSettingsService,
+      deps.getUserByTelegramId,
+      deps.startHandler,
+      deps.statusHandler,
+      deps.devicesHandler,
+      deps.helpHandler,
+      deps.historyHandler,
+      deps.settingsHandler,
+      new TranslationService(),
+    );
+    return { service, deps };
+  };
+
+  const defaultConfig: TelegramConfig = {
+    botToken: 'test-token',
+    useWebhook: true,
+    webhookDomain: 'https://example.com',
   };
 
   describe('onModuleInit', () => {
@@ -244,6 +301,176 @@ describe('TelegramService', () => {
     it('should do nothing when bot is null', async () => {
       const service = createService(null, null);
       await expect(service.onModuleDestroy()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('help button (help-handler locale attach)', () => {
+    it('attaches user to ctx when found', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      // 4th hears() call registers help button (status, devices, settings, help)
+      const helpCallback = (bot.hears as jest.Mock).mock
+        .calls[3][1] as HearsCallback;
+      const ctx = createMockCtx();
+      await helpCallback(ctx);
+
+      expect(deps.getUserByTelegramId.run).toHaveBeenCalledWith({
+        telegramId: '12345',
+      });
+      expect(ctx.user).toEqual(mockUser);
+      expect(deps.helpHandler.handle).toHaveBeenCalledWith(ctx);
+    });
+
+    it('proceeds without attaching user when not found', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: null,
+      });
+
+      await service.onModuleInit();
+
+      const helpCallback = (bot.hears as jest.Mock).mock
+        .calls[3][1] as HearsCallback;
+      const ctx = createMockCtx();
+      await helpCallback(ctx);
+
+      expect(ctx.user).toBeUndefined();
+      expect(deps.helpHandler.handle).toHaveBeenCalledWith(ctx);
+    });
+  });
+
+  describe('catch-all text handler', () => {
+    it('replies UNKNOWN_COMMAND when user found', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const textCallback = (bot.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'text',
+      )[1] as HearsCallback;
+      const ctx = createMockCtx();
+      await textCallback(ctx);
+
+      const msgs = new TranslationService().getMessages(mockUser.locale);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        msgs.UNKNOWN_COMMAND,
+        expect.objectContaining({ parse_mode: 'MarkdownV2' }),
+      );
+    });
+
+    it('ignores unregistered users silently', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: null,
+      });
+
+      await service.onModuleInit();
+
+      const textCallback = (bot.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'text',
+      )[1] as HearsCallback;
+      const ctx = createMockCtx();
+      await textCallback(ctx);
+
+      expect(ctx.reply).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('withAuth (status button)', () => {
+    it('replies NOT_REGISTERED and does not call handler when user not found', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: null,
+      });
+
+      await service.onModuleInit();
+
+      // 1st hears() call registers status button
+      const statusCallback = (bot.hears as jest.Mock).mock
+        .calls[0][1] as HearsCallback;
+      const ctx = createMockCtx();
+      await statusCallback(ctx);
+
+      const msgs = new TranslationService().getMessages();
+      expect(ctx.reply).toHaveBeenCalledWith(
+        msgs.NOT_REGISTERED,
+        expect.objectContaining({ parse_mode: 'MarkdownV2' }),
+      );
+      expect(deps.statusHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('attaches user and calls handler when user found', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const statusCallback = (bot.hears as jest.Mock).mock
+        .calls[0][1] as HearsCallback;
+      const ctx = createMockCtx();
+      await statusCallback(ctx);
+
+      expect(ctx.user).toEqual(mockUser);
+      expect(deps.statusHandler.handle).toHaveBeenCalledWith(ctx);
+      expect(ctx.reply).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resolveUser (settings:language action)', () => {
+    it('silently no-ops when user not found', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: null,
+      });
+
+      await service.onModuleInit();
+
+      const languageActionCallback = (bot.action as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'settings:language',
+      )[1] as ActionCallback;
+      const ctx = createMockCtx();
+      await languageActionCallback(ctx);
+
+      expect(ctx.editMessageText).not.toHaveBeenCalled();
+    });
+
+    it('resolves user and shows language keyboard when found', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const languageActionCallback = (bot.action as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'settings:language',
+      )[1] as ActionCallback;
+      const ctx = createMockCtx();
+      await languageActionCallback(ctx);
+
+      const msgs = new TranslationService().getMessages(mockUser.locale);
+      expect(ctx.editMessageText).toHaveBeenCalledWith(
+        msgs.SETTINGS_LANGUAGE_HEADER,
+        expect.any(Object),
+      );
     });
   });
 });

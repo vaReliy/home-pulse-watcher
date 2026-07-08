@@ -20,4 +20,5 @@ export const SERVICE_TOKENS = {
     'GetDeviceNotificationRecipientsService',
   ),
   UPDATE_USER_SETTINGS: Symbol('UpdateUserSettingsService'),
+  GET_USER_BY_TELEGRAM_ID: Symbol('GetUserByTelegramIdService'),
 } as const;
