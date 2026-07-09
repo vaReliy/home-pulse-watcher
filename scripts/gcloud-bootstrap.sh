@@ -18,6 +18,8 @@ REGION="europe-west3"
 SERVICE_ACCOUNT_NAME="github-actions-cloudrun"
 WIF_POOL="github-pool"
 WIF_PROVIDER="github-provider"
+BACKUP_BUCKET_SUFFIX="backups"
+KEEP_WARM_JOB_NAME="home-pulse-keep-warm"
 
 SECRET_NAMES=(
   "database-url"
@@ -130,6 +132,14 @@ for role in "${DEPLOY_ROLES[@]}"; do
 done
 ok "Deploying SA roles granted"
 
+# Grant access to database-url secret only (scoped, not project-wide)
+info "Granting database-url secret access to deploy SA..."
+gcloud secrets add-iam-policy-binding "database-url" \
+  --member="serviceAccount:$SA_EMAIL" \
+  --role="roles/secretmanager.secretAccessor" \
+  --quiet
+ok "Database URL secret access granted"
+
 # --------------- Step 5: Grant IAM roles to runtime / build SA ---------------
 info "Granting IAM roles to Cloud Run runtime service account..."
 
@@ -188,7 +198,137 @@ gcloud iam service-accounts add-iam-policy-binding "$SA_EMAIL" \
   --quiet
 ok "GitHub repo linked to service account"
 
-# --------------- Step 7: Print configuration ---------------
+# --------------- Step 7: (Skipped — Cloud Run IAM configured in Step 8b) ---------------
+# Cloud Scheduler uses the runtime SA to invoke Cloud Run via OIDC.
+# The run.invoker binding is scoped to the Cloud Run service in Step 8b.
+
+# --------------- Step 8: Create backup GCS bucket & lifecycle rule ---------------
+info "Setting up database backup infrastructure..."
+
+BACKUP_BUCKET="${PROJECT_ID}-${BACKUP_BUCKET_SUFFIX}"
+
+# Create bucket (idempotent: errors if exists, which is fine)
+if gsutil ls "gs://${BACKUP_BUCKET}" &>/dev/null; then
+  warn "Backup bucket 'gs://${BACKUP_BUCKET}' already exists"
+else
+  gsutil mb -l "$REGION" "gs://${BACKUP_BUCKET}"
+  ok "Backup bucket created: gs://${BACKUP_BUCKET}"
+fi
+
+# Create lifecycle rule (keep 8 weeks = 56 days)
+cat > /tmp/backup-lifecycle.json << 'EOF'
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {
+          "type": "Delete"
+        },
+        "condition": {
+          "age": 56
+        }
+      }
+    ]
+  }
+}
+EOF
+
+gsutil lifecycle set /tmp/backup-lifecycle.json "gs://${BACKUP_BUCKET}"
+ok "Backup lifecycle rule set (keep 8 weeks)"
+
+# Harden backup bucket
+gcloud storage buckets update "gs://${BACKUP_BUCKET}" \
+  --uniform-bucket-level-access \
+  --public-access-prevention
+ok "Backup bucket hardened (uniform access, public access blocked)"
+
+# Grant runtime SA access to backup bucket (scoped, not project-level)
+BACKUP_SA_ROLE="roles/storage.objectCreator"
+gcloud storage buckets add-iam-policy-binding "gs://${BACKUP_BUCKET}" \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="$BACKUP_SA_ROLE" \
+  --quiet
+ok "Backup bucket permissions granted to runtime SA (bucket-scoped)"
+
+# Grant OTA service account access to backup bucket
+# (same SA used for firmware OTA storage, now also backing up database)
+info "Configuring backup-bucket access for OTA service account..."
+
+read -rp "  Enter service account email for GCP_SERVICE_ACCOUNT_KEY (e.g. ota-manager@${PROJECT_ID}.iam.gserviceaccount.com): " OTA_SA_EMAIL
+if [[ -z "$OTA_SA_EMAIL" ]]; then
+  warn "OTA service account email not provided; skipping backup-bucket IAM grant"
+  warn "If using GCP_SERVICE_ACCOUNT_KEY for backups later, manually grant it 'roles/storage.objectCreator' on gs://${BACKUP_BUCKET}"
+else
+  gcloud storage buckets add-iam-policy-binding "gs://${BACKUP_BUCKET}" \
+    --member="serviceAccount:$OTA_SA_EMAIL" \
+    --role="$BACKUP_SA_ROLE" \
+    --quiet
+  ok "Backup bucket permissions granted to OTA service account (bucket-scoped)"
+fi
+
+# --------------- Step 8b: Grant Cloud Run invoke permissions to runtime SA ---------------
+# This must be done before or after the Cloud Run service is deployed.
+# The keep-warm scheduler job (Step 9) will use RUNTIME_SA to authenticate via OIDC.
+CLOUD_RUN_SERVICE_NAME="home-pulse-watcher"
+
+if gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" --platform=managed --region="$REGION" &>/dev/null; then
+  if gcloud run services add-iam-policy-binding "$CLOUD_RUN_SERVICE_NAME" \
+    --region="$REGION" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="roles/run.invoker" \
+    --condition=None \
+    --quiet 2>/dev/null; then
+    ok "Cloud Run invoke permissions granted to runtime SA"
+  else
+    warn "Could not grant run.invoker to runtime SA (may already exist)"
+  fi
+fi
+
+# --------------- Step 9: Create keep-warm Cloud Scheduler job ---------------
+info "Setting up keep-warm scheduler job..."
+
+# Get Cloud Run service URL
+CLOUD_RUN_SERVICE_URL=$(gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" \
+  --platform=managed --region="$REGION" \
+  --format='value(status.url)' 2>/dev/null || echo "")
+
+if [[ -z "$CLOUD_RUN_SERVICE_URL" ]]; then
+  warn "Cloud Run service '$CLOUD_RUN_SERVICE_NAME' not yet deployed. Skipping keep-warm job creation."
+  warn "After first deployment, manually create the keep-warm job with:"
+  warn "  gcloud scheduler jobs create http $KEEP_WARM_JOB_NAME \\"
+  warn "    --location=$REGION \\"
+  warn "    --schedule='*/10 * * * *' \\"
+  warn "    --uri='<CLOUD_RUN_URL>/api/health/ready' \\"
+  warn "    --http-method=GET \\"
+  warn "    --attempt-deadline=30s \\"
+  warn "    --oidc-service-account-email=\$RUNTIME_SA"
+else
+  # Create or update the keep-warm job (idempotent-ish)
+  if gcloud scheduler jobs describe "$KEEP_WARM_JOB_NAME" --location="$REGION" &>/dev/null; then
+    warn "Keep-warm job '$KEEP_WARM_JOB_NAME' already exists"
+    # Optionally update if schedule/URI changed
+    gcloud scheduler jobs update http "$KEEP_WARM_JOB_NAME" \
+      --location="$REGION" \
+      --schedule="*/10 * * * *" \
+      --uri="${CLOUD_RUN_SERVICE_URL}/api/health/ready" \
+      --http-method=GET \
+      --attempt-deadline=30s \
+      --oidc-service-account-email="$RUNTIME_SA" \
+      --quiet 2>/dev/null || warn "Could not update keep-warm job"
+  else
+    gcloud scheduler jobs create http "$KEEP_WARM_JOB_NAME" \
+      --location="$REGION" \
+      --schedule="*/10 * * * *" \
+      --uri="${CLOUD_RUN_SERVICE_URL}/api/health/ready" \
+      --http-method=GET \
+      --attempt-deadline=30s \
+      --oidc-service-account-email="$RUNTIME_SA" \
+      --quiet
+    ok "Keep-warm job created: $KEEP_WARM_JOB_NAME (every 10 minutes)"
+  fi
+fi
+
+# --------------- Step 10: Print configuration ---------------
 WIF_PROVIDER_FULL="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${WIF_POOL}/providers/${WIF_PROVIDER}"
 
 info "Bootstrap complete! Configure your GitHub repository:"
@@ -209,6 +349,27 @@ echo "  ============================================"
 echo ""
 echo "  CLOUD_RUN_URL:"
 echo "    (leave empty for first deploy, set after you get the URL)"
+echo ""
+echo "  ============================================"
+echo "  Database Backups"
+echo "  ============================================"
+echo ""
+echo "  Backups are stored in: gs://${BACKUP_BUCKET}/"
+echo "  Retention: 8 weeks"
+echo ""
+echo "  To manually backup (Docker):"
+echo "    ./scripts/run-backup-in-docker.sh"
+echo "  Or (local postgres with gcloud auth):"
+echo "    set -a && source .env && set +a"
+echo "    bash scripts/backup-database.sh"
+echo ""
+echo "  ============================================"
+echo "  Keep-Warm Scheduler"
+echo "  ============================================"
+echo ""
+echo "  Job: $KEEP_WARM_JOB_NAME"
+echo "  Schedule: Every 10 minutes"
+echo "  Target: /api/health/ready (keeps Cloud Run warm + Neon compute awake)"
 echo ""
 echo "  ============================================"
 echo "  First deploy"

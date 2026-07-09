@@ -16,7 +16,7 @@ npx nx run api:cli -- <command> [options]
 
 ```bash
 npx nx build api
-export $(grep -v '^#' .env | xargs)
+set -a && source .env && set +a
 node apps/api/dist/cli.js <command> [options]
 ```
 
@@ -551,7 +551,7 @@ Devices on this channel will discover this release on their next OTA check.
 Ensure the `.env` file exists and contains `DATABASE_URL`:
 
 ```bash
-export $(grep -v '^#' .env | xargs)
+set -a && source .env && set +a
 ```
 
 ### Connection refused to database

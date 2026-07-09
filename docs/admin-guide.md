@@ -35,7 +35,7 @@ Create User (CLI) -> Register Device (CLI) -> Flash ESP32 -> Link Device (CLI) -
 
 5. **Environment loaded** (local development):
    ```bash
-   export $(grep -v '^#' .env | xargs)
+   set -a && source .env && set +a
    ```
 
 > **Docker alternative:** If you don't have Node.js installed locally, all CLI commands can run inside the Docker admin container (includes gcloud SDK). See [Running Admin CLI in a Container](#running-admin-cli-in-a-container) at the end of this guide.
@@ -176,6 +176,8 @@ See [CLI Reference](./cli-reference.md#devicelink) for full options.
    Status: OFF
    Time: 2026-02-05 14:30:45 UTC
    ```
+
+See [Database Backup & Recovery](db-backup-recovery.md) for automated backups, point-in-time recovery, restore procedures, and migration rollback.
 
 ## Maintenance
 
@@ -459,7 +461,7 @@ Use the `firmware:upload` CLI command to publish a new firmware binary. It uploa
 
    ```bash
    # Load environment
-   export $(grep -v '^#' .env | xargs)
+   set -a && source .env && set +a
 
    node apps/api/dist/cli.js firmware:upload \
      --file esp32c6-v0.2.0.bin \
@@ -557,4 +559,5 @@ If the new firmware boots and marks itself valid (logged as `[OTA] App validated
 
 ## Related Guides
 
+- [Database Backup & Recovery](db-backup-recovery.md) — automated backups, PITR, restore, and rollback
 - [Manually inserting a FirmwareRelease record](firmware-release-manual-insert.md) — dev/testing shortcut

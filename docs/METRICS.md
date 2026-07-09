@@ -33,3 +33,4 @@ Each completed task is one row in the table below.
 | 2026-07-08 | home-pulse-watcher | firmware-ota-parser-hardening                     | T1   | 0      | 0/1/0/0           | 1       | no       | standard |
 | 2026-07-08 | home-pulse-watcher | repo-findbyids-query-services                     | T2   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-07-08 | home-pulse-watcher | telegram-handlers-use-services                    | T2   | 1      | 1/0/0/0           | 2       | no       | standard |
+| 2026-07-09 | home-pulse-watcher | batch-c-ops-safety-net                            | T2   | 3      | 0/7/7/0           | 2       | no       | standard |

@@ -81,3 +81,28 @@ Belongs in (guess): rules/docker-commands.md (done)
 
 Why: Orchestrator has twice stopped right after quality gate closes and asked "should I proceed to docs-writer + knowledge capture?" instead of just dispatching — treating a mandatory pipeline stage as discretionary. Separately, docs/METRICS.md is skipped or filled with guessed-wrong values (Cycles/Fix-Now defaulted to 0 instead of extracted from actual tester/reviewer/security-scanner reports) in at least two sessions, while CHANGELOG.md is always updated correctly because it's the naturally-reached narrative artifact and METRICS is easy to treat as supplementary/optional. The fix: when quality gate closes (pass or pass-after-fix-cycle), dispatch docs-writer for both CHANGELOG.md + docs/METRICS.md in the same turn without pausing for permission — only pause for genuinely optional/destructive actions (committing, pushing, moving task files); pull docs/METRICS.md's Cycles/Fix-Now/Emitted counts from the actual quality-gate agent reports, never default to 0 or guess.
 Belongs in (guess): rule (rules/workflow.md Phase 6 section; clarify mandatory-not-optional framing and "pull counts from reports, don't guess" instruction)
+
+## 2026-07-09 — `.env` loading: `export $(grep -v '^#' .env | xargs)` fails on multi-line values
+
+Why: The `xargs`-based pattern word-splits the entire file, mangling multi-line values like `GCP_SERVICE_ACCOUNT_KEY` (JSON with embedded `\n` and spaces). Results in `not a valid identifier` errors when shell tries to export fragments like `"type":"service_account"` as variable names. Safe alternative: `set -a && source .env && set +a` (bash parses the file as real shell syntax, correctly handling quotes and newlines). Pattern appears in legacy docs for manual CLI/script setup; updated in README.md, docs/cli-reference.md, docs/admin-guide.md, and a warning added to scripts/backup-database.sh.
+Belongs in (guess): rule (rules/docker-commands.md or shell-scripting convention doc)
+
+## 2026-07-09 — Alpine `google/cloud-sdk:alpine` doesn't ship version-suffixed postgres client packages matching arbitrary Postgres majors
+
+Why: `apk add postgresql15-client` failed because that Alpine release's repo only had postgres 16/17/18 client packages, not 15. Fix: for a Docker image needing both gcloud/gsutil AND a specific `pg_dump` version, prefer `google/cloud-sdk:slim` (Debian-based) + `apt-get install postgresql-client` — Debian's unversioned metapackage resolves predictably to that Debian release's default version, and `pg_dump` is safely forward-compatible (newer client dumping older server works; the reverse isn't guaranteed) so a Debian release shipping a newer default is fine.
+Belongs in (guess): rules/docker-commands.md or a new gcloud/docker-tooling rule.
+
+## 2026-07-09 — Debian's `nobody` user has `$HOME=/nonexistent` by design
+
+Why: Any container step needing `nobody` to write files under its home dir (e.g. `gcloud auth activate-service-account`, which writes `~/.config/gcloud`) fails with "Permission denied" trying to create that directory. Fix: don't reuse `nobody` for anything that needs a writable home; create a dedicated non-root user with a real home dir instead (`useradd -m -s /bin/sh <name>` + `ENV HOME=/home/<name>`).
+Belongs in (guess): rules/docker-commands.md.
+
+## 2026-07-09 — Cloud Scheduler's `--oidc-service-account-email=X` makes X the invoking identity for `run.invoker` purposes
+
+Why: Granting `run.invoker` to the Cloud Scheduler service agent itself (`*@gcp-sa-cloudscheduler.iam.gserviceaccount.com`) is incorrect. The IAM binding actually needed is `run.invoker` on the specific Cloud Run service, granted to whichever SA is named in `--oidc-service-account-email`. Discovered via a security-scanner finding during Batch C's quality gate — the original script granted the wrong identity, which was silently masked by the Cloud Run service having `--allow-unauthenticated` (so it worked anyway, but the IAM code was misleading/broken).
+Belongs in (guess): PROJECT_CONTEXT (infra/GCP section) or rules/docker-commands.md.
+
+## 2026-07-09 — A value that's a deterministic function of an existing input shouldn't become its own separate secret
+
+Why: Example: `GCS_BACKUP_BUCKET` was initially added as its own required env var/GitHub secret, but its value is always `${PROJECT_ID}-backups` — fully derivable from the already-known/authenticated GCP project. Storing it separately created a manual-sync footgun (the secret could silently drift from what bootstrap actually created). Fix: compute it inline from the authenticated context (`gcloud config get-value project`) rather than duplicating it as configuration. General principle, not backup-specific.
+Belongs in (guess): rules/code-style.md or a general engineering-principles note.

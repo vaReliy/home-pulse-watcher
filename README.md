@@ -91,7 +91,7 @@ npx nx serve api
 npx nx build api
 
 # Load environment variables
-export $(grep -v '^#' .env | xargs)
+set -a && source .env && set +a
 
 # Create a user
 node apps/api/dist/cli.js user:create --telegram-id 123456789 --username johndoe
@@ -241,15 +241,30 @@ Auto-deploy on push to `main` is commented out in `deploy.yml` and can be re-ena
 
 ### Keep-Warm (Cloud Scheduler)
 
-Cloud Run scales to zero after ~15 minutes of inactivity. To keep the instance warm for responsive Telegram bot interactions, create a Cloud Scheduler job (free tier: 3 jobs):
+**Automatic:** The keep-warm scheduler job is created automatically by `scripts/gcloud-bootstrap.sh` (Step 9). No manual action required.
+
+Cloud Run scales to zero after ~15 minutes of inactivity. The keep-warm job pings `/api/health/ready` every 10 minutes to maintain a warm instance for responsive Telegram bot interactions. This endpoint also keeps Neon compute awake, preventing database cold-start delays.
+
+**What the job does:**
+
+- **Endpoint:** `GET /api/health/ready` (queries the database)
+- **Schedule:** Every 10 minutes
+- **Timeout:** 30 seconds
+- **Benefit:** Keeps both Cloud Run container AND Neon compute warm → Telegram webhooks respond within 30s
+
+**Cost:** Free tier includes 3 scheduler jobs. This job sends 144 requests/day — negligible resource usage.
+
+**If you want to manually create the job** (e.g., if bootstrap fails):
 
 ```bash
+CLOUD_RUN_URL="<your-cloud-run-service-url>"
 gcloud scheduler jobs create http home-pulse-keep-warm \
   --location=europe-west3 \
-  --schedule="*/15 * * * *" \
-  --uri="<CLOUD_RUN_URL>/api" \
+  --schedule="*/10 * * * *" \
+  --uri="${CLOUD_RUN_URL}/api/health/ready" \
   --http-method=GET \
-  --attempt-deadline=30s
+  --attempt-deadline=30s \
+  --oidc-service-account-email="<runtime-sa-email>"
 ```
 
 Sensitive values are stored in **GCP Secret Manager** (not as GitHub secrets or plain env vars):
