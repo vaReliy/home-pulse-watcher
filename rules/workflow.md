@@ -111,6 +111,7 @@ Non-seam tasks (local/mechanical changes) keep the current fast path; no blast-r
 - **Sequential steps** → Agent tool with `subagent_type` (output feeds next step)
 - **Parallel phase** → TeamCreate + spawn teammates (2+ independent agents, no data dependency between them)
 - Do not create a team for a single agent
+- **Iterative fix-retry loops** (a task fails, gets a fix, fails differently, gets fixed again, ...) → resume the SAME dispatched agent via `SendMessage({ to: <agentId or name> })` instead of spawning a fresh `Agent` call each round. A fresh agent starts cold — no memory of prior context unless re-explained in the prompt, which costs tokens and risks silently dropping an earlier decision (observed in practice: a `.env.example` contradiction and a Secret-Manager-mapping mistake, both introduced by a new agent that didn't see earlier fixes to the same files). Only spawn a fresh agent when the next task is genuinely unrelated to what that agent was doing. Exception: quality-gate agents (`tester`/`reviewer`/`security-scanner`/`qa`) should always get a clean, un-primed look at the diff — never resume them across a fix cycle.
 
 ## Standard Feature Pipeline
 
@@ -330,6 +331,7 @@ No `tester` or `qa` for infra-only changes.
 - Git history facts (commit messages capture these)
 - Ephemeral task details (task lists, in-progress state)
 - Anything already written in CLAUDE.md verbatim
+- Parked/in-progress/open-decision task reasoning — never restate task justification, tradeoffs, or decision context in committed docs (`KNOWLEDGE_INBOX.md`, `PROJECT_CONTEXT.md`, etc.). If a learning originates from a parked task, either skip logging entirely (it's active task state) or add a bare one-line pointer to the task file path with zero reasoning content. Restating task context in permanent docs defeats the parked-decision model and creates stale duplicates.
 
 ### Format for auto-memory (project type)
 
