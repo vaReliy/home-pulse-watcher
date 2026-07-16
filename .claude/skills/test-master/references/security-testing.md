@@ -1,7 +1,6 @@
 # Security Testing
 
-> Reference for: Test Master
-> Load when: Security tests, vulnerability testing
+> Reference for: Test Master Load when: Security tests, vulnerability testing
 
 ## Authentication Tests
 

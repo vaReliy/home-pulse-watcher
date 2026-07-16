@@ -289,12 +289,9 @@ Phase 5.6 delivers end-to-end over-the-air firmware updates with cryptographic s
 
 ### Backend: OTA controller validation + integration test coverage
 
-- Added `checkOtaUpdateRules` LIVR rule set to `check-ota-update.dto.ts` — validates
-  `boardType` (`esp32c3`|`esp32c6`), `currentVersion` (string ≤ 20 chars), `channel` (`ALPHA`|`BETA`|`STABLE`).
-- Moved `@UseGuards(HmacAuthGuard)` from the `@Post('check')` method to the `@Controller('ota')`
-  class level, aligning with the `device-status.controller.ts` pattern.
-- Added `apps/api/src/controllers/ota/ota.controller.spec.ts` — 7 NestJS integration tests
-  using `Test.createTestingModule` + Node.js `http` module (no supertest dependency):
+- Added `checkOtaUpdateRules` LIVR rule set to `check-ota-update.dto.ts` — validates `boardType` (`esp32c3`|`esp32c6`), `currentVersion` (string ≤ 20 chars), `channel` (`ALPHA`|`BETA`|`STABLE`).
+- Moved `@UseGuards(HmacAuthGuard)` from the `@Post('check')` method to the `@Controller('ota')` class level, aligning with the `device-status.controller.ts` pattern.
+- Added `apps/api/src/controllers/ota/ota.controller.spec.ts` — 7 NestJS integration tests using `Test.createTestingModule` + Node.js `http` module (no supertest dependency):
   - 400 when `boardType` is missing
   - 400 when `boardType` is invalid (not `esp32c3`/`esp32c6`)
   - 400 when `channel` is not `ALPHA`/`BETA`/`STABLE`
@@ -305,24 +302,13 @@ Phase 5.6 delivers end-to-end over-the-air firmware updates with cryptographic s
 
 ### Firmware: OTA rollback hardening + grace-period validation
 
-- Added `HomePulse::Ota::shouldMarkAppValid()` — pure predicate returning `true` only when
-  `pendingValidation && heartbeats ≥ minHeartbeats && uptime ≥ minUptimeMs`.
-  Exposed in `ota.h` outside `#ifndef UNIT_TEST` so it is natively testable.
-- Replaced single-heartbeat `markCurrentAppValid()` trigger in `firmware/common/main.cpp` with
-  a grace-period guard (`OTA_VALIDATION_MIN_HEARTBEATS=3`, `OTA_VALIDATION_MIN_UPTIME_MS=300000`).
-  Both the setup() initial send and the loop() heartbeat increment the shared `heartbeatsSinceBoot`
-  counter; the predicate gates the actual IDF call.
-- Added `OTA_VALIDATION_MIN_HEARTBEATS` and `OTA_VALIDATION_MIN_UPTIME_MS` constants to both
-  `firmware/esp32c3/src/config.h` and `firmware/esp32c6/src/config.h`.
-- Fixed SHA-256 mismatch path in `applyUpdate()`: after `Update.end()` succeeds but checksum
-  fails, `esp_ota_set_boot_partition(esp_ota_get_running_partition())` is called to revert the
-  next-boot partition selection — prevents a bad build from booting on the next power cycle.
-- Standardised abort log tag to `[OTA][ABORT]` on all abort paths
-  (short write, incomplete download, checksum mismatch) for grep-ability.
-- Added 9 native unit tests in `libs/firmware-shared/test/test_ota_rollback/` covering all
-  branches of `shouldMarkAppValid` including exact-boundary cases.
-- Documented rollback flow in `firmware/README.md` (OTA Auto-Rollback section) and added
-  "OTA Rollback Flow" runbook to `docs/admin-guide.md`.
+- Added `HomePulse::Ota::shouldMarkAppValid()` — pure predicate returning `true` only when `pendingValidation && heartbeats ≥ minHeartbeats && uptime ≥ minUptimeMs`. Exposed in `ota.h` outside `#ifndef UNIT_TEST` so it is natively testable.
+- Replaced single-heartbeat `markCurrentAppValid()` trigger in `firmware/common/main.cpp` with a grace-period guard (`OTA_VALIDATION_MIN_HEARTBEATS=3`, `OTA_VALIDATION_MIN_UPTIME_MS=300000`). Both the setup() initial send and the loop() heartbeat increment the shared `heartbeatsSinceBoot` counter; the predicate gates the actual IDF call.
+- Added `OTA_VALIDATION_MIN_HEARTBEATS` and `OTA_VALIDATION_MIN_UPTIME_MS` constants to both `firmware/esp32c3/src/config.h` and `firmware/esp32c6/src/config.h`.
+- Fixed SHA-256 mismatch path in `applyUpdate()`: after `Update.end()` succeeds but checksum fails, `esp_ota_set_boot_partition(esp_ota_get_running_partition())` is called to revert the next-boot partition selection — prevents a bad build from booting on the next power cycle.
+- Standardised abort log tag to `[OTA][ABORT]` on all abort paths (short write, incomplete download, checksum mismatch) for grep-ability.
+- Added 9 native unit tests in `libs/firmware-shared/test/test_ota_rollback/` covering all branches of `shouldMarkAppValid` including exact-boundary cases.
+- Documented rollback flow in `firmware/README.md` (OTA Auto-Rollback section) and added "OTA Rollback Flow" runbook to `docs/admin-guide.md`.
 
 ### Firmware: White LED progress during OTA apply
 

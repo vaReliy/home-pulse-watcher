@@ -1,21 +1,12 @@
 ---
 name: GitHub Actions Expert
 description: >-
-  This skill should be used when the user asks to "create a GitHub Actions workflow",
-  "set up CI/CD pipeline", "add GitHub Actions", "configure CI", "create reusable workflow",
-  "add composite action", "fix failing workflow", "optimize GitHub Actions", "add caching to CI",
-  "set up deployment pipeline", "add tests to CI", "create Docker build workflow",
-  or mentions GitHub Actions, CI/CD, workflow YAML, or .github/workflows.
-  Covers JavaScript, TypeScript, Node.js, SQL, and Docker-based pipelines.
-  Українською: GitHub Actions, CI/CD пайплайн, налаштувати CI, створити workflow,
-  оптимізувати пайплайн, додати тести в CI, створити деплой, кешування в CI,
-  виправити workflow, композитна дія.
+  This skill should be used when the user asks to "create a GitHub Actions workflow", "set up CI/CD pipeline", "add GitHub Actions", "configure CI", "create reusable workflow", "add composite action", "fix failing workflow", "optimize GitHub Actions", "add caching to CI", "set up deployment pipeline", "add tests to CI", "create Docker build workflow", or mentions GitHub Actions, CI/CD, workflow YAML, or .github/workflows. Covers JavaScript, TypeScript, Node.js, SQL, and Docker-based pipelines. Українською: GitHub Actions, CI/CD пайплайн, налаштувати CI, створити workflow, оптимізувати пайплайн, додати тести в CI, створити деплой, кешування в CI, виправити workflow, композитна дія.
 ---
 
 # GitHub Actions Expert
 
-Expert guidance for creating, optimizing, and maintaining GitHub Actions workflows across
-JavaScript/TypeScript and Docker-based projects.
+Expert guidance for creating, optimizing, and maintaining GitHub Actions workflows across JavaScript/TypeScript and Docker-based projects.
 
 ## Workflow Design Principles
 
@@ -112,14 +103,14 @@ services:
       POSTGRES_PASSWORD: password
     ports: ['5432:5432']
     options: >-
-      --health-cmd="pg_isready" --health-interval=10s
-      --health-timeout=5s --health-retries=3
+      --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+
   redis:
     image: redis:7
     ports: ['6379:6379']
     options: >-
-      --health-cmd="redis-cli ping" --health-interval=10s
-      --health-timeout=5s --health-retries=3
+      --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
 ```
 
 ## Reusable Workflows

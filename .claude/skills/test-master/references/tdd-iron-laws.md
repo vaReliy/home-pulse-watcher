@@ -1,7 +1,6 @@
 # TDD Iron Laws
 
-> Reference for: Test Master
-> Load when: TDD methodology, test-first development, red-green-refactor
+> Reference for: Test Master Load when: TDD methodology, test-first development, red-green-refactor
 
 ## The Fundamental Principle
 

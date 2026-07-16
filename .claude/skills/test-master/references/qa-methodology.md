@@ -1,16 +1,13 @@
 # QA Methodology
 
-> Reference for: Test Master
-> Load when: Test strategy, manual testing, quality advocacy
+> Reference for: Test Master Load when: Test strategy, manual testing, quality advocacy
 
 ## Manual Testing Types
 
 ### Exploratory Testing
 
 ```markdown
-**Charter**: Explore {feature} with focus on {aspect}
-**Duration**: 60-90 min
-**Mission**: Find defects in {specific functionality}
+**Charter**: Explore {feature} with focus on {aspect} **Duration**: 60-90 min **Mission**: Find defects in {specific functionality}
 
 Test Ideas:
 

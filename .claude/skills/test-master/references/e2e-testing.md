@@ -1,7 +1,6 @@
 # E2E Testing
 
-> Reference for: Test Master
-> Load when: E2E strategy, user flow testing
+> Reference for: Test Master Load when: E2E strategy, user flow testing
 
 ## E2E Test Strategy
 

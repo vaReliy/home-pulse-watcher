@@ -103,8 +103,7 @@ This skill provides a framework for breaking down work into clear, actionable ta
 | Database       | `schema_validator.py`                     |
 | Full-stack     | Mix of above based on what you touched    |
 
-**Wrong:** Adding all scripts to every plan
-**Right:** Only scripts relevant to THIS task
+**Wrong:** Adding all scripts to every plan **Right:** Only scripts relevant to THIS task
 
 ---
 
@@ -135,8 +134,7 @@ One sentence: What are we building/fixing?
 - [ ] [Main success criteria]
 ```
 
-> **That's it.** No phases, no sub-sections unless truly needed.
-> Keep it minimal. Add complexity only when required.
+> **That's it.** No phases, no sub-sections unless truly needed. Keep it minimal. Add complexity only when required.
 
 ## Notes
 

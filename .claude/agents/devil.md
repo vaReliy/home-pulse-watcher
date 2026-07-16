@@ -77,5 +77,4 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Exact file paths, identifiers, error text — verbatim, never paraphrased.
 - Lead with verdict/result; details after.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
-- EXEMPT from compression: code, migrations, API contracts, user stories consumed
-  by next phase, PR descriptions — these stay complete and precise.
+- EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.

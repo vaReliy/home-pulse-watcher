@@ -4,8 +4,7 @@ This document outlines the architectural principles and patterns used in HomePul
 
 ## Core Product Idea
 
-**HomePulse Watcher** is a resilient power-monitoring ecosystem.
-The core mission is to bridge the gap between low-power hardware (ESP32-C3/ESP32-C6) and end-users by providing reliable, authenticated, and instant notifications regarding power grid stability.
+**HomePulse Watcher** is a resilient power-monitoring ecosystem. The core mission is to bridge the gap between low-power hardware (ESP32-C3/ESP32-C6) and end-users by providing reliable, authenticated, and instant notifications regarding power grid stability.
 
 ### The Problem
 
@@ -38,8 +37,7 @@ Every business operation must be a standalone **Service** class.
 | **Infrastructure** | `@home-pulse-watcher/infrastructure` | Prisma Repositories, Mappers, External APIs                  | None           |
 | **Interface**      | `apps/api`                           | NestJS Controllers, Modules, DI Wiring, Guards, Interceptors | NestJS         |
 
-**Key Principle:** Infrastructure layer contains **plain TypeScript classes** with constructor injection.
-NestJS DI wiring (providers, modules, interceptors, guards) lives exclusively in the Interface layer.
+**Key Principle:** Infrastructure layer contains **plain TypeScript classes** with constructor injection. NestJS DI wiring (providers, modules, interceptors, guards) lives exclusively in the Interface layer.
 
 ### 3. Service Structure Example
 

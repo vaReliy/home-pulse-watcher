@@ -1,11 +1,9 @@
 ---
 name: devops
 description: >-
-  DevOps for Node.js/TypeScript applications. Docker setup, CI/CD pipelines,
-  GitHub Actions, PM2 process management, environment configuration, deployment.
-
-  Українською: DevOps, деплой, Docker, CI/CD, GitHub Actions, PM2,
-  інфраструктура, конфігурація середовища, налаштування контейнера.
+  DevOps for Node.js/TypeScript applications. Docker setup, CI/CD pipelines, GitHub Actions, PM2 process management, environment configuration, deployment.
+  
+  Українською: DevOps, деплой, Docker, CI/CD, GitHub Actions, PM2, інфраструктура, конфігурація середовища, налаштування контейнера.
 ---
 
 # DevOps — Node.js/TypeScript
@@ -111,8 +109,9 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
+          --health-cmd pg_isready --health-interval 10s
+
+
       redis:
         image: redis:7
     steps:

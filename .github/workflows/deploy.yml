@@ -45,13 +45,9 @@ jobs:
           source: .
           region: europe-west3
           flags: >-
-            --allow-unauthenticated
-            --min-instances=0
-            --max-instances=1
-            --memory=512Mi
-            --cpu=1
-            --timeout=60
-            --concurrency=80
+            --allow-unauthenticated --min-instances=0 --max-instances=1 --memory=512Mi --cpu=1 --timeout=60 --concurrency=80
+
+
           env_vars: |
             NODE_ENV=production
             TELEGRAM_USE_WEBHOOK=true

@@ -1,12 +1,11 @@
 ---
 name: typescript-pro
 description: >-
-  Senior TypeScript/Node.js development. Use when writing TypeScript, Node.js,
-  NestJS, Express, Fastify, Prisma, strict typing patterns, or making
-  TypeScript architecture decisions.
+  Senior TypeScript/Node.js development. Use when writing TypeScript, Node.js, NestJS, Express, Fastify, Prisma, strict typing patterns, or making TypeScript architecture decisions.
+  
+  Українською: TypeScript, Node.js, строга типізація, async/await, NestJS, Prisma, Express, Fastify, декоратори, generic типи, utility types.
 
-  Українською: TypeScript, Node.js, строга типізація, async/await, NestJS,
-  Prisma, Express, Fastify, декоратори, generic типи, utility types.
+
 triggers:
   - TypeScript
   - Node.js

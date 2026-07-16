@@ -1,7 +1,6 @@
 # Debugging & Flaky Tests
 
-> Reference for: Playwright Expert Load when: Debugging tests, fixing flaky
-> tests
+> Reference for: Playwright Expert Load when: Debugging tests, fixing flaky tests
 
 ## Debugging Tools
 

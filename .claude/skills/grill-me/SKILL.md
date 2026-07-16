@@ -1,15 +1,9 @@
 ---
 name: grill-me
 description: >-
-  Interview the user relentlessly, one question at a time, about a plan or
-  design already on the table until every branch of the decision tree is
-  resolved and both sides share the same understanding. Use when the user
-  wants to stress-test a plan, get grilled on their design, or says "grill
-  me". NOT for generating ideas before a design exists (use `brainstorming`)
-  or for turning an agreed design into actionable tasks (use `plan-writing`).
-
-  Українською: стрес-тестування плану, допитай мене, запитання щодо дизайну,
-  перевір рішення по пунктах.
+  Interview the user relentlessly, one question at a time, about a plan or design already on the table until every branch of the decision tree is resolved and both sides share the same understanding. Use when the user wants to stress-test a plan, get grilled on their design, or says "grill me". NOT for generating ideas before a design exists (use `brainstorming`) or for turning an agreed design into actionable tasks (use `plan-writing`).
+  
+  Українською: стрес-тестування плану, допитай мене, запитання щодо дизайну, перевір рішення по пунктах.
 ---
 
 # Grill Me

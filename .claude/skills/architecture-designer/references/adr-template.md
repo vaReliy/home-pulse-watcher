@@ -1,7 +1,6 @@
 # ADR Template
 
-> Reference for: Architecture Designer Load when: Documenting architectural
-> decisions
+> Reference for: Architecture Designer Load when: Documenting architectural decisions
 
 ## ADR Format
 
@@ -14,8 +13,7 @@
 
 ## Context
 
-[Describe the situation and forces at play. What is the problem? What
-constraints exist? What are we trying to achieve?]
+[Describe the situation and forces at play. What is the problem? What constraints exist? What are we trying to achieve?]
 
 ## Decision
 
@@ -65,8 +63,7 @@ We need a relational database for our e-commerce platform that:
 - Scales to millions of products and orders
 - Works well with our existing Python/Node stack
 
-Team has experience with PostgreSQL and MySQL. Budget allows for managed
-database service.
+Team has experience with PostgreSQL and MySQL. Budget allows for managed database service.
 
 ## Decision
 

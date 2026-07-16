@@ -1,17 +1,9 @@
 ---
 name: handoff
 description: >-
-  Compact the current conversation into a handoff document so a fresh agent
-  session can pick up the work with full context. Use when a session is about
-  to end mid-task, before a context-window compaction would lose nuance, or
-  when the orchestrator's quality-gate cycle limit is hit and a continuation
-  task must survive into a new session. NOT for routine task tracking within
-  a single session (use `TaskCreate`/`TaskUpdate`) and NOT for durable
-  cross-session project knowledge (that belongs in `docs/KNOWLEDGE_INBOX.md`
-  or auto-memory).
-
-  Українською: передати роботу іншому агенту, стиснути розмову, документ
-  передачі, продовжити в новій сесії, зберегти контекст перед завершенням.
+  Compact the current conversation into a handoff document so a fresh agent session can pick up the work with full context. Use when a session is about to end mid-task, before a context-window compaction would lose nuance, or when the orchestrator's quality-gate cycle limit is hit and a continuation task must survive into a new session. NOT for routine task tracking within a single session (use `TaskCreate`/`TaskUpdate`) and NOT for durable cross-session project knowledge (that belongs in `docs/KNOWLEDGE_INBOX.md` or auto-memory).
+  
+  Українською: передати роботу іншому агенту, стиснути розмову, документ передачі, продовжити в новій сесії, зберегти контекст перед завершенням.
 ---
 
 # Handoff

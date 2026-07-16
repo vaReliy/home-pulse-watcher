@@ -41,9 +41,7 @@ Write robust, maintainable test suites using Jest for unit tests, feature tests,
 | `superpowers:test-driven-development` | TDD workflow — red/green/refactor                 |
 | `typescript-pro`                      | Strict TypeScript 5+ in test code                 |
 
-> See `rules/testing.md` for project testing policy.
-> See `rules/docker-commands.md` for all commands.
-> See `rules/mcp-stack.md` for MCP tool reference.
+> See `rules/testing.md` for project testing policy. See `rules/docker-commands.md` for all commands. See `rules/mcp-stack.md` for MCP tool reference.
 
 ## TDD Workflow
 
@@ -91,5 +89,4 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Exact file paths, identifiers, error text — verbatim, never paraphrased.
 - Lead with verdict/result; details after.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
-- EXEMPT from compression: code, migrations, API contracts, user stories consumed
-  by next phase, PR descriptions — these stay complete and precise.
+- EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.

@@ -90,8 +90,7 @@ To find generator source code:
 
 After reading the source, reconsider: Is this the right generator? If not, go back to step 2.
 
-> **⚠️ `--directory` flag behavior can be misleading.**
-> It should specify the full path of the generated library or component, not the parent path that it will be generated in.
+> **⚠️ `--directory` flag behavior can be misleading.** It should specify the full path of the generated library or component, not the parent path that it will be generated in.
 >
 > ```bash
 > # ✅ Correct - directory is the full path for the library

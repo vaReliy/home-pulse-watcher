@@ -1,17 +1,11 @@
 ---
 name: cts-rule-auditor
 description: >-
-  Audits the consistency of .claude/agents/, rules/, AGENTS.md, and
-  docs/KNOWLEDGE_INBOX.md. Runs 10 structural checks: broken pre-flight paths,
-  wrong-platform keyword leaks, stale KNOWLEDGE_INBOX labels, rules files
-  missing from the AGENTS.md index, unanchored .ctsignore entries, foresight
-  gate presence, severity floor coverage, project-scope pre-flight, roadmap
-  rule, and stale rules-auditor references.
-  Emits a ranked HIGH/MED/LOW finding report. Use after any change to
-  .claude/** or rules/**, or run periodically to catch silent drift.
+  Audits the consistency of .claude/agents/, rules/, AGENTS.md, and docs/KNOWLEDGE_INBOX.md. Runs 10 structural checks: broken pre-flight paths, wrong-platform keyword leaks, stale KNOWLEDGE_INBOX labels, rules files missing from the AGENTS.md index, unanchored .ctsignore entries, foresight gate presence, severity floor coverage, project-scope pre-flight, roadmap rule, and stale rules-auditor references. Emits a ranked HIGH/MED/LOW finding report. Use after any change to .claude/** or rules/**, or run periodically to catch silent drift.
+  
+  Українською: аудит правил, перевірка агентів, дрейф конфігурації, перевірити rules, перевірити агентів, KNOWLEDGE_INBOX застарілий.
 
-  Українською: аудит правил, перевірка агентів, дрейф конфігурації, перевірити
-  rules, перевірити агентів, KNOWLEDGE_INBOX застарілий.
+
 triggers:
   - cts-rule-auditor
   - rules-audit
@@ -22,9 +16,7 @@ triggers:
 
 # CTS Rule Auditor
 
-Runs 10 structural consistency checks across `.claude/agents/`, `rules/`,
-`AGENTS.md`, `docs/KNOWLEDGE_INBOX.md`, and `.ctsignore`. Emits a ranked
-report and offers to create tasks for confirmed findings.
+Runs 10 structural consistency checks across `.claude/agents/`, `rules/`, `AGENTS.md`, `docs/KNOWLEDGE_INBOX.md`, and `.ctsignore`. Emits a ranked report and offers to create tasks for confirmed findings.
 
 ## Step 1 — Determine scope
 
@@ -34,14 +26,9 @@ Run:
 git status --short
 ```
 
-`git status --short` covers staged, unstaged, and untracked files — it is the
-single authoritative source for session changes. Do not use `git diff --name-only HEAD`
-as a substitute; it omits untracked files and would cause new agent files to be
-missed.
+`git status --short` covers staged, unstaged, and untracked files — it is the single authoritative source for session changes. Do not use `git diff --name-only HEAD` as a substitute; it omits untracked files and would cause new agent files to be missed.
 
-**Session-aware** (files changed this session): if any paths under `.claude/`
-or `rules/` appear in `git status --short` output, audit those specific files.
-Skip the time-window prompt and proceed directly to Step 2.
+**Session-aware** (files changed this session): if any paths under `.claude/` or `rules/` appear in `git status --short` output, audit those specific files. Skip the time-window prompt and proceed directly to Step 2.
 
 **History-aware** (no session changes): inspect recent activity:
 
@@ -71,8 +58,7 @@ For each file in `.claude/agents/*.md`:
 1. Find the `## Pre-flight` section.
 2. Extract every `rules/X.md` path referenced in that section.
 3. Verify each path exists: `ls rules/X.md`
-4. For any missing path, find the commit that introduced the reference using
-   pickaxe search (finds the commit where that exact string was added):
+4. For any missing path, find the commit that introduced the reference using pickaxe search (finds the commit where that exact string was added):
    ```
    git log -S "rules/X.md" --oneline -- .claude/agents/<agent>.md | head -1
    ```
@@ -88,24 +74,16 @@ For each file in `.claude/agents/*.md`:
 
 ### Check 2 — Wrong-platform keyword leak
 
-Derive Angular keywords: terms that appear in `rules/code-style-angular.md`
-or `rules/architecture-angular.md` but are **absent** from `rules/code-style.md`.
-Focus on structural terms: `signal`, `toSignal`, `@let`, `NgRx`, `@Component`,
-`InjectionToken`, `providedIn`, `inject(`, `HttpClient`, `RouterLink`, `SCSS`,
-`ChangeDetection`, `async pipe`, `template`, `standalone`.
+Derive Angular keywords: terms that appear in `rules/code-style-angular.md` or `rules/architecture-angular.md` but are **absent** from `rules/code-style.md`. Focus on structural terms: `signal`, `toSignal`, `@let`, `NgRx`, `@Component`, `InjectionToken`, `providedIn`, `inject(`, `HttpClient`, `RouterLink`, `SCSS`, `ChangeDetection`, `async pipe`, `template`, `standalone`.
 
-Derive backend keywords: terms that appear in `rules/code-style-backend.md`
-or `rules/architecture-backend.md` but are absent from `rules/code-style.md`.
-Focus on: `NestJS`, `@Injectable`, `@Module`, `mongoose`, `Typegoose`,
-`BullMQ`, `pino`, `LIVR`, `@UseGuards`, `Mongoose`, `Schema(`, `@Prop(`.
+Derive backend keywords: terms that appear in `rules/code-style-backend.md` or `rules/architecture-backend.md` but are absent from `rules/code-style.md`. Focus on: `NestJS`, `@Injectable`, `@Module`, `mongoose`, `Typegoose`, `BullMQ`, `pino`, `LIVR`, `@UseGuards`, `Mongoose`, `Schema(`, `@Prop(`.
 
 Flag:
 
 - Any Angular keyword found in `rules/*-backend.md` files
 - Any backend keyword found in `rules/*-angular.md` files
 
-Skip occurrences inside code examples (fenced blocks) unless they appear in
-prose sentences or rule headings.
+Skip occurrences inside code examples (fenced blocks) unless they appear in prose sentences or rule headings.
 
 **Finding format**:
 
@@ -127,12 +105,9 @@ Both forms are valid; `(guess):` entries are common and must not be skipped.
 
 For each matched line:
 
-1. Extract the file path: capture the token starting with `rules/` up to the
-   first whitespace, `(`, `—`, `|`, or `+` character after the `.md` extension.
-   Examples:
+1. Extract the file path: capture the token starting with `rules/` up to the first whitespace, `(`, `—`, `|`, or `+` character after the `.md` extension. Examples:
    - `Belongs in: rules/workflow.md (routing guidance...)` → `rules/workflow.md`
-   - `Belongs in (guess): rules/dependencies.md | AGENTS.md` → `rules/dependencies.md`
-     (and also check `AGENTS.md` if it resolves to a `rules/` path)
+   - `Belongs in (guess): rules/dependencies.md | AGENTS.md` → `rules/dependencies.md` (and also check `AGENTS.md` if it resolves to a `rules/` path)
 2. Verify each extracted path exists: `ls <path>`
 3. Note the section heading (`##` line) that contains this entry.
 
@@ -149,8 +124,7 @@ For each matched line:
 
 1. List all files: `ls rules/`
 2. Read the "On-Demand Rules Index" section of `AGENTS.md`.
-3. For each file in `rules/`, check whether it appears anywhere in that index
-   section (match on filename, not full path).
+3. For each file in `rules/`, check whether it appears anywhere in that index section (match on filename, not full path).
 
 **Finding format**:
 
@@ -162,11 +136,9 @@ For each matched line:
 
 ### Check 5 — `.ctsignore` anchor validation
 
-Read `.ctsignore`. Find all non-comment, non-blank lines that reference a path
-starting with `rules/` (e.g. `rules/architecture.md`).
+Read `.ctsignore`. Find all non-comment, non-blank lines that reference a path starting with `rules/` (e.g. `rules/architecture.md`).
 
-Flag any such entry that is missing the leading `/` anchor — i.e., the entry
-reads `rules/X.md` rather than `/rules/X.md`.
+Flag any such entry that is missing the leading `/` anchor — i.e., the entry reads `rules/X.md` rather than `/rules/X.md`.
 
 **Finding format**:
 
@@ -178,9 +150,7 @@ reads `rules/X.md` rather than `/rules/X.md`.
 
 ### Check 6 — Foresight gate present in rules/workflow.md
 
-Read `rules/workflow.md`. Check whether it contains a foresight gate section
-with a seam trigger definition (new enum, cross-layer field, topology change
-triggering a blast-radius map requirement).
+Read `rules/workflow.md`. Check whether it contains a foresight gate section with a seam trigger definition (new enum, cross-layer field, topology change triggering a blast-radius map requirement).
 
 **Finding format**:
 
@@ -192,10 +162,8 @@ triggering a blast-radius map requirement).
 
 ### Check 7 — Severity floor in rules/workflow.md, reviewer.md, and security-scanner.md
 
-1. Read `rules/workflow.md` — must contain a 4-tier severity floor table
-   (Correctness/Security, Comprehension, Consistency-with-op-impact, Polish/preference).
-2. Read `.claude/agents/reviewer.md` — must contain a severity floor instruction
-   referencing the floor and the sub-floor ledger (`docs/KNOWLEDGE_INBOX.md`).
+1. Read `rules/workflow.md` — must contain a 4-tier severity floor table (Correctness/Security, Comprehension, Consistency-with-op-impact, Polish/preference).
+2. Read `.claude/agents/reviewer.md` — must contain a severity floor instruction referencing the floor and the sub-floor ledger (`docs/KNOWLEDGE_INBOX.md`).
 3. Read `.claude/agents/security-scanner.md` — same requirement as reviewer.md.
 
 **Finding format**:
@@ -210,12 +178,9 @@ triggering a blast-radius map requirement).
 
 ### Check 8 — Project-scope pre-flight in reviewer.md and security-scanner.md
 
-1. Read `.claude/agents/reviewer.md` — must list `ARCHITECTURE.md`,
-   `DECISIONS.md`, and `CONTEXT.md` as pre-flight reads.
+1. Read `.claude/agents/reviewer.md` — must list `ARCHITECTURE.md`, `DECISIONS.md`, and `CONTEXT.md` as pre-flight reads.
 2. Read `.claude/agents/security-scanner.md` — same requirement.
-3. For each referenced doc, verify the file actually exists in the repo root
-   (`ls ARCHITECTURE.md`, etc.). A missing doc means the pre-flight instruction
-   would silently fail.
+3. For each referenced doc, verify the file actually exists in the repo root (`ls ARCHITECTURE.md`, etc.). A missing doc means the pre-flight instruction would silently fail.
 
 **Finding format**:
 
@@ -232,8 +197,7 @@ triggering a blast-radius map requirement).
 Read `rules/workflow.md`. Check whether it contains both:
 
 - The parked-task convention (tasks blocked on upstream decisions use `## ⚠️ PARKED`).
-- The "prioritized against backlog" rule (emitted tasks ranked against the
-  existing backlog, premature tasks parked with blocking dep named).
+- The "prioritized against backlog" rule (emitted tasks ranked against the existing backlog, premature tasks parked with blocking dep named).
 
 **Finding format**:
 
@@ -302,8 +266,7 @@ Create tasks for confirmed findings? (y / n / select numbers)
 
 - **y**: invoke `/to-issues` with all findings.
 - **n**: done — no further action.
-- **select numbers**: user types finding numbers (1, 3, 5); invoke `/to-issues`
-  with only those findings.
+- **select numbers**: user types finding numbers (1, 3, 5); invoke `/to-issues` with only those findings.
 
 Do **not** invoke `/to-issues` before this confirmation.
 
@@ -311,10 +274,6 @@ Do **not** invoke `/to-issues` before this confirmation.
 
 ## Notes
 
-- This skill is read-only. It writes no files except when creating tasks via
-  `/to-issues`.
-- Check 2 keyword lists are heuristics — false positives are expected in code
-  examples. Use judgment before flagging.
-- Check 4 only flags files absent from the AGENTS.md on-demand index section;
-  files legitimately omitted (auto-loaded, deprecated) may be ignored after
-  human review.
+- This skill is read-only. It writes no files except when creating tasks via `/to-issues`.
+- Check 2 keyword lists are heuristics — false positives are expected in code examples. Use judgment before flagging.
+- Check 4 only flags files absent from the AGENTS.md on-demand index section; files legitimately omitted (auto-loaded, deprecated) may be ignored after human review.

@@ -1,17 +1,9 @@
 ---
 name: tdd
 description: >-
-  Test-driven development: the red-green-refactor loop. Use when the user
-  wants to build features or fix bugs test-first, mentions
-  "red-green-refactor", or wants integration-style tests written before the
-  implementation. NOT for choosing a test runner, mocking library, or
-  coverage/mutation-testing setup (use `vitest-testing`) and NOT for
-  broader test-strategy or automation-framework decisions (use
-  `test-master`) — this skill is the discipline of the loop itself, not the
-  tooling around it.
-
-  Українською: TDD, розробка через тести, червоний, зелений, рефакторинг,
-  тест спочатку, цикл TDD, вертикальні зрізи тестів.
+  Test-driven development: the red-green-refactor loop. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration-style tests written before the implementation. NOT for choosing a test runner, mocking library, or coverage/mutation-testing setup (use `vitest-testing`) and NOT for broader test-strategy or automation-framework decisions (use `test-master`) — this skill is the discipline of the loop itself, not the tooling around it.
+  
+  Українською: TDD, розробка через тести, червоний, зелений, рефакторинг, тест спочатку, цикл TDD, вертикальні зрізи тестів.
 ---
 
 # Test-Driven Development

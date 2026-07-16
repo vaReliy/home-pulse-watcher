@@ -108,10 +108,7 @@ One task = one clean session. Split when the task would touch **>3 files**, cros
 
 ### Blast-radius map (seam-touching tasks)
 
-When the foresight gate fires (see rules/workflow.md), the task body must include a
-`## Blast radius` section listing all files/layers that consume the changed contract and all
-foreseeable follow-on tasks. This section is the explicit evidence that the task was scoped
-correctly up front.
+When the foresight gate fires (see rules/workflow.md), the task body must include a `## Blast radius` section listing all files/layers that consume the changed contract and all foreseeable follow-on tasks. This section is the explicit evidence that the task was scoped correctly up front.
 
 ### Parked tasks
 

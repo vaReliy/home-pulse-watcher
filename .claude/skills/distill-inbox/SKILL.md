@@ -1,14 +1,11 @@
 ---
 name: distill-inbox
 description: >-
-  Distills docs/KNOWLEDGE_INBOX.md by categorizing entries into Done (delete),
-  Clear-target (inline into the correct rules/doc file), and Uncertain (keep).
-  Dispatches a docs-writer agent to perform the writes and clean up the inbox.
-  Use when the inbox grows past ~10 entries, after a sprint, or when running
-  /distill-inbox to keep the knowledge base tidy.
+  Distills docs/KNOWLEDGE_INBOX.md by categorizing entries into Done (delete), Clear-target (inline into the correct rules/doc file), and Uncertain (keep). Dispatches a docs-writer agent to perform the writes and clean up the inbox. Use when the inbox grows past ~10 entries, after a sprint, or when running /distill-inbox to keep the knowledge base tidy.
+  
+  Українською: очистити inbox, дистилювати знання, перенести записи до rules, прибрати KNOWLEDGE_INBOX, розкласти по місцях.
 
-  Українською: очистити inbox, дистилювати знання, перенести записи до rules,
-  прибрати KNOWLEDGE_INBOX, розкласти по місцях.
+
 triggers:
   - distill-inbox
   - distill inbox
@@ -18,8 +15,7 @@ triggers:
 
 # Distill Inbox
 
-Reads `docs/KNOWLEDGE_INBOX.md`, categorizes each entry, and delegates writes
-to a `docs-writer` agent. The inbox trends toward empty; rules files get richer.
+Reads `docs/KNOWLEDGE_INBOX.md`, categorizes each entry, and delegates writes to a `docs-writer` agent. The inbox trends toward empty; rules files get richer.
 
 ## Step 1 — Read and categorize
 
@@ -48,8 +44,7 @@ Use this routing map to match "Belongs in:" labels to the split rules structure:
 | `rules/workflow.md`                 | `rules/workflow.md` — pipeline, quality gate, pre-flight                 |
 | `PROJECT_CONTEXT`                   | `docs/PROJECT_CONTEXT.md` — domain patterns, infra plumbing              |
 
-If a label says `rules/architecture.md` but the content is clearly NestJS-specific,
-route to `rules/architecture-backend.md` and note the reroute in the report.
+If a label says `rules/architecture.md` but the content is clearly NestJS-specific, route to `rules/architecture-backend.md` and note the reroute in the report.
 
 ## Step 3 — Dispatch docs-writer
 
@@ -89,6 +84,4 @@ After docs-writer completes, report:
 
 ## Routing map updates
 
-When new rules files are added to the project, update the routing map table in
-this SKILL.md to include them. The map is the only Penny-specific content here —
-everything else is generic claude-ts distillation logic.
+When new rules files are added to the project, update the routing map table in this SKILL.md to include them. The map is the only Penny-specific content here — everything else is generic claude-ts distillation logic.

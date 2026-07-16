@@ -1,7 +1,6 @@
 # Penetration Testing
 
-> Reference for: Security Reviewer Load when: Active security testing,
-> exploitation validation, penetration testing
+> Reference for: Security Reviewer Load when: Active security testing, exploitation validation, penetration testing
 
 ## Reconnaissance
 

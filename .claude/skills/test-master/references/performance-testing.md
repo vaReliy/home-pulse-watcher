@@ -1,7 +1,6 @@
 # Performance Testing
 
-> Reference for: Test Master
-> Load when: Load testing, k6, benchmarking
+> Reference for: Test Master Load when: Load testing, k6, benchmarking
 
 ## k6 Load Test
 

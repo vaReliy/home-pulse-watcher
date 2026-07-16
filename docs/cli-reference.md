@@ -46,11 +46,7 @@ Register a new ESP32 device for power monitoring.
 node apps/api/dist/cli.js device:register --mac <mac> [--label <label>]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-m, --mac <mac>` | Yes | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
-| `-l, --label <label>` | No | Human-readable device label (max 100 chars) |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-m, --mac <mac>` | Yes | Device MAC address (format: AA:BB:CC:DD:EE:FF) | | `-l, --label <label>` | No | Human-readable device label (max 100 chars) |
 
 **Example:**
 
@@ -93,11 +89,7 @@ node apps/api/dist/cli.js device:list --user-id <uuid>
 node apps/api/dist/cli.js device:list --telegram-id <telegramId>
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-u, --user-id <uuid>` | No\* | User UUID to filter devices |
-| `-t, --telegram-id <telegramId>` | No\* | User's Telegram ID (alternative to `--user-id`) |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-u, --user-id <uuid>` | No\* | User UUID to filter devices | | `-t, --telegram-id <telegramId>` | No\* | User's Telegram ID (alternative to `--user-id`) |
 
 \* At least one of `--user-id` or `--telegram-id` is required.
 
@@ -137,17 +129,9 @@ Link an ESP32 device to a user account.
 node apps/api/dist/cli.js device:link [options]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-t, --telegram-id <id>` | No* | User's Telegram ID |
-| `-u, --user-id <uuid>` | No* | User's UUID |
-| `-m, --mac <mac>` | No** | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
-| `-d, --device-id <uuid>` | No** | Device UUID |
-| `-r, --role <role>` | No | Role: OWNER, EDITOR, VIEWER (default: VIEWER) |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-t, --telegram-id <id>` | No* | User's Telegram ID | | `-u, --user-id <uuid>` | No* | User's UUID | | `-m, --mac <mac>` | No** | Device MAC address (format: AA:BB:CC:DD:EE:FF) | | `-d, --device-id <uuid>` | No** | Device UUID | | `-r, --role <role>` | No | Role: OWNER, EDITOR, VIEWER (default: VIEWER) |
 
-\* At least one of `--telegram-id` or `--user-id` is required.
-\*\* At least one of `--mac` or `--device-id` is required.
+\* At least one of `--telegram-id` or `--user-id` is required. \*\* At least one of `--mac` or `--device-id` is required.
 
 **Example:**
 
@@ -187,16 +171,9 @@ Remove a user's access to a device without affecting other users linked to the s
 node apps/api/dist/cli.js device:unlink [options]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-t, --telegram-id <id>` | No\* | User's Telegram ID |
-| `-u, --user-id <uuid>` | No\* | User's UUID |
-| `-m, --mac <mac>` | No\*\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
-| `-d, --device-id <uuid>` | No\*\* | Device UUID |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-t, --telegram-id <id>` | No\* | User's Telegram ID | | `-u, --user-id <uuid>` | No\* | User's UUID | | `-m, --mac <mac>` | No\*\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) | | `-d, --device-id <uuid>` | No\*\* | Device UUID |
 
-\* At least one of `--telegram-id` or `--user-id` is required.
-\*\* At least one of `--mac` or `--device-id` is required.
+\* At least one of `--telegram-id` or `--user-id` is required. \*\* At least one of `--mac` or `--device-id` is required.
 
 **Example:**
 
@@ -234,12 +211,7 @@ Update device information (label).
 node apps/api/dist/cli.js device:update [options]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
-| `-d, --device-id <uuid>` | No\* | Device UUID |
-| `-l, --label <label>` | Yes | New human-readable device label (max 100 chars) |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) | | `-d, --device-id <uuid>` | No\* | Device UUID | | `-l, --label <label>` | Yes | New human-readable device label (max 100 chars) |
 
 \* At least one of `--mac` or `--device-id` is required.
 
@@ -277,11 +249,7 @@ Delete a device and all its associations (user links, power events).
 node apps/api/dist/cli.js device:delete [options]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
-| `-d, --device-id <uuid>` | No\* | Device UUID |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) | | `-d, --device-id <uuid>` | No\* | Device UUID |
 
 \* At least one of `--mac` or `--device-id` is required.
 
@@ -320,11 +288,7 @@ Generate a new HMAC secret for a device, replacing the existing one. The device'
 node apps/api/dist/cli.js device:rotate-secret [options]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) |
-| `-d, --device-id <uuid>` | No\* | Device UUID |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-m, --mac <mac>` | No\* | Device MAC address (format: AA:BB:CC:DD:EE:FF) | | `-d, --device-id <uuid>` | No\* | Device UUID |
 
 \* At least one of `--mac` or `--device-id` is required.
 
@@ -369,11 +333,7 @@ Create a new user from Telegram ID.
 node apps/api/dist/cli.js user:create --telegram-id <id> [--username <username>]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-t, --telegram-id <id>` | Yes | Telegram user ID |
-| `-u, --username <username>` | No | Telegram username (max 100 chars) |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-t, --telegram-id <id>` | Yes | Telegram user ID | | `-u, --username <username>` | No | Telegram username (max 100 chars) |
 
 **Example:**
 
@@ -410,10 +370,7 @@ List registered users.
 node apps/api/dist/cli.js user:list [--username <username>]
 ```
 
-**Options:**
-| Option | Required | Description |
-|--------|----------|-------------|
-| `-u, --username <username>` | No | Filter by username (partial match) |
+**Options:** | Option | Required | Description | |--------|----------|-------------| | `-u, --username <username>` | No | Filter by username (partial match) |
 
 **Examples:**
 

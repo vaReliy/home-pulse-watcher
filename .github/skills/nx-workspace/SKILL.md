@@ -94,8 +94,7 @@ nx show projects --withTarget e2e
 
 ## Workspace Configuration
 
-Read `nx.json` directly for workspace-level configuration.
-You can read the full project schema at `node_modules/nx/schemas/nx-schema.json` to understand nx project configuration options.
+Read `nx.json` directly for workspace-level configuration. You can read the full project schema at `node_modules/nx/schemas/nx-schema.json` to understand nx project configuration options.
 
 ```bash
 # Read the full nx.json

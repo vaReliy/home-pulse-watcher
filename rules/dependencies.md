@@ -1,12 +1,10 @@
 # Dependency Management
 
-On-demand: read when adding, updating, or removing an npm/pnpm dependency, or after any
-Nx generator that injects deps into `package.json`.
+On-demand: read when adding, updating, or removing an npm/pnpm dependency, or after any Nx generator that injects deps into `package.json`.
 
 ## Exact-pin everything
 
-No `^` or `~` ranges, ever — in `dependencies`, `devDependencies`, or `peerDependencies`.
-The invariant is non-negotiable; this file describes how to enforce it.
+No `^` or `~` ranges, ever — in `dependencies`, `devDependencies`, or `peerDependencies`. The invariant is non-negotiable; this file describes how to enforce it.
 
 ## Audit + pin procedure
 
@@ -32,6 +30,4 @@ Example fix:
 
 ## Why
 
-Reproducible installs across machines and CI; no silent minor/patch drift. Nx generators
-are the most common source of injected caret ranges (webpack, webpack-cli, webpack-dev-server,
-axios, etc.), so the audit is mandatory whenever a generator touched `package.json`.
+Reproducible installs across machines and CI; no silent minor/patch drift. Nx generators are the most common source of injected caret ranges (webpack, webpack-cli, webpack-dev-server, axios, etc.), so the audit is mandatory whenever a generator touched `package.json`.

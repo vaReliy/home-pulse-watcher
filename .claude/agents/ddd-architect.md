@@ -56,8 +56,7 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 - **Events** → cross-cutting concerns
 - **Queue Workers** → async processing via BullMQ
 
-> **This project uses Clean Architecture — NOT MVC or Actions pattern.**
-> Business logic lives in **UseCases** and **Services**, not route handlers.
+> **This project uses Clean Architecture — NOT MVC or Actions pattern.** Business logic lives in **UseCases** and **Services**, not route handlers.
 
 ### Patterns In Use
 
@@ -87,8 +86,7 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 | Async processing          | **BullMQ Worker**              |
 | Cross-cutting concerns    | **Event + Handler**            |
 
-> Code patterns and canonical examples: see skill `typescript-architecture`.
-> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
+> Code patterns and canonical examples: see skill `typescript-architecture`. Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
 
 ## Key Rules
 
@@ -104,5 +102,4 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Exact file paths, identifiers, error text — verbatim, never paraphrased.
 - Lead with verdict/result; details after.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
-- EXEMPT from compression: code, migrations, API contracts, user stories consumed
-  by next phase, PR descriptions — these stay complete and precise.
+- EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.

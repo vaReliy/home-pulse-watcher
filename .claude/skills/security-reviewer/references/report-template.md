@@ -43,8 +43,7 @@
 | **CWE**      | CWE-89                |
 | **CVSS**     | 9.8 (Critical)        |
 
-**Description** User input directly concatenated into SQL query without
-sanitization.
+**Description** User input directly concatenated into SQL query without sanitization.
 
 **Vulnerable Code**
 
@@ -86,8 +85,7 @@ db.query(query, [`%${searchTerm}%`]);
 | **CWE**      | CWE-521                     |
 | **CVSS**     | 7.5 (High)                  |
 
-**Description** Password policy requires only 6 characters with no complexity
-requirements.
+**Description** Password policy requires only 6 characters with no complexity requirements.
 
 **Current Policy**
 

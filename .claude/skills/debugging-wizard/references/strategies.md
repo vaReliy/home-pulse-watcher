@@ -1,7 +1,6 @@
 # Debugging Strategies
 
-> Reference for: Debugging Wizard
-> Load when: Planning debug approach
+> Reference for: Debugging Wizard Load when: Planning debug approach
 
 ## Binary Search
 

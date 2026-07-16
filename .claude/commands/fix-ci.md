@@ -23,8 +23,7 @@ If the input is empty or cannot be parsed, ask the user for the PR reference.
 
 ## Step 2: Fetch PR metadata
 
-**Primary — `github` MCP:**
-Use `mcp__github__pull_request_read` with:
+**Primary — `github` MCP:** Use `mcp__github__pull_request_read` with:
 
 ```json
 {"owner": "{your_org}", "repo": "<REPO>", "pullNumber": <NUMBER>}

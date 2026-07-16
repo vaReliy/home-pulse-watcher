@@ -1,7 +1,6 @@
 # Systematic Debugging
 
-> Reference for: Debugging Wizard
-> Load when: complex bugs, multiple failed fixes, root cause analysis
+> Reference for: Debugging Wizard Load when: complex bugs, multiple failed fixes, root cause analysis
 
 ---
 
@@ -105,8 +104,7 @@ grep -r "useQuery" src/components/ --include="*.tsx"
 ```markdown
 ## Hypothesis #1
 
-**Statement:** The crash occurs because `users` is undefined when the
-query is complete but returns no data.
+**Statement:** The crash occurs because `users` is undefined when the query is complete but returns no data.
 
 **Prediction:** Adding a null check before `.map()` will prevent the crash.
 

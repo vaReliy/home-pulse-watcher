@@ -80,8 +80,7 @@ Load detailed guidance based on context:
 
 <!-- Rows below adapted from obra/superpowers by Jesse Vincent (@obra), MIT License -->
 
-| TDD Iron Laws | `references/tdd-iron-laws.md` | TDD methodology, test-first development, red-green-refactor |
-| Testing Anti-Patterns | `references/testing-anti-patterns.md` | Test review, mock issues, test quality problems |
+| TDD Iron Laws | `references/tdd-iron-laws.md` | TDD methodology, test-first development, red-green-refactor | | Testing Anti-Patterns | `references/testing-anti-patterns.md` | Test review, mock issues, test quality problems |
 
 ## Constraints
 

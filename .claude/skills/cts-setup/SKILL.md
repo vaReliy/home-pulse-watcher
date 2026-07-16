@@ -15,8 +15,7 @@ Wraps `.claude/scripts/cts-sync.sh` ("engine call") to install or merge the CTS 
 
 ## 2. Engine call
 
-- If `.claude/scripts/cts-sync.sh` is missing, fetch it first:
-  `mkdir -p .claude/scripts && curl -fsSL https://raw.githubusercontent.com/vaReliy/claude-ts/main/.claude/scripts/cts-sync.sh -o .claude/scripts/cts-sync.sh`
+- If `.claude/scripts/cts-sync.sh` is missing, fetch it first: `mkdir -p .claude/scripts && curl -fsSL https://raw.githubusercontent.com/vaReliy/claude-ts/main/.claude/scripts/cts-sync.sh -o .claude/scripts/cts-sync.sh`
 - **New project** (no `CLAUDE.md`/`AGENTS.md`/`.claude/`): run `bash .claude/scripts/cts-sync.sh init`.
 - **Existing project** with its own `CLAUDE.md`/`AGENTS.md`/`.claude/`:
   1. Run `bash .claude/scripts/cts-sync.sh init --dry-run` to see the full payload list (this also populates `~/.cache/claude-ts` with the source checkout).

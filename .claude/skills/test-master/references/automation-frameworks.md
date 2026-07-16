@@ -1,7 +1,6 @@
 # Automation Frameworks
 
-> Reference for: Test Master
-> Load when: Framework design, automation patterns, scaling
+> Reference for: Test Master Load when: Framework design, automation patterns, scaling
 
 ## Advanced Framework Patterns
 

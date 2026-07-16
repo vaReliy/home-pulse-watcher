@@ -1,7 +1,6 @@
 # Debugging Tools
 
-> Reference for: Debugging Wizard
-> Load when: Setting up debugging environment
+> Reference for: Debugging Wizard Load when: Setting up debugging environment
 
 ## Debuggers by Language
 

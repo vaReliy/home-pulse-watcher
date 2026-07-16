@@ -9,8 +9,7 @@ source: community
 
 ## Purpose
 
-Turn raw ideas into **clear, validated designs and specifications**
-through structured dialogue **before any implementation begins**.
+Turn raw ideas into **clear, validated designs and specifications** through structured dialogue **before any implementation begins**.
 
 This skill exists to prevent:
 

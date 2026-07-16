@@ -1,12 +1,11 @@
 ---
 name: typescript-architecture
 description: >-
-  Clean Architecture patterns for Node.js/TypeScript. Use when designing
-  UseCase/Service/Repository layers, domain organization, dependency injection,
-  or making architecture decisions for Node.js backends.
+  Clean Architecture patterns for Node.js/TypeScript. Use when designing UseCase/Service/Repository layers, domain organization, dependency injection, or making architecture decisions for Node.js backends.
+  
+  Українською: архітектура Node.js, чиста архітектура, UseCase, сервіс, репозиторій, шари архітектури, ін'єкція залежностей, доменна логіка.
 
-  Українською: архітектура Node.js, чиста архітектура, UseCase, сервіс,
-  репозиторій, шари архітектури, ін'єкція залежностей, доменна логіка.
+
 triggers:
   - Clean Architecture
   - UseCase

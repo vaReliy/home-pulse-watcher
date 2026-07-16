@@ -1,7 +1,6 @@
 # Selectors & Locators
 
-> Reference for: Playwright Expert Load when: Writing selectors, locator
-> strategies
+> Reference for: Playwright Expert Load when: Writing selectors, locator strategies
 
 ## Selector Priority (Best to Worst)
 
