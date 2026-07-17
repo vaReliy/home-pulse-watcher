@@ -3,9 +3,13 @@
 #
 # Claude Code Stop hook — knowledge-capture nudge.
 #
-# Fires when the main agent stops. If the session changed source/config/template
-# files but the shared knowledge ledgers were not updated, the hook blocks once
-# per session per unmet category and forces the model to make an explicit decision.
+# Fires when the orchestrator stops (main session only). Subagents skip this hook
+# to surface learnings via their final report's ## Learnings section instead.
+# Assumes orchestrator runs as a plain session (no agent_id/agent_type); presence of
+# either field indicates not a top-level session and triggers the subagent skip guard.
+# If the session changed source/config/template files but the shared knowledge
+# ledgers were not updated, the hook blocks once per session per unmet category
+# and forces the model to make an explicit decision.
 #
 # Protocol (Claude Code Stop hook):
 #   stdin  — JSON { stop_hook_active: bool, session_id: string, … }
@@ -30,6 +34,36 @@ else
     || echo "unknown")
 fi
 
+# ── 1.5. Normalize and sanitize SESSION_ID ────────────────────────────────────
+# Fallback for malformed/non-JSON stdin: jq -r '.field // "unknown"' yields empty
+# on parse failure (unlike grep/sed branch's || echo "unknown"). Normalize here.
+[ -z "$SESSION_ID" ] && SESSION_ID="unknown"
+
+# Sanitize: strip SESSION_ID to safe filename characters [A-Za-z0-9_-]
+# before marker-path interpolation to prevent path traversal / arbitrary file creation.
+SESSION_ID=$(printf '%s' "$SESSION_ID" | tr -cd 'A-Za-z0-9_-')
+
+# Backstop: sanitization may have emptied the value — revert to "unknown"
+[ -z "$SESSION_ID" ] && SESSION_ID="unknown"
+
+# ── 1.6. Subagent scoping guard ───────────────────────────────────────────────
+# Knowledge-capture obligation belongs to the orchestrator session only.
+# Subagents surface learnings via the ## Learnings section of their final report.
+if command -v jq &>/dev/null; then
+  AGENT_ID=$(printf '%s' "$INPUT" | jq -r '.agent_id // empty')
+  AGENT_TYPE=$(printf '%s' "$INPUT" | jq -r '.agent_type // empty')
+else
+  # Fallback: grep/sed — matches existing style
+  AGENT_ID=$(printf '%s' "$INPUT" \
+    | grep -oP '"agent_id"\s*:\s*"\K[^"]+' 2>/dev/null | head -1 || true)
+  AGENT_TYPE=$(printf '%s' "$INPUT" \
+    | grep -oP '"agent_type"\s*:\s*"\K[^"]+' 2>/dev/null | head -1 || true)
+fi
+
+if [ -n "$AGENT_ID" ] || [ -n "$AGENT_TYPE" ]; then
+  exit 0
+fi
+
 # ── 2. Loop guard ─────────────────────────────────────────────────────────────
 # Already inside a stop-hook cycle — allow unconditionally to prevent infinite loops.
 if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
@@ -50,6 +84,7 @@ SOURCE_CHANGED=false
 TEMPLATE_CHANGED=false
 INBOX_UPDATED=false
 CHANGELOG_UPDATED=false
+METRICS_UPDATED=false
 
 while IFS= read -r p; do
   [ -z "$p" ] && continue
@@ -83,11 +118,14 @@ while IFS= read -r p; do
   if printf '%s' "$p" | grep -q 'docs/CLAUDE_TS_CHANGELOG\.md'; then
     CHANGELOG_UPDATED=true
   fi
+  if printf '%s' "$p" | grep -q 'docs/METRICS\.md'; then
+    METRICS_UPDATED=true
+  fi
 done <<< "$CHANGED_PATHS"
 
 # ── 5. Cadence guard — nudge once per session per unmet category ──────────────
 TMPDIR_SAFE="${TMPDIR:-/tmp}"
-MARKER_BASE="${TMPDIR_SAFE}/penny-kc-nudge-${SESSION_ID}"
+MARKER_BASE="${TMPDIR_SAFE}/cts-kc-nudge-${SESSION_ID}"
 
 already_nudged() { [ -f "${MARKER_BASE}-${1}" ]; }
 mark_nudged()    { touch "${MARKER_BASE}-${1}" 2>/dev/null || true; }
@@ -106,6 +144,13 @@ if [ "$TEMPLATE_CHANGED" = "true" ] && [ "$CHANGELOG_UPDATED" = "false" ]; then
   if ! already_nudged "changelog"; then
     mark_nudged "changelog"
     REMINDERS+=("CLAUDE_TS_CHANGELOG REQUIRED: This session modified a claude-ts template-inherited file (CLAUDE.md, AGENTS.md, rules/**, .claude/agents/**, .claude/skills/**) but docs/CLAUDE_TS_CHANGELOG.md was not updated. Log the divergence or fix in docs/CLAUDE_TS_CHANGELOG.md now using the format in that file (Component / Type / What happened / Why it matters upstream / Suggested upstream change / Status: pending-port).")
+  fi
+fi
+
+if [ "$SOURCE_CHANGED" = "true" ] && [ "$METRICS_UPDATED" = "false" ]; then
+  if ! already_nudged "metrics"; then
+    mark_nudged "metrics"
+    REMINDERS+=("METRICS REQUIRED: This session changed source or config files. If this represents a completed task (full pipeline run with potential quality-gate cycles), append a row to docs/METRICS.md now with columns: Date / Repo / Task / Tier / Cycles / Fix Now / Emitted / Hardstop / Model. If this is mid-task work or not a full pipeline completion, state that explicitly instead of adding a METRICS row.")
   fi
 fi
 

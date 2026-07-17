@@ -1,7 +1,7 @@
 ---
 name: cts-rule-auditor
 description: >-
-  Audits the consistency of .claude/agents/, rules/, AGENTS.md, and docs/KNOWLEDGE_INBOX.md. Runs 10 structural checks: broken pre-flight paths, wrong-platform keyword leaks, stale KNOWLEDGE_INBOX labels, rules files missing from the AGENTS.md index, unanchored .ctsignore entries, foresight gate presence, severity floor coverage, project-scope pre-flight, roadmap rule, and stale rules-auditor references. Emits a ranked HIGH/MED/LOW finding report. Use after any change to .claude/** or rules/**, or run periodically to catch silent drift.
+  Audits the consistency of .claude/agents/, rules/, AGENTS.md, and docs/KNOWLEDGE_INBOX.md. Runs 11 structural checks: broken pre-flight paths, wrong-platform keyword leaks, stale KNOWLEDGE_INBOX labels, rules files missing from the AGENTS.md index, unanchored .ctsignore entries, foresight gate presence, severity floor coverage, project-scope pre-flight, roadmap rule, stale rules-auditor references, and settings.json hook-path validation. Emits a ranked HIGH/MED/LOW finding report. Use after any change to .claude/** or rules/**, or run periodically to catch silent drift.
   
   Українською: аудит правил, перевірка агентів, дрейф конфігурації, перевірити rules, перевірити агентів, KNOWLEDGE_INBOX застарілий.
 
@@ -16,7 +16,7 @@ triggers:
 
 # CTS Rule Auditor
 
-Runs 10 structural consistency checks across `.claude/agents/`, `rules/`, `AGENTS.md`, `docs/KNOWLEDGE_INBOX.md`, and `.ctsignore`. Emits a ranked report and offers to create tasks for confirmed findings.
+Runs 11 structural consistency checks across `.claude/agents/`, `rules/`, `AGENTS.md`, `docs/KNOWLEDGE_INBOX.md`, `.ctsignore`, and `.claude/settings.json`. Emits a ranked report and offers to create tasks for confirmed findings.
 
 ## Step 1 — Determine scope
 
@@ -220,6 +220,22 @@ grep -r "rules-auditor" .claude/ rules/ AGENTS.md
 ```
 [HIGH] <file>: stale "rules-auditor" reference found — rename was not fully applied
        Match: <matched line>
+```
+
+---
+
+### Check 11 — `.claude/settings.json` hook paths must exist in `cts-payload.txt`
+
+If `.claude/settings.json` exists, read it and extract all `command` fields from any hooks (e.g., `"command": ".claude/hooks/knowledge-capture-nudge.sh"`). For each extracted command path:
+
+1. Verify the path is listed somewhere in `cts-payload.txt`
+2. If not found, the hook script's directory is missing from the payload manifest, and a fresh `/cts-setup` or `/cts-update` in any consumer would sync the settings file pointing at a nonexistent script.
+
+**Finding format**:
+
+```
+[HIGH] .claude/settings.json: hook command "<path>" does not resolve to any entry in cts-payload.txt
+       Sync would fail in a consumer that lacks this path
 ```
 
 ---

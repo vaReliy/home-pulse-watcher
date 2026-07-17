@@ -47,6 +47,10 @@ Read when relevant (never preloaded):
 - `rules/docker-commands.md` — running anything in containers
 - `rules/mcp-stack.md` — MCP tool selection
 - `rules/git-operations.md` — PR description rules
+- `rules/shell-scripting.md` — bash gotchas with traps, symlinks, prettier defaults
+- `rules/task-authoring.md` — emitting backlog task files from plan/grill/grooming sessions
+- `rules/nx-generators.md` — after running ANY `nx g …` generator (apps, libs, configs) — Nx workspaces only
+- `rules/dependencies.md` — adding/updating/removing npm deps; auditing generator-injected ranges
 - `docs/KNOWLEDGE_INBOX.md` — append-only inbox for durable-but-unplaced learnings; any AI tool working in the repo may append entries in the 3-line format from `rules/workflow.md`'s Knowledge Inbox section, which also defines the distillation policy
 - `PROJECT_CONTEXT.md` — domain rules, architecture, incident history
 - `README.md` — setup, CLI commands, deployment

@@ -4,6 +4,19 @@
 
 All input must be validated before reaching business logic. Never validate in UseCases or Services.
 
+### Manual bootstrap/registration step (validator-dependent)
+
+Some validation libraries require a one-time registration call at process startup before any validator instance is constructed — e.g. `js-validator-livr`'s custom-rule registration. Check whichever validator your project uses for this requirement, and if it applies, call it exactly once in every process entrypoint (`main.ts`, CLI bootstrap, queue worker), before the first validator is constructed:
+
+```typescript
+// apps/api/src/main.ts (or any other process bootstrap)
+import { registerCustomRules } from './validation-setup';
+
+registerCustomRules(); // must be first — before app bootstrap or any service init
+```
+
+Omitting this call typically **passes build and tsc but throws (or silently no-ops) at runtime** on the first validation — a library-registration footgun, not a compile-time-checkable mistake.
+
 ### js-validator-livr (Primary Choice)
 
 ```typescript

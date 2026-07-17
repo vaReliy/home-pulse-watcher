@@ -86,7 +86,7 @@ npx prisma migrate dev --name <name>      # new migration
 
 ## Knowledge Capture (Mandatory)
 
-After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to auto-memory (`project` type). Full rules: `rules/workflow.md` Phase 6.
+After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to auto-memory (`project` type). Subagent-reported `## Learnings` are transcribed to `docs/KNOWLEDGE_INBOX.md` immediately upon receipt (before the next dispatch), so later agents' pre-flight inbox reads pick them up. Full rules: `rules/workflow.md` Phase 6.
 
 ## Task Files (HPW-only)
 

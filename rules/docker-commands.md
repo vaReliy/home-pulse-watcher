@@ -99,3 +99,56 @@ docker builder prune -f
 - Are unrecoverable once run
 
 > **Rationale**: Full-system destructive cleanup removes cached layers and named volumes from other projects, not just the current one. Host disk fills when multi-stage Docker builds (e.g. PlatformIO + ESP-IDF) accumulate GBs of intermediate layers across repeated rebuilds. Always scope cleanup to the specific task's named artifacts first; broader prune only after user confirmation.
+
+## Docker Compose Healthchecks
+
+### Container healthchecks: `curl` not `wget` for IPv4/IPv6 compatibility
+
+Alpine Linux containers default to IPv6-first DNS resolution. The BusyBox `wget --spider http://localhost:PORT/...` does NOT implement happy-eyeballs fallback — if the service binds to IPv4 only (`0.0.0.0:8080`), the probe gets connection-refused and the container stays unhealthy.
+
+**Fix**: use `curl -sf` instead, which correctly handles IPv4/IPv6 fallback:
+
+```yaml
+# docker-compose.yml
+services:
+  web:
+    image: nginx:1.27-alpine
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://127.0.0.1:8080/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+```
+
+Both `curl` and `wget` ship by default in Alpine nginx/node images; `curl` is the safer choice.
+
+Note: the `node:22-alpine` image does not include `wget` or `curl` by default. Use Node.js inline HTTP instead:
+
+```yaml
+services:
+  api:
+    image: node:22-alpine
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+```
+
+If your app sets a global route prefix (e.g. NestJS `app.setGlobalPrefix('api')`), the health endpoint moves accordingly (`/api/health`, not `/health`) — a healthcheck hitting the wrong path causes the container to never reach `healthy` state.
+
+### GitHub Actions service-container health-cmd needs single-token quoting
+
+GitHub Actions `services.<name>.options` is passed straight to `docker create`, which parses `--health-cmd` as taking exactly one token — the docker-compose array healthcheck form (`test: ['CMD', 'mongosh', '--eval', "..."]`) does not translate to this syntax. A multi-word health command must be wrapped as one single quoted string:
+
+```yaml
+options: --health-cmd "mongosh --eval \"db.adminCommand('ping')\""
+```
+
+An unquoted `--health-cmd mongosh --eval "db.adminCommand('ping')"` fails with `unknown flag: --eval` (exit 125) at container-creation time, before any CI step runs — a silent trap because the YAML itself has no lint error. Always dry-run the equivalent `docker create --health-cmd ... <image>` locally before trusting `services.*.options` health-cmd quoting in CI.
+
+### Continuous healthcheck-cadence logs are not a bug
+
+A container logging continuously with nothing else running is usually its own compose `healthcheck` pinging itself, not a crash-loop — match the log cadence against the healthcheck's `interval` before treating it as a bug. Recurring log bursts at exactly the configured `interval` (e.g. a DB container logging "connection accepted → not authenticating → connection ended" every 10s matching `interval: 10s`) are informational healthcheck traffic, not an auth failure or crash loop.
