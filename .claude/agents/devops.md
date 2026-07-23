@@ -32,7 +32,7 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 Before writing or modifying any code, additionally read:
 
-- `rules/code-style.md`
+- `rules/cts/code-style.md`
 
 ## Scope Boundary
 
@@ -55,7 +55,7 @@ Before writing or modifying any code, additionally read:
 | `security-reviewer` | Secrets, env vars, SSL, access control    |
 | `debugging-wizard`  | Infrastructure issues and troubleshooting |
 
-> See `rules/mcp-stack.md` for MCP tool reference.
+> See `rules/cts/mcp-stack.md` for MCP tool reference.
 
 ## Project Infrastructure Stack
 
@@ -81,7 +81,7 @@ Dockerfile                      # Application container
 src/config/                     # Typed configuration service
 ```
 
-> See `rules/docker-commands.md` for all commands.
+> See `rules/cts/docker-commands.md` for all commands.
 
 ## Environment Configuration
 
@@ -104,7 +104,7 @@ src/config/                     # Typed configuration service
 - **Lint matrix** (parallel): tsc, ESLint, Prettier
 - **Test matrix** (after lint): unit, integration, coverage, Stryker mutation (`--coverageAnalysis perTest`)
 
-> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
+> Conventions: see @rules/cts/code-style.md, @rules/cts/docker-commands.md, @rules/cts/git-operations.md.
 
 ## Report Format (mandatory)
 
@@ -115,3 +115,7 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
 - If you discovered something durable and non-obvious (config recipe, wrong-pattern gotcha, test anti-pattern, library constraint), add a `## Learnings` section at the end of your report — the orchestrator records it in `docs/KNOWLEDGE_INBOX.md`.
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.
+
+## Local Override
+
+If `.claude/agents-local/devops.md` exists, Read it first; its instructions override conflicting ones above.

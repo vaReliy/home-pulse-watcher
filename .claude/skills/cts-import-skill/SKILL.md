@@ -71,7 +71,8 @@ For **import as-is** or **merge/replace** outcomes:
 2. Add it to the README skills inventory table (`### Skills (N)` — bump the count and pick the right category, or add one).
 3. Add an entry to `THIRD_PARTY.md` under `## Skills`: source repo URL, original file path, author, license — **check the license permits redistribution**; if missing or unclear, warn the user instead of importing silently.
 4. If the source repo isn't already listed under README's `## License` → "Third-party attributions" list, add it there too (`<repo-url> (<license>)`), so the top-level attribution stays in sync with `THIRD_PARTY.md`.
-5. Add a `CHANGELOG.md` entry under `[Unreleased]`.
+5. If the skill should be wired into any agent's `## Skills to Activate` table, grep that table first for an existing row already covering the same functionality under a different name or alias — add the new row only if none exists; otherwise fold the reference into the existing row instead of duplicating it.
+6. Add a `CHANGELOG.md` entry under `[Unreleased]`.
 
 Payload coverage is automatic — `.claude/skills/` is already in `cts-payload.txt`, so no script changes are needed.
 

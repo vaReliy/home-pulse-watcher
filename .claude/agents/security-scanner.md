@@ -23,12 +23,12 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 Before scanning, always read (security focuses on backend: auth, validation, API endpoints):
 
-- `rules/code-style.md` (shared TypeScript strict mode)
-- `rules/architecture.md` (platform separation, framework bans in core domain)
-- `rules/validation-authorization.md` (input validation, JWT guards, authorization)
-- If your project splits rules by platform (e.g. `rules/code-style-backend.md`, `rules/architecture-backend.md`), also read those.
+- `rules/cts/code-style.md` (shared TypeScript strict mode)
+- `rules/cts/architecture.md` (platform separation, framework bans in core domain)
+- `rules/cts/validation-authorization.md` (input validation, JWT guards, authorization)
+- If your project splits rules by platform (e.g. `rules/local/code-style-backend.md`, `rules/local/architecture-backend.md`), also read those.
 
-Then, **if the changeset contains frontend files** (e.g., `.ts`/`.vue`/`.tsx` in `libs/*/feature*/`, `libs/*/ui*/`, `apps/web/`), also read the frontend-specific rules file if your project has one (e.g. `rules/code-style-angular.md`) — frontend security issues (XSS, insecure token storage) need assessment alongside backend security.
+Then, **if the changeset contains frontend files** (e.g., `.ts`/`.vue`/`.tsx` in `libs/*/feature*/`, `libs/*/ui*/`, `apps/web/`), also read the frontend-specific rules file if your project has one (e.g. `rules/local/code-style-angular.md`) — frontend security issues (XSS, insecure token storage) need assessment alongside backend security.
 
 ### Project-scope pre-flight (read before every scan)
 
@@ -67,9 +67,8 @@ Guided by the dependency maps in ARCHITECTURE.md and DECISIONS.md. The goal: det
 | -------------------------------------------- | ---------------------------------------- |
 | `security-reviewer`                          | **Always** — security review methodology |
 | `typescript-pro`                             | Node.js security patterns, type safety   |
-| `superpowers:verification-before-completion` | Verify all findings are actionable       |
 
-> See `rules/mcp-stack.md` for MCP tool reference.
+> See `rules/cts/mcp-stack.md` for MCP tool reference.
 
 ## Project Security Architecture
 
@@ -90,6 +89,10 @@ Guided by the dependency maps in ARCHITECTURE.md and DECISIONS.md. The goal: det
 | **Data**          | PII not logged; parameterized ORM queries; API responses don't leak internal entity IDs or stack traces       |
 | **Dependencies**  | `npm audit` clean; no `node_modules` committed; lockfile (`package-lock.json`) committed                      |
 
+## Verification Before Reporting
+
+Before reporting, verify every finding is concrete and actionable: exact file/line, demonstrated exploit path or failure scenario, suggested fix. Drop anything you cannot confirm.
+
 ## Reporting Format (for standalone security audits)
 
 Sections: Critical Findings → High Priority → Medium → Low/Recommendations → Summary (counts + posture).
@@ -98,7 +101,7 @@ For each finding: **Location** (file:line) · **Severity** · **Description** ·
 
 > For pipeline reports to orchestrator, use `## Finding Classification` below instead.
 
-> See `rules/docker-commands.md` for all commands.
+> See `rules/cts/docker-commands.md` for all commands.
 
 - **Never expose actual secrets in reports** — use placeholders
 - **Guards for authorization** — not inline checks in UseCase bodies
@@ -139,8 +142,12 @@ Rules:
 
 ### Severity floor
 
-Before emitting a task for a pre-existing finding, apply the severity floor (defined in rules/workflow.md). Polish/preference findings below the floor are NOT emitted as tasks. Record them as one line in docs/KNOWLEDGE_INBOX.md under `## Deferred / sub-floor`.
+Before emitting a task for a pre-existing finding, apply the severity floor (defined in rules/cts/workflow.md). Polish/preference findings below the floor are NOT emitted as tasks. Record them as one line in docs/KNOWLEDGE_INBOX.md under `## Deferred / sub-floor`.
 
 ## Commit policy
 
 Never commit directly. Stage changes, then suggest a one-line commit message scoped to the current work iteration. The owner reviews git diff and commits.
+
+## Local Override
+
+If `.claude/agents-local/security-scanner.md` exists, Read it first; its instructions override conflicting ones above.

@@ -1,7 +1,27 @@
 #!/usr/bin/env bash
 # CTS sync engine — installs/updates the claude-ts (CTS) payload in a project.
 # Normally invoked by the /cts-setup and /cts-update skills, not run directly.
+#
+# Two-layer distribution model: every payload path is CTS-owned and is
+# plain-overwritten on sync (rsync semantics) — there is no 3-way merge, no
+# baseline reconciliation, and .cts-version is purely an informational
+# engine/release marker, never a merge base. Consumer customizations live in
+# a SEPARATE path that is never listed in cts-payload.txt and therefore never
+# touched by this script: rules/local/**, .claude/agents-local/*.md,
+# AGENTS.local.md, CLAUDE.local.md. .claude/settings.json is consumer-owned;
+# .cts/settings.cts.json is the CTS-owned fragment deep-merged into it.
+#
+# In place of merging, the engine runs two detectors:
+#   - ownership violation: a CTS-owned file whose on-disk content no longer
+#     matches the hash recorded for it at the last sync — i.e. it was edited
+#     outside an override file. Reported loudly; the file is overwritten
+#     anyway (updates never skip wholesale).
+#   - override rot: an override file (rules/local/**, .claude/agents-local/*)
+#     that cites a CTS file/section via a "## Overrides <path>" line, where
+#     the cited path changed content in this sync run.
 set -euo pipefail
+
+ORIG_ARGS=("$@")
 
 DEFAULT_SOURCE="https://github.com/vaReliy/claude-ts.git"
 DEFAULT_BRANCH="main"
@@ -10,27 +30,30 @@ PAYLOAD_FILE="cts-payload.txt"
 VERSION_FILE=".cts-version"
 SOURCE_FILE=".cts-source"
 IGNORE_FILE=".ctsignore"
+MANIFEST_FILE=".cts/manifest.json"
+SELF_REL=".claude/scripts/cts-sync.sh"
 
 usage() {
   cat <<'EOF'
-Usage: cts-sync.sh <init|update> [--source <path-or-url>] [--branch <name>] [--dry-run] [--force] [--no-merge] [--no-normalize]
+Usage: cts-sync.sh <init|update> [--source <path-or-url>] [--branch <name>] [--dry-run] [--force]
 
   init    Install the CTS payload into the current project (must be a git repo)
-  update  Re-sync the CTS payload, skipping paths listed in .ctsignore
+  update  Re-sync the CTS payload, skipping paths listed in .ctsignore.
+          Every non-ignored payload file is overwritten with upstream's
+          content — there is no merge. Locally edited CTS-owned files are
+          still overwritten, but flagged loudly first.
 
 Options:
   --source <path-or-url>  Local checkout dir or git URL (default: claude-ts on GitHub)
   --branch <name>         Branch to track when --source is a URL (default: main)
   --dry-run               Print what would change without copying anything
   --force                 init: overwrite an existing CLAUDE.md/AGENTS.md/.claude/
-  --no-merge              update: never 3-way merge — preserve diverged files as-is
-  --no-normalize          update: compare/merge raw content, skip prettier renormalize
 EOF
 }
 
 [ $# -ge 1 ] || { usage; exit 1; }
 CMD="$1"; shift
-SOURCE="$DEFAULT_SOURCE"; BRANCH="$DEFAULT_BRANCH"; DRY_RUN=0; FORCE=0; NO_MERGE=0; NO_NORMALIZE=0
+SOURCE="$DEFAULT_SOURCE"; BRANCH="$DEFAULT_BRANCH"; DRY_RUN=0; FORCE=0
 EXPLICIT_SOURCE=0; EXPLICIT_BRANCH=0
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -38,8 +61,6 @@ while [ $# -gt 0 ]; do
     --branch) BRANCH="$2"; EXPLICIT_BRANCH=1; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     --force) FORCE=1; shift ;;
-    --no-merge) NO_MERGE=1; shift ;;
-    --no-normalize) NO_NORMALIZE=1; shift ;;
     *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
   esac
 done
@@ -47,6 +68,9 @@ case "$CMD" in init|update) ;; *) usage; exit 1 ;; esac
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
   || { echo "Error: current directory is not a git repository." >&2; exit 1; }
+
+command -v jq >/dev/null 2>&1 \
+  || { echo "Error: jq is required by cts-sync.sh (settings deep-merge, manifest bookkeeping). Install jq and retry." >&2; exit 1; }
 
 # Resolve the source checkout. Local paths are used as-is; URLs are mirrored
 # into a local cache so repeat runs avoid a full clone.
@@ -67,17 +91,10 @@ NEW_SHA=$(git -C "$SRC_DIR" rev-parse HEAD 2>/dev/null || echo "local")
 # A plain re-run resolves the same DEFAULT_SOURCE/DEFAULT_BRANCH every time, but
 # a run that previously used an explicit --source/--branch (e.g. a local WIP
 # checkout) leaves no record of *which* source produced .cts-version's SHA.
-# A later plain-default run against a source with an older tip than that
-# previous one is then indistinguishable from upstream having lost commits —
-# only a diff against the wrong baseline. Record what was actually used, and
-# warn (don't block — the caller may legitimately be switching sources) when
-# an implicit (no flags passed) run's resolution disagrees with the last one.
+# Record what was actually used, and warn (don't block) when an implicit
+# (no flags passed) run's resolution disagrees with the last one.
 CURRENT_SOURCE_DESC="$SOURCE $BRANCH"
 if [ -f "$SOURCE_FILE" ] && [ "$EXPLICIT_SOURCE" != 1 ] && [ "$EXPLICIT_BRANCH" != 1 ]; then
-  # .cts-source is a multi-line record (source:/branch:/synced:/outcome:) as of
-  # this script's current version, but a project synced by an older cts-sync.sh
-  # left a bare "SOURCE BRANCH" line — handle both so the mismatch check keeps
-  # working through the format transition.
   if grep -q '^source:' "$SOURCE_FILE" 2>/dev/null; then
     PREV_SOURCE=$(grep '^source:' "$SOURCE_FILE" | head -1 | sed 's/^source:[[:space:]]*//' || true)
     PREV_BRANCH=$(grep '^branch:' "$SOURCE_FILE" | head -1 | sed 's/^branch:[[:space:]]*//' || true)
@@ -92,29 +109,24 @@ if [ -f "$SOURCE_FILE" ] && [ "$EXPLICIT_SOURCE" != 1 ] && [ "$EXPLICIT_BRANCH" 
   fi
 fi
 
-# Written by write_source_file (see below) at both init/update completion.
-# .cts-source is intentionally NOT a format cts-contribute parses — only
-# .cts-version (a bare SHA) is read by cts-contribute step 1c, and this
-# function never touches it.
 write_source_file() {
-  local copied="$1" merged="$2" conflicts="$3" needs_attention="$4"
+  local copied="$1" ownership_warnings="$2" rot_warnings="$3"
   {
     echo "source: $SOURCE"
     echo "branch: $BRANCH"
     echo "synced: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    echo "outcome: $copied files updated, $merged merged, $conflicts conflicts, $needs_attention needs-attention"
+    echo "outcome: $copied files synced, $ownership_warnings ownership warning(s), $rot_warnings override-rot warning(s)"
   } > "$SOURCE_FILE"
 }
 
 mapfile -t PAYLOAD < <(grep -vE '^[[:space:]]*(#|$)' "$SRC_DIR/$PAYLOAD_FILE")
 
 # Defense-in-depth: some files are project-local and must never be shipped to
-# consumers (docs/KNOWLEDGE_INBOX.md — see the "Explicitly NOT payload" note
-# in cts-payload.txt). That's currently enforced only by never listing it as
-# a payload entry; this guard turns a future careless edit (e.g. listing
-# "docs/" as a whole directory instead of individual files) into a loud
-# failure instead of a silent leak.
-NEVER_PAYLOAD=(docs/KNOWLEDGE_INBOX.md)
+# consumers. That's currently enforced only by never listing it as a payload
+# entry; this guard turns a future careless edit (e.g. listing "docs/" as a
+# whole directory instead of individual files) into a loud failure instead of
+# a silent leak.
+NEVER_PAYLOAD=(docs/KNOWLEDGE_INBOX.md .cts/manifest.json)
 covers_forbidden() {
   local entry="$1" forbidden="$2"
   [ "$entry" = "$forbidden" ] && return 0
@@ -131,18 +143,8 @@ for entry in "${PAYLOAD[@]}"; do
   done
 done
 
-# Owner-only skills: live in this repo's .claude/skills/ (which IS a payload
-# entry as a whole directory), but must never reach a consumer's tree. Unlike
-# NEVER_PAYLOAD this can't be enforced by refusing a payload *entry* (the
-# entry is the whole "/.claude/skills/" directory, and it must stay a
-# payload entry so every other skill still syncs) — so the exclusion is
-# enforced per-file in copy_one() below instead. The guard here only catches
-# the failure mode of someone later adding one of these paths as its own
-# explicit cts-payload.txt line, which would bypass the per-file skip. Unlike
-# covers_forbidden() above, this match is exact-only (no directory-covers-file
-# case) — a payload line naming a single file *inside* an owner-only skill dir
-# would slip past this guard, though is_owner_only_skill() in copy_one() still
-# catches it as a second layer, so no actual leak results.
+# Owner-only skills: live in this repo's .claude/skills/ (a payload entry as
+# a whole directory), but must never reach a consumer's tree.
 OWNER_ONLY_SKILLS=(.claude/skills/cts-review-contribution/)
 for entry in "${PAYLOAD[@]}"; do
   entry="${entry%/}"
@@ -153,7 +155,6 @@ for entry in "${PAYLOAD[@]}"; do
     fi
   done
 done
-
 is_owner_only_skill() {
   local rel="$1" owner_only
   for owner_only in "${OWNER_ONLY_SKILLS[@]}"; do
@@ -163,8 +164,7 @@ is_owner_only_skill() {
 }
 
 # Gitignore-style check: a bare pattern matches exact paths and "dir/" prefixes
-# anywhere in the tree; a leading "/" anchors it to the project root only
-# (so "/AGENTS.md" protects the root file without shadowing nested ones).
+# anywhere in the tree; a leading "/" anchors it to the project root only.
 is_ignored() {
   local p="$1" pat
   [ -f "$IGNORE_FILE" ] || return 1
@@ -185,7 +185,7 @@ is_ignored() {
 # Payload paths and file listings come from the chosen --source, which can be
 # a URL or a local checkout the operator doesn't fully control (e.g. a fork).
 # Refuse anything that could resolve outside the project root before it
-# reaches a write sink (cp/mkdir -p) in copy_one or merge_one.
+# reaches a write sink.
 is_safe_rel() {
   case "$1" in
     /*|*/../*|../*|*/..) return 1 ;;
@@ -194,367 +194,180 @@ is_safe_rel() {
   return 0
 }
 
-# .claude/scripts/ contains this running script. Bash does not fully buffer a
-# script's source before executing straight-through code, so if copy_one wrote
-# the new .claude/scripts/cts-sync.sh directly, later reads of this script's
-# remaining bytes would land on the new file at the old file's byte offsets —
-# garbage that doesn't parse as any coherent statement, producing a spurious
-# non-zero exit (or worse) after all real work already completed correctly.
-# Fix: writes targeting .claude/scripts/ are staged here instead, and flushed
-# into place by flush_self_scripts as the literal last statement of the
-# script (see end of file) — nothing executes after that copy, so no
-# mid-read corruption is possible.
-SCRIPTS_STAGE=$(mktemp -d)
-is_self_script() {
-  case "$1" in .claude/scripts/*) return 0 ;; *) return 1 ;; esac
-}
-flush_self_scripts() {
-  if [ -d "$SCRIPTS_STAGE/.claude/scripts" ]; then
-    mkdir -p ./.claude/scripts
-    cp -rp "$SCRIPTS_STAGE/.claude/scripts/." ./.claude/scripts/
-  fi
-  rm -rf "$SCRIPTS_STAGE"
-}
-
-# Renormalize (git-merge-file -Xrenormalize equivalent, hand-rolled): each
-# consumer keeps its own formatter config, so a file reformatted locally with
-# the consumer's own prettier diverges from the CTS baseline on formatting
-# alone — false "locally modified" positives and spurious merge conflicts.
-# Auto-detect the receiver's own prettier (never CTS's — this repo ships
-# none) and, when present, compare/merge through it so only semantic diffs
-# survive; absent or non-prettier-handled files fall back to raw comparison
-# unchanged. update-only: init has no prior baseline to normalize against.
-PRETTIER_BIN=""
-if [ "$CMD" = update ] && [ "$NO_NORMALIZE" != 1 ] && [ -x ./node_modules/.bin/prettier ]; then
-  PRETTIER_BIN="./node_modules/.bin/prettier"
-  echo "Normalizing diffs through this project's prettier (--no-normalize to disable)."
-fi
-is_prettier_ext() {
-  case "$1" in
-    *.md|*.json|*.jsonc|*.yaml|*.yml|*.js|*.ts|*.css|*.html) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-# Writes normalized content to stdout. The extension gate avoids spawning
-# prettier for shell scripts and other non-prettier-handled files.
-norm_file() {
-  local rel="$1" src="$2"
-  if [ -n "$PRETTIER_BIN" ] && is_prettier_ext "$rel"; then
-    # Both branches used to write directly to stdout (`prettier ... || cat
-    # "$src"`), sharing one fd. If prettier ever emitted partial output
-    # before failing (it doesn't today — it buffers until a successful
-    # parse — but that's an implementation detail, not a guarantee), the
-    # `cat` fallback would concatenate raw content after it, and callers
-    # that feed norm_file's output into a 3-way merge (merge_one) would
-    # write that garbage into the consumer's tree. Route prettier's output
-    # through a temp file so only one branch's bytes ever reach stdout.
-    # RETURN (not EXIT) so this doesn't clobber the caller's EXIT trap.
-    # merge_one() calls norm_file() up to 3x while it has its own EXIT trap
-    # live for its whole body; an EXIT trap here would overwrite that trap on
-    # entry and clear it on exit, silently disabling merge_one's cleanup for
-    # the rest of its body. RETURN fires once when *this* function returns
-    # and is set fresh on every call, but bash's RETURN trap is a single
-    # global slot, not a call-stack-scoped one: left as-is it would remain
-    # armed after norm_file returns. Without functrace it wouldn't misfire
-    # on other functions' returns, but it would re-arm on the next
-    # source-d script's return (with $out out of scope, crashing under
-    # `set -u`). `trap - RETURN` inside the trap body disarms it
-    # immediately after it fires, so it only ever acts on this exact call.
-    local out; out=$(mktemp)
-    trap 'rm -f "$out"; trap - RETURN' RETURN
-    if "$PRETTIER_BIN" --stdin-filepath "$rel" < "$src" > "$out" 2>/dev/null; then
-      cat "$out"
-    else
-      cat "$src"
-    fi
+# Writes to SELF_REL (this running script) atomically: write into a sibling
+# temp file, then `mv` it over the real path. `mv`/rename doesn't invalidate
+# an already-open file descriptor — the currently-executing bash process
+# keeps reading the OLD inode's bytes to completion via its own open fd, so
+# there is no mid-read corruption hazard, unlike overwriting the file's
+# content in place. Every other payload path just gets a plain `cp -p`.
+write_dest() {
+  local dest="$1" src="$2"
+  mkdir -p "$(dirname "$dest")"
+  if [ "$dest" = "./$SELF_REL" ]; then
+    local tmp="$dest.new.$$"
+    cp -p "$src" "$tmp"
+    mv "$tmp" "$dest"
   else
-    cat "$src"
+    cp -p "$src" "$dest"
   fi
 }
 
-LOCALLY_MODIFIED=()
-
-# During update, a file is only fast-forwarded if the working copy still
-# matches what was synced last time (content at OLD_SHA). If it diverged
-# (local customization not yet in .ctsignore), skip it and report it instead
-# of clobbering — the file may be headed for cts-contribute, not overwrite.
-is_locally_modified() {
-  local rel="$1"
-  [ "$CMD" = update ] || return 1
-  [ -n "${OLD_SHA:-}" ] || return 1
-  [ -e "./$rel" ] || return 1
-  git -C "$SRC_DIR" cat-file -e "$OLD_SHA:$rel" 2>/dev/null || return 1
-  local base_tmp; base_tmp=$(mktemp)
-  git -C "$SRC_DIR" show "$OLD_SHA:$rel" > "$base_tmp" 2>/dev/null
-  local differs=1
-  cmp -s <(norm_file "$rel" "$base_tmp") <(norm_file "$rel" "./$rel") && differs=0
-  rm -f "$base_tmp"
-  [ "$differs" = 1 ]
+# .cts/manifest.json: path -> sha256 of the content as last synced. This is
+# NOT a merge baseline — it is never diffed hunk-by-hunk or used to decide
+# what to write. It exists solely so the ownership-violation detector can
+# tell "consumer edited this CTS-owned file since we last wrote it" from
+# "upstream simply changed it," and so the override-rot detector can tell
+# which CTS files actually changed content this run. Loaded before the
+# self-update-first block below so the self-script can participate in the
+# same ownership-violation detection every other CTS-owned file gets,
+# instead of being a silent exception to it.
+OLD_MANIFEST="{}"
+[ -f "$MANIFEST_FILE" ] && OLD_MANIFEST=$(cat "$MANIFEST_FILE")
+manifest_old_hash() {
+  jq -r --arg p "$1" '.[$p] // empty' <<< "$OLD_MANIFEST"
 }
+declare -A MANIFEST_NEW
+sha_of() { sha256sum "$1" | awk '{print $1}'; }
 
-# True once a diverged file (see is_locally_modified) has also moved
-# upstream since OLD_SHA — the case that needs a 3-way merge rather than
-# a plain skip-and-report.
-upstream_changed() {
-  local rel="$1"
-  local base_tmp; base_tmp=$(mktemp)
-  git -C "$SRC_DIR" show "$OLD_SHA:$rel" > "$base_tmp" 2>/dev/null
-  local differs=1
-  cmp -s <(norm_file "$rel" "$base_tmp") <(norm_file "$rel" "$SRC_DIR/$rel") && differs=0
-  rm -f "$base_tmp"
-  [ "$differs" = 1 ]
-}
-
-# Baseline-integrity audit (update only, runs before any file is mutated):
-# detect content that the recorded baseline (.cts-version) says this project
-# received, which upstream still ships, but which is absent from the working
-# copy — the signature of a "phantom baseline": a stamp advanced past content
-# that never actually landed (e.g. a mis-resolved conflict in an earlier
-# sync). A 3-way merge can never repair this — the gap is indistinguishable
-# from a deliberate local deletion, so merges silently preserve it forever —
-# which makes loud detection here the only defense before the gap compounds.
-# Line-set comparison on normalized content: small counts are usually
-# deliberate rewording (a consumer replacing generic text with its own),
-# large counts are entire missing features; the count is reported so the
-# operator can judge, and deliberate divergence is silenced by .ctsignore,
-# not by lowering the threshold.
-BASELINE_AUDIT_MIN_LINES=3
-baseline_audit_one() {
-  local rel="$1"
-  git -C "$SRC_DIR" cat-file -e "$OLD_SHA:$rel" 2>/dev/null || return 0
-  [ -e "./$rel" ] || return 0
-  [ -e "$SRC_DIR/$rel" ] || return 0
-  local base_tmp base_n local_n up_n phantom=0
-  base_tmp=$(mktemp); base_n=$(mktemp); local_n=$(mktemp); up_n=$(mktemp)
-  git -C "$SRC_DIR" show "$OLD_SHA:$rel" > "$base_tmp" 2>/dev/null
-  norm_file "$rel" "$base_tmp" | grep -v '^[[:space:]]*$' | sort -u > "$base_n"
-  norm_file "$rel" "./$rel" | grep -v '^[[:space:]]*$' | sort -u > "$local_n"
-  if ! cmp -s "$base_n" "$local_n"; then
-    norm_file "$rel" "$SRC_DIR/$rel" | grep -v '^[[:space:]]*$' | sort -u > "$up_n"
-    phantom=$(comm -23 "$base_n" "$local_n" | comm -12 - "$up_n" | wc -l)
-  fi
-  rm -f "$base_tmp" "$base_n" "$local_n" "$up_n"
-  if [ "$phantom" -ge "$BASELINE_AUDIT_MIN_LINES" ]; then
-    BASELINE_WARNINGS+=("$rel|$phantom")
-  fi
-}
-
-baseline_audit() {
-  [ "$CMD" = update ] || return 0
-  [ -n "${OLD_SHA:-}" ] || return 0
-  git -C "$SRC_DIR" cat-file -e "$OLD_SHA" 2>/dev/null || return 0
-  local entry rel f
-  for entry in "${PAYLOAD[@]}"; do
-    entry="${entry%/}"
-    if [ -d "$SRC_DIR/$entry" ]; then
-      while IFS= read -r -d '' f; do
-        rel="${f#"$SRC_DIR"/}"
-        is_safe_rel "$rel" || continue
-        is_owner_only_skill "$rel" && continue
-        is_ignored "$rel" && continue
-        baseline_audit_one "$rel"
-      done < <(find "$SRC_DIR/$entry" -type f -print0)
-    else
-      is_ignored "$entry" && continue
-      baseline_audit_one "$entry"
-    fi
-  done
-}
-
-MERGED=()
-CONFLICTS=()
-COPIED=()
+OWNERSHIP_WARNINGS=()
 NEW_COLLISIONS=()
-APPENDED=()
-CROSSCHECK_WARNINGS=()
-BASELINE_WARNINGS=()
+COPIED=()
+CHANGED_PATHS=()
+IGNORED_CHANGED_UPSTREAM=()
 
-# Payload files that are additive lists (gitignore-style): a brand-new
-# payload path here gets its missing lines appended to the consumer's
-# existing file instead of being flagged as a collision, so a genuine
-# CTS-required line (e.g. the postgres-best-practices exclusion) still
-# reaches the consumer without destroying project-local entries (penny's
-# own /dist, /coverage, .nx/** ignores). Matched on basename, not full path.
-APPEND_MERGE_PATHS=(.prettierignore)
-is_append_merge_path() {
-  local rel="$1" base="${1##*/}" p
-  for p in "${APPEND_MERGE_PATHS[@]}"; do
-    [ "$base" = "$p" ] && return 0
-  done
-  return 1
-}
-
-# True when rel is new to cts-payload.txt this run (no OLD_SHA baseline —
-# is_locally_modified's git-cat-file-e check already returned false for the
-# same reason, which is why this only runs after that block) but the
-# consumer already has an unrelated local file at that path. Identical
-# content is a no-op, not a collision.
-is_new_payload_collision() {
-  local rel="$1"
-  [ "$CMD" = update ] || return 1
-  [ -n "${OLD_SHA:-}" ] || return 1
-  [ -e "./$rel" ] || return 1
-  git -C "$SRC_DIR" cat-file -e "$OLD_SHA:$rel" 2>/dev/null && return 1
-  cmp -s <(norm_file "$rel" "$SRC_DIR/$rel") <(norm_file "$rel" "./$rel") && return 1
-  return 0
-}
-
-# Appends only source lines not already present locally, verbatim (including
-# comments) — never reorders or deletes the consumer's own lines. Blank
-# lines are never appended on their own so re-runs don't pile up trailing
-# blanks; a source-side blank line separating sections is harmless to drop.
-append_missing_lines() {
-  local rel="$1" changed=0 line
-  # `>>` is a raw byte append — if the consumer's file doesn't already end in
-  # a newline, the first appended line would concatenate onto the file's
-  # last existing line instead of starting its own (real-world .prettierignore
-  # files commonly have no trailing newline). Force one before appending.
-  # `tail -c 1` on a newline-terminated file yields a newline, which command
-  # substitution strips to empty — non-empty here means the last byte was
-  # something else, i.e. no trailing newline.
-  if [ -s "./$rel" ] && [ -n "$(tail -c 1 "./$rel")" ]; then
-    printf '\n' >> "./$rel"
-  fi
-  while IFS= read -r line || [ -n "$line" ]; do
-    [ -z "$line" ] && continue
-    grep -qxF -e "$line" "./$rel" 2>/dev/null && continue
-    printf '%s\n' "$line" >> "./$rel"
-    changed=1
-  done < "$SRC_DIR/$rel"
-  [ "$changed" = 1 ] && APPENDED+=("$rel")
-}
-
-# Three-way merge a payload file both the project and upstream CTS have
-# changed since the last sync (base = OLD_SHA content). git merge-file does
-# the line-level work: non-overlapping hunks combine silently, overlapping
-# ones get standard conflict markers left in the file for the operator to
-# resolve by hand — `-p` keeps it from touching "./$rel" until we've seen
-# whether the merge was clean.
-# Cleanup uses an EXIT trap, not `trap ... RETURN` — RETURN is a single
-# global slot in bash, not scoped per call frame: unless the trap body
-# disarms itself (as norm_file's now does with `trap - RETURN`), it stays
-# armed after this function returns. It wouldn't misfire on an unrelated
-# function's return (functions don't inherit a leftover RETURN trap without
-# functrace), but it would re-arm on the next source-d script's return,
-# crashing under `set -u` once its own locals are out of scope.
-# This function's EXIT trap is always cleared with `trap - EXIT` before it
-# returns normally; it only ever fires for real if `git show`/`cp` fail and
-# `set -e` is unwinding the whole script anyway, which is exactly when the
-# leaked temp files need to be caught.
-# MERGE_BASE/MERGE_RESULT are deliberately globals, not `local` — when
-# errexit unwinds out of this function to run the EXIT trap, bash has
-# already torn down the function's local scope, so a trap referencing
-# locals dies with "unbound variable" under `set -u` at the worst possible
-# moment (mid-failure, right when cleanup is needed).
-merge_one() {
-  local rel="$1" clean=0 dest="./$1"
-  is_self_script "$rel" && dest="$SCRIPTS_STAGE/$rel"
-  MERGE_BASE=$(mktemp); MERGE_RESULT=$(mktemp)
-  MERGE_BASE_RAW=$(mktemp); MERGE_LOCAL_NORM=$(mktemp); MERGE_UPSTREAM_NORM=$(mktemp)
-  trap 'rm -f "$MERGE_BASE" "$MERGE_RESULT" "$MERGE_BASE_RAW" "$MERGE_LOCAL_NORM" "$MERGE_UPSTREAM_NORM"' EXIT
-  git -C "$SRC_DIR" show "$OLD_SHA:$rel" > "$MERGE_BASE_RAW"
-  norm_file "$rel" "$MERGE_BASE_RAW" > "$MERGE_BASE"
-  norm_file "$rel" "./$rel" > "$MERGE_LOCAL_NORM"
-  norm_file "$rel" "$SRC_DIR/$rel" > "$MERGE_UPSTREAM_NORM"
-  git merge-file -p "$MERGE_LOCAL_NORM" "$MERGE_BASE" "$MERGE_UPSTREAM_NORM" > "$MERGE_RESULT" 2>/dev/null && clean=1
-  # Cross-check: rerun the same 3-way merge on RAW blobs. Normalizing all
-  # three inputs is usually benign (formatting-only drift stops producing
-  # false conflicts), but when upstream's change to a region is itself
-  # formatting-only, normalization makes base == upstream there and a local
-  # deletion of that region silently wins instead of conflicting — exactly
-  # how a consumer with a phantom baseline (stamped SHA ahead of actually
-  # received content) loses whole features with no warning. The raw merge
-  # over-reports (it also conflicts on pure formatting), so a raw count
-  # exceeding the normalized count doesn't prove data loss — it proves the
-  # normalized merge decided something silently, which the operator must see.
-  local norm_conflicts raw_conflicts raw_result
-  norm_conflicts=$(grep -c '^<<<<<<<' "$MERGE_RESULT" 2>/dev/null || true)
-  raw_result=$(mktemp)
-  git merge-file -p "./$rel" "$MERGE_BASE_RAW" "$SRC_DIR/$rel" > "$raw_result" 2>/dev/null || true
-  raw_conflicts=$(grep -c '^<<<<<<<' "$raw_result" 2>/dev/null || true)
-  rm -f "$raw_result"
-  if [ "${raw_conflicts:-0}" -gt "${norm_conflicts:-0}" ]; then
-    CROSSCHECK_WARNINGS+=("$rel|$norm_conflicts|$raw_conflicts")
-  fi
-  if [ "$DRY_RUN" = 1 ]; then
-    if [ "$clean" = 1 ]; then echo "merge (dry-run): $rel"; else echo "conflict (dry-run): $rel"; fi
-  else
-    mkdir -p "$(dirname "$dest")"
-    cp "$MERGE_RESULT" "$dest"
-    if [ "$clean" = 1 ]; then
-      MERGED+=("$rel")
-      echo "merged: $rel"
+# Self-update-first (init AND update): if the source's copy of this very
+# engine script differs from the one running, replace it and re-exec
+# immediately — before touching anything else — so the rest of this run (and
+# every run after it) executes the current engine, not a stale one. No
+# self-update paradox: overwrite semantics make this trivial, unlike the old
+# 3-way-merge engine which needed a staging trick to avoid corrupting its own
+# mid-read.
+#
+# Covers init too (not just update): a consumer on the pre-two-layer engine
+# who already has .claude/scripts/cts-sync.sh on disk and follows the
+# "existing project" cts-setup path runs `init --force` directly — never
+# `update` — so gating this on CMD=update left that path running `init
+# --force` under the stale merge-based engine. Guarding on "does a local
+# self-script already exist" instead of on CMD covers both entry points; a
+# brand-new project has no local self-script yet (cts-setup curls one fresh
+# immediately before calling init, so it already matches upstream and this
+# block is a no-op).
+#
+# The self-script gets the same ownership-violation detection as every other
+# CTS-owned payload file (copy_one() skips it — see the `[ "$rel" = "$SELF_REL"
+# ] && return` guard below — precisely so this block can own that check
+# instead, since the self-update has to run before the manifest-driven
+# payload loop even starts): if the local copy differs from the last hash
+# THIS SCRIPT recorded for itself, that's a hand-edit, not just staleness
+# from a normal upstream release — warn loudly, exactly like OWNERSHIP
+# WARNING elsewhere, before overwriting anyway (updates never skip wholesale
+# applies here too).
+if [ -z "${CTS_SYNC_REEXEC:-}" ] && [ -f "$SRC_DIR/$SELF_REL" ] && [ -f "./$SELF_REL" ]; then
+  if ! cmp -s "$SRC_DIR/$SELF_REL" "./$SELF_REL"; then
+    self_old_hash=$(manifest_old_hash "$SELF_REL")
+    if [ -n "$self_old_hash" ]; then
+      self_cur_hash=$(sha_of "./$SELF_REL")
+      if [ "$self_cur_hash" != "$self_old_hash" ]; then
+        echo "OWNERSHIP WARNING: $SELF_REL was edited locally but is CTS-owned — overwritten with upstream's content. cts-sync.sh itself is not customizable via override files; contribute the change upstream instead via /cts-contribute."
+      fi
+    fi
+    if [ "$DRY_RUN" = 1 ]; then
+      echo "engine update available (dry-run, not applied): $SELF_REL"
     else
-      CONFLICTS+=("$rel")
-      echo "CONFLICT: $rel"
+      write_dest "./$SELF_REL" "$SRC_DIR/$SELF_REL"
+      chmod +x "./$SELF_REL"
+      echo "cts-sync engine updated; re-running with the new version..."
+      CTS_SYNC_REEXEC=1 exec bash "./$SELF_REL" "${ORIG_ARGS[@]}"
     fi
   fi
-  rm -f "$MERGE_BASE" "$MERGE_RESULT" "$MERGE_BASE_RAW" "$MERGE_LOCAL_NORM" "$MERGE_UPSTREAM_NORM"
-  trap - EXIT
-}
+fi
+# Record the self-script's current hash for next run's comparison above.
+# Only reached when this pass did NOT re-exec (init, --dry-run, or the file
+# already matched upstream) — a successful non-dry-run update always exits
+# via `exec` inside the block above, so this line runs in the process that
+# lands here with a self-script already at (or confirmed to already be at)
+# the current content, never mid-update.
+[ -f "./$SELF_REL" ] && MANIFEST_NEW["$SELF_REL"]=$(sha_of "./$SELF_REL")
 
 copy_one() {
   local rel="$1"
-  if ! is_safe_rel "$rel"; then
-    echo "refusing unsafe path from source: $rel" >&2
-    return
-  fi
+  is_safe_rel "$rel" || { echo "refusing unsafe path from source: $rel" >&2; return; }
+  # Bare `cond && action` (no if/fi) is only safe when it can never be the
+  # terminal statement of a function called as a bare (unguarded) statement:
+  # if cond is false, the whole list's exit status is 1, and — unlike a
+  # standalone `&&` list at top level, which bash exempts from `set -e` —
+  # that 1 becomes this function's own return status when nothing runs
+  # after it, which then DOES trip `set -e` at copy_one's own (bare) call
+  # site in sync_path(). Explicit `if`/`return 0` avoids depending on which
+  # branch happens to run last.
   if is_owner_only_skill "$rel"; then
-    if [ "$DRY_RUN" = 1 ]; then echo "skip (owner-only skill): $rel"; fi
-    return
+    [ "$DRY_RUN" = 1 ] && echo "skip (owner-only skill): $rel"
+    return 0
   fi
+  [ "$rel" = "$SELF_REL" ] && return # handled by the self-update-first step above
+
   if [ "$CMD" = update ] && is_ignored "$rel"; then
     if [ "$DRY_RUN" = 1 ]; then echo "skip (ignored): $rel"; fi
     return
   fi
-  if is_locally_modified "$rel"; then
-    if [ "$NO_MERGE" != 1 ] && upstream_changed "$rel"; then
-      merge_one "$rel"
-      return
+
+  local old_hash new_hash
+  old_hash=$(manifest_old_hash "$rel")
+
+  # Ownership-violation detection: the file existed under CTS ownership
+  # before (a hash was recorded for it) and its on-disk content no longer
+  # matches that hash — i.e. it was edited outside an override file.
+  # Reported loudly; the overwrite below still happens (updates never skip
+  # wholesale — an override file is the supported way to customize behavior
+  # without losing upstream updates).
+  if [ "$CMD" = update ] && [ -n "$old_hash" ] && [ -e "./$rel" ]; then
+    local cur_hash; cur_hash=$(sha_of "./$rel")
+    if [ "$cur_hash" != "$old_hash" ]; then
+      OWNERSHIP_WARNINGS+=("$rel")
     fi
-    LOCALLY_MODIFIED+=("$rel")
-    if [ "$DRY_RUN" = 1 ]; then echo "skip (locally modified): $rel"; fi
-    return
   fi
-  # Bug A guard: a path newly added to cts-payload.txt (no OLD_SHA baseline,
-  # so is_locally_modified above returned 1) can still collide with a local
-  # file the consumer already has for unrelated reasons — e.g. penny's own
-  # build-output .prettierignore entries when .prettierignore first became
-  # payload. init is intentionally out of scope: its greenfield guard already
-  # bails on a pre-existing .claude/CLAUDE.md/AGENTS.md and points existing
-  # projects at cts-setup, so this path never has to run there.
-  if is_new_payload_collision "$rel"; then
-    if is_append_merge_path "$rel"; then
-      if [ "$DRY_RUN" = 1 ]; then
-        echo "append (dry-run, new payload path already exists locally): $rel"
-        return
-      fi
-      append_missing_lines "$rel"
-      return
-    fi
+
+  # A brand-new payload path (no recorded hash yet) can still collide with a
+  # local file the consumer already has for unrelated reasons. Under single
+  # ownership CTS now owns this path, so it is still overwritten — but this
+  # is flagged loudly since it's likely not a coincidence.
+  if [ -z "$old_hash" ] && [ -e "./$rel" ] && ! cmp -s "$SRC_DIR/$rel" "./$rel"; then
     NEW_COLLISIONS+=("$rel")
-    if [ "$DRY_RUN" = 1 ]; then echo "skip (new-file collision): $rel"; fi
-    return
   fi
+
   if [ "$DRY_RUN" = 1 ]; then
-    echo "copy: $rel"
+    echo "sync: $rel"
     return
   fi
-  local dest="./$rel"
-  is_self_script "$rel" && dest="$SCRIPTS_STAGE/$rel"
-  mkdir -p "$(dirname "$dest")"
-  if [ -n "$PRETTIER_BIN" ] && is_prettier_ext "$rel"; then
-    norm_file "$rel" "$SRC_DIR/$rel" > "$dest"
-  else
-    cp -p "$SRC_DIR/$rel" "$dest"
-  fi
+
+  write_dest "./$rel" "$SRC_DIR/$rel"
+  new_hash=$(sha_of "./$rel")
+  MANIFEST_NEW["$rel"]="$new_hash"
   COPIED+=("$rel")
+  if [ -n "$old_hash" ] && [ "$old_hash" != "$new_hash" ]; then
+    CHANGED_PATHS+=("$rel")
+  fi
 }
 
-# Walk a payload entry (file or directory) and copy every file under it.
-# .claude/scripts/ is last in the payload; its writes land in SCRIPTS_STAGE
-# (see is_self_script/flush_self_scripts above) rather than the real path, so
-# the running script's own on-disk bytes never change mid-execution.
+write_manifest() {
+  mkdir -p "$(dirname "$MANIFEST_FILE")"
+  # `${#MANIFEST_NEW[@]}` on a never-populated associative array throws
+  # "unbound variable" under `set -u` on some bash versions (a known bash
+  # nounset quirk specific to empty associative arrays) — copying the keys
+  # into a plain indexed array first sidesteps it; indexed arrays don't hit
+  # the same bug.
+  local manifest_keys=("${!MANIFEST_NEW[@]}")
+  if [ "${#manifest_keys[@]}" -eq 0 ]; then
+    echo '{}' > "$MANIFEST_FILE"
+    return
+  fi
+  {
+    for rel in "${manifest_keys[@]}"; do
+      printf '%s\t%s\n' "$rel" "${MANIFEST_NEW[$rel]}"
+    done
+  } | jq -R -n 'reduce inputs as $line ({}; . + {($line | split("\t")[0]): ($line | split("\t")[1])})' > "$MANIFEST_FILE"
+}
+
 sync_path() {
   local entry="${1%/}"
   if [ -d "$SRC_DIR/$entry" ]; then
@@ -566,6 +379,98 @@ sync_path() {
   fi
 }
 
+# Deep-merges CTS's settings fragment into the consumer's own
+# .claude/settings.json. This is the one deliberate exception to plain
+# overwrite: settings.json is consumer-owned, but CTS still needs to push
+# new defaults (hooks, deny rules) into it over time. Consumer values win on
+# scalar conflicts ("local wins on conflict"); arrays (e.g.
+# permissions.deny/allow) are unioned so CTS-required entries (the
+# rules/cts/**, .cts/** ownership deny rules) are always present even if the
+# consumer's own array already exists.
+merge_settings() {
+  local fragment="./.cts/settings.cts.json" dest="./.claude/settings.json"
+  [ -f "$fragment" ] || return 0
+  if [ "$DRY_RUN" = 1 ]; then
+    echo "merge (dry-run): $dest <- $fragment"
+    return
+  fi
+  mkdir -p ./.claude
+  [ -f "$dest" ] || echo '{}' > "$dest"
+  local merged; merged=$(mktemp)
+  jq -s '
+    def deepmerge($a; $b):
+      if ($a|type) == "object" and ($b|type) == "object" then
+        reduce ((($a|keys_unsorted) + ($b|keys_unsorted)) | unique[]) as $k
+          ({}; .[$k] = (if ($a[$k] == null) then $b[$k]
+                        elif ($b[$k] == null) then $a[$k]
+                        else deepmerge($a[$k]; $b[$k]) end))
+      elif ($a|type) == "array" and ($b|type) == "array" then
+        ($a + $b) | unique
+      else
+        $b
+      end;
+    deepmerge(.[0]; .[1])
+  ' "$fragment" "$dest" > "$merged"
+  # Guard against a silent security-boundary bypass: `deepmerge`'s
+  # type-mismatch branch falls to "consumer value wins" for ANY shape
+  # conflict, not just genuine scalar overrides. If the consumer's existing
+  # settings.json has `permissions` as a non-object (e.g. malformed prior
+  # state), or `permissions.deny` as a non-array, the merge silently drops
+  # the entire CTS `permissions` subtree — including the ownership-enforcement
+  # deny entries — while this function still reports success. Verify the
+  # merged result actually contains every entry the fragment requires before
+  # writing it; hard-fail loudly rather than ship a config that looks merged
+  # but silently lost its deny rules.
+  local required_deny; required_deny=$(jq -c '.permissions.deny // []' "$fragment")
+  if ! jq -e --argjson req "$required_deny" \
+    '(.permissions.deny? // []) as $got | ($got | type) == "array" and (($req - $got) | length) == 0' \
+    "$merged" > /dev/null; then
+    echo "Error: settings merge would drop required CTS permissions.deny entries — refusing to write $dest." >&2
+    echo "       This usually means an existing 'permissions' or 'permissions.deny' key in $dest has an unexpected shape (not an object / not an array)." >&2
+    echo "       Fix that key's shape by hand, then re-run." >&2
+    rm -f "$merged"
+    exit 1
+  fi
+  mv "$merged" "$dest"
+  echo "merged CTS defaults into: $dest"
+}
+
+# Override-rot detector: an override file cites the CTS file/section it
+# displaces via a "## Overrides <path> ..." line (lex specialis — the
+# override is a narrow, cited replacement, not a whole-file fork). If the
+# cited path changed content this run (CHANGED_PATHS), the override may now
+# be stale — flag it for review. Grep-level, not merging: the override file
+# itself is never touched.
+OVERRIDE_DIRS=(rules/local .claude/agents-local)
+OVERRIDE_EXTRA_FILES=(AGENTS.local.md CLAUDE.local.md)
+ROT_WARNINGS=()
+detect_override_rot() {
+  [ "$CMD" = update ] || return 0
+  [ "${#CHANGED_PATHS[@]}" -gt 0 ] || return 0
+  local files=() f d cite target changed
+  for d in "${OVERRIDE_DIRS[@]}"; do
+    [ -d "./$d" ] || continue
+    while IFS= read -r -d '' f; do files+=("$f"); done < <(find "./$d" -type f -name '*.md' -print0)
+  done
+  for f in "${OVERRIDE_EXTRA_FILES[@]}"; do
+    if [ -f "./$f" ]; then
+      files+=("./$f")
+    fi
+  done
+  for f in "${files[@]}"; do
+    while IFS= read -r cite; do
+      target=$(printf '%s' "$cite" | sed -n 's/^## Overrides[[:space:]]\+\([^[:space:]]*\).*/\1/p')
+      [ -n "$target" ] || continue
+      for changed in "${CHANGED_PATHS[@]}"; do
+        if [ "$target" = "$changed" ]; then
+          ROT_WARNINGS+=("${f#./}|$target")
+        fi
+      done
+    done < <(grep '^## Overrides ' "$f" 2>/dev/null || true)
+  done
+  return 0
+}
+
 if [ "$CMD" = init ]; then
   if [ "$FORCE" != 1 ]; then
     for p in CLAUDE.md AGENTS.md .claude; do
@@ -574,52 +479,43 @@ if [ "$CMD" = init ]; then
   fi
   for entry in "${PAYLOAD[@]}"; do sync_path "$entry"; done
   if [ "$DRY_RUN" != 1 ]; then
+    merge_settings
     echo "$NEW_SHA" > "$VERSION_FILE"
-    write_source_file "${#COPIED[@]}" 0 0 0
+    write_source_file "${#COPIED[@]}" 0 0
+    write_manifest
     [ -f "$IGNORE_FILE" ] || cat > "$IGNORE_FILE" <<'EOF'
 # .ctsignore — gitignore-syntax paths that `cts-sync.sh update` will never touch.
-# Use for: customized CTS files, pruned CTS files (prevents re-adding them),
-# and project-only additions placed under payload directories.
+# Use for: pruned CTS files (prevents re-adding them) and project-only
+# additions placed under payload directories. Customizing a CTS-owned file
+# should almost always go through an override file instead (rules/local/**,
+# .claude/agents-local/<name>.md, AGENTS.local.md, CLAUDE.local.md) — those
+# are never synced by construction and don't need a .ctsignore entry.
 # A leading "/" anchors to the project root: "/AGENTS.md" protects only the
 # root file; a bare "AGENTS.md" would also match nested files with that name.
 EOF
   fi
   echo "Done. CTS payload installed at $NEW_SHA."
 else
-  OLD_SHA=$(cat "$VERSION_FILE" 2>/dev/null || echo "")
   NEEDS_ATTENTION=0
-  baseline_audit
+  OLD_SHA=$(cat "$VERSION_FILE" 2>/dev/null || echo "")
   for entry in "${PAYLOAD[@]}"; do sync_path "$entry"; done
-  for rel in "${LOCALLY_MODIFIED[@]}"; do
-    echo "locally modified, not overwritten — diff manually: $rel"
-    echo "  git -C $SRC_DIR diff $OLD_SHA..$NEW_SHA -- $rel"
+  detect_override_rot
+
+  for rel in "${OWNERSHIP_WARNINGS[@]}"; do
+    echo "OWNERSHIP WARNING: $rel was edited locally but is CTS-owned — overwritten with upstream's content. Move your changes into an override file (rules/local/**, .claude/agents-local/<name>.md, AGENTS.local.md, CLAUDE.local.md) or run /cts-contribute to send them upstream."
     NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
   done
-  for rel in "${CONFLICTS[@]}"; do
-    echo "unresolved conflict markers left in: $rel — resolve by hand, then stage it"
-  done
-  for w in "${CROSSCHECK_WARNINGS[@]}"; do
-    IFS='|' read -r rel nc rc <<< "$w"
-    echo "MERGE CROSS-CHECK: $rel — raw 3-way merge finds $rc conflict region(s) but the normalized merge surfaced only $nc; the difference was auto-resolved silently (usually toward your local side). Verify before trusting the merged file:"
-    echo "  git -C $SRC_DIR show $OLD_SHA:$rel > /tmp/cts-base && git merge-file -p ./$rel /tmp/cts-base $SRC_DIR/$rel | grep -n '^<<<<<<<'"
-    NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
-  done
-  for w in "${BASELINE_WARNINGS[@]}"; do
-    IFS='|' read -r rel n <<< "$w"
-    echo "BASELINE INTEGRITY: $rel — $n line(s) recorded at your baseline and still shipped upstream are missing locally. If this is not a deliberate customization, your .cts-version is ahead of the content you actually received (phantom baseline) — restore the missing content from upstream, or add the file to .ctsignore if the divergence is intentional. Review:"
-    echo "  git -C $SRC_DIR show $OLD_SHA:$rel | diff - ./$rel"
-    NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
-  done
-  for rel in "${APPENDED[@]}"; do
-    echo "appended CTS-required lines (kept your own): $rel"
-  done
-  # Not a LOCALLY_MODIFIED reuse: that bucket's diff-$OLD_SHA..$NEW_SHA hint
-  # is empty for a path absent at $OLD_SHA, which is always true here.
   for rel in "${NEW_COLLISIONS[@]}"; do
-    echo "new payload file already exists locally, not overwritten — reconcile manually: $rel"
-    echo "  diff <(git -C $SRC_DIR show $NEW_SHA:$rel) ./$rel"
+    echo "NEW PAYLOAD PATH COLLISION: $rel — CTS now owns this path; a pre-existing local file there was overwritten. If this content should stay yours, add the path to .ctsignore; if it should be upstream, run /cts-contribute."
     NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
   done
+  for w in "${ROT_WARNINGS[@]}"; do
+    IFS='|' read -r ov_file target <<< "$w"
+    echo "OVERRIDE ROT: $ov_file cites \"$target\", which changed content in this sync — review whether the override still applies."
+    NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
+  done
+
+  # Payload files/dirs that upstream removed entirely, still present locally.
   for entry in "${PAYLOAD[@]}"; do
     entry="${entry%/}"
     [ -d "$SRC_DIR/$entry" ] && [ -d "./$entry" ] || continue
@@ -630,13 +526,14 @@ else
       NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
     done < <(find "./$entry" -type f -print0)
   done
-  # Ignored files are never touched, but silence must not hide upstream drift:
-  # report any .ctsignore'd payload file that changed in CTS since the last sync.
+
+  # Ignored files are never touched, but silence must not hide upstream drift.
   if [ -n "$OLD_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ] && git -C "$SRC_DIR" cat-file -e "$OLD_SHA" 2>/dev/null; then
     while IFS= read -r f; do
       if is_ignored "$f"; then
         echo "ignored, but changed upstream — review manually: $f"
-        echo "  git -C $SRC_DIR diff $OLD_SHA..$NEW_SHA -- $f"
+        echo "  git -C \"$SRC_DIR\" diff $OLD_SHA..$NEW_SHA -- \"$f\""
+        IGNORED_CHANGED_UPSTREAM+=("$f")
         NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
       fi
     done < <(git -C "$SRC_DIR" diff --name-only "$OLD_SHA" "$NEW_SHA")
@@ -645,14 +542,12 @@ else
       git -C "$SRC_DIR" log --oneline "$OLD_SHA..$NEW_SHA"
     fi
   fi
+
   if [ "$DRY_RUN" != 1 ]; then
+    merge_settings
     echo "$NEW_SHA" > "$VERSION_FILE"
-    write_source_file "${#COPIED[@]}" "${#MERGED[@]}" "${#CONFLICTS[@]}" "$NEEDS_ATTENTION"
+    write_source_file "${#COPIED[@]}" "${#OWNERSHIP_WARNINGS[@]}" "${#ROT_WARNINGS[@]}"
+    write_manifest
   fi
   echo "Done. Review with: git diff"
 fi
-
-# Must be the literal last statement — see the comment on SCRIPTS_STAGE above.
-# Everything above this line has already executed and produced its output;
-# nothing reads further into this script's own source after this call.
-flush_self_scripts

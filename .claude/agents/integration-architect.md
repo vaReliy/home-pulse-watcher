@@ -27,8 +27,8 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 Before writing or modifying any code, additionally read:
 
-- `rules/architecture.md`
-- `rules/code-style.md`
+- `rules/cts/architecture.md`
+- `rules/cts/code-style.md`
 
 ## Scope Boundary
 
@@ -47,7 +47,7 @@ Before writing or modifying any code, additionally read:
 | `typescript-pro`    | Strict TypeScript in integration code          |
 | `security-reviewer` | OAuth security, webhook signature verification |
 
-> See `rules/mcp-stack.md` for MCP tool reference.
+> See `rules/cts/mcp-stack.md` for MCP tool reference.
 
 ## Common Integration Patterns
 
@@ -78,7 +78,7 @@ Webhook handlers must be idempotent — safe to call multiple times with the sam
 
 Webhook routes skip session/CSRF middleware — use raw body parser for signature verification.
 
-> See `rules/docker-commands.md` for all commands.
+> See `rules/cts/docker-commands.md` for all commands.
 
 ## Security-First Integration
 
@@ -87,7 +87,7 @@ Webhook routes skip session/CSRF middleware — use raw body parser for signatur
 - Sanitize and type all external data before passing to UseCases
 - Log without PII/credentials; HTTPS only; dispatch webhook processing to queue (respond 200 immediately)
 
-> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
+> Conventions: see @rules/cts/code-style.md, @rules/cts/docker-commands.md, @rules/cts/git-operations.md.
 
 ## Report Format (mandatory)
 
@@ -98,3 +98,7 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
 - If you discovered something durable and non-obvious (config recipe, wrong-pattern gotcha, test anti-pattern, library constraint), add a `## Learnings` section at the end of your report — the orchestrator records it in `docs/KNOWLEDGE_INBOX.md`.
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.
+
+## Local Override
+
+If `.claude/agents-local/integration-architect.md` exists, Read it first; its instructions override conflicting ones above.

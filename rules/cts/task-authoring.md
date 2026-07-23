@@ -45,7 +45,7 @@ These sort before `…-N.md` because `-` (0x2D) < `.` (0x2E) in ASCII/C collatio
 | On completion  | Suggest a commit message. **Do NOT commit. Do NOT move this file.** |
 ```
 
-**Planning tier:** Levels T0–T3 per the tiered planning ladder in `rules/workflow.md`. Example: **T2** (executable rules = seam by own triage rule).
+**Planning tier:** Levels T0–T3 per the tiered planning ladder in `rules/cts/workflow.md`. Example: **T2** (executable rules = seam by own triage rule).
 
 **Planning row — role states:** Each role is `done` if the source session produced that artifact (ba = acceptance criteria + scope + API contract; devil = challenged assumptions on record; ddd-architect = placement/boundary decision), `required` if the dispatcher marked it mandatory for this tier, or `skipped` if intentionally omitted per the tiered ladder (e.g., T1 tasks skip ba entirely). Example: `ba: skipped (T1 — orchestrator wrote AC), devil: done (grill 2026-07-07) · ddd-architect: required`.
 
@@ -109,7 +109,7 @@ One task = one clean session. Split when the task would touch **>3 files**, cros
 
 ### Blast-radius map (seam-touching tasks)
 
-When the foresight gate fires (see rules/workflow.md), the task body must include a `## Blast radius` section listing all files/layers that consume the changed contract and all foreseeable follow-on tasks. This section is the explicit evidence that the task was scoped correctly up front.
+When the foresight gate fires (see rules/cts/workflow.md), the task body must include a `## Blast radius` section listing all files/layers that consume the changed contract and all foreseeable follow-on tasks. This section is the explicit evidence that the task was scoped correctly up front.
 
 ### Premise Verification for "Fix This" Tasks
 

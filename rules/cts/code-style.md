@@ -37,13 +37,62 @@ Specific order for class elements:
 3. Internal modules (absolute paths via tsconfig paths, e.g. `@/services/`)
 4. Relative imports (`./`, `../`)
 
+## Object Destructuring
+
+When forwarding two or more fields from the same source object into a function call or object literal with no transformation, destructure first to eliminate repeated `source.fieldName` references:
+
+```typescript
+// Prefer
+const { firstName, lastName, username, photoUrl } = params;
+await repo.updateProfile(id, { firstName, lastName, username, photoUrl });
+
+// Avoid
+await repo.updateProfile(id, {
+  firstName: params.firstName,
+  lastName: params.lastName,
+  username: params.username,
+  photoUrl: params.photoUrl,
+});
+```
+
+Exception: single-field access, or when the destination name differs from the source (rename inline instead — destructuring a single renamed field adds no clarity).
+
+## Comments
+
+Comments are the exception, not the default. Well-named code is the primary documentation (Clean Code principle). Write a comment only when the WHY cannot be expressed through renaming or restructuring.
+
+### Acceptable comments
+
+- **Hidden constraint / invariant / algorithm rationale**: a timing requirement, library bug workaround, security invariant, or algorithm choice that would surprise a reader — "why this and not the simpler thing." General algorithm tutorials belong as a link (RFC, spec URL), not inline.
+- **`// TODO: <self-contained description>`** — deferred work; remove when done.
+- **`// FIXME: <self-contained description>`** — known issue; remove when fixed.
+- **Symbol cross-reference**: `// see SomeClass for detail` — class/function name alone, no task reference.
+- Legal/license headers.
+
+### Never write
+
+- Comments that restate what the code does (`// iterate over users`).
+- Task IDs, decision IDs, or task file references in any form: `D9`, `D10`, `task 11`, `task 12`, `added for task X`, `per decision D14`.
+- Caller/usage annotations: `// used by AuthController`, `// called from login flow`.
+- Closing-brace labels: `// end if`, `// end for`.
+- Anything that requires the task backlog to make sense.
+
+### TODO / FIXME hygiene
+
+Describe the work, not the task number. After completing deferred work, delete the `TODO`/`FIXME` comment — stale markers are noise.
+
+| ✓ Acceptable                                        | ✗ Never                                 |
+| --------------------------------------------------- | --------------------------------------- |
+| `// TODO: add rate limiting once Redis is wired up` | `// TODO: see task 14`                  |
+| `// see PaymentGatewayService for the retry detail` | `// see PaymentGatewayService, task 11` |
+
 ## Code Quality Tools
 
-| Tool                        | Purpose                          | Config                                |
-| --------------------------- | -------------------------------- | ------------------------------------- |
-| ESLint + @typescript-eslint | Linting and code quality         | `.eslintrc` with strict ruleset       |
-| Prettier                    | Code formatting                  | `.prettierrc`                         |
-| tsc                         | Type checking (replaces PHPStan) | `tsconfig.json` with `"strict": true` |
+| Tool                        | Purpose                  | Config                                |
+| --------------------------- | ------------------------ | ------------------------------------- |
+| ESLint + @typescript-eslint | Linting and code quality | `.eslintrc` with strict ruleset       |
+| Prettier                    | Code formatting          | `.prettierrc`                         |
+| tsc                         | Type checking            | `tsconfig.json` with `"strict": true` |
 
 ## Shell Script Conventions
 
@@ -70,17 +119,6 @@ fi
 ```
 
 The mismatch arises when a script has a jq branch and a grep/sed fallback branch chosen by `command -v jq`; never assume the two branches handle malformed input identically. Normalize once, branch-independently, after both branches execute — that single empty-check ensures consistent behavior regardless of which path was taken.
-
-## Do Not Drop `!= null` Guards Before Relational Comparisons
-
-`strictNullChecks` rejects relational operators (`>`, `<`, `>=`, `<=`) applied directly to an operand typed `T | null` or `T | undefined` — TS raises `TS2531`/`TS2532` even though the JS runtime semantics of `null > 0` (`false`) would otherwise make the guard look redundant. This applies **regardless of whether the narrowed value is reused afterward** — it's a type error on the comparison expression itself, not just a missed-narrowing issue further downstream.
-
-```typescript
-// value: number | null
-if (value != null && value > 0) { ... }   // required — value > 0 alone is a TS2531 compile error
-```
-
-Keep the explicit `!= null`/`!== null` guard any time the operand's type includes `null`/`undefined`. This pattern is not eligible for simplification in strict TS — don't attempt it even for boolean-only return values.
 
 ## Error Handling
 

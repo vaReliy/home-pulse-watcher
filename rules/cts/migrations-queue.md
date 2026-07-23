@@ -63,7 +63,9 @@ export const postAnalyticsWorker = new Worker<ProcessPostAnalyticsData>(
 );
 
 // dispatch (from a Service or UseCase — never from a route handler)
-const postAnalyticsQueue = new Queue('post-analytics', { connection: redisConnection });
+const postAnalyticsQueue = new Queue('post-analytics', {
+  connection: redisConnection,
+});
 await postAnalyticsQueue.add('process', { postId: post.id });
 await postAnalyticsQueue.add('process', { postId: post.id }, { delay: 5 * 60 * 1000 });
 ```

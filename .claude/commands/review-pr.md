@@ -71,11 +71,11 @@ The agent prompt MUST include these rules:
 - Write all comments in English, in natural human engineer tone
 - For each finding, return: file path, line number (from the diff), severity (critical/important/suggestion), and the comment text
 - Use skills: `code-reviewer`, `security-audit`, `typescript-architecture`, `verification-before-completion`
-- Read relevant project docs when applicable: `CLAUDE.md`, `rules/architecture.md`, `rules/code-style.md`, `rules/testing.md`, `rules/git-operations.md`
+- Read relevant project docs when applicable: `CLAUDE.md`, `CLAUDE.local.md`, `rules/cts/architecture.md`, `rules/cts/code-style.md`, `rules/local/code-style.md`, `rules/cts/testing.md`, `rules/local/testing.md`, `rules/cts/git-operations.md`
 - Read the actual changed files from the local codebase (not just the diff) for full context
 - Return findings as a structured list with: file, line, severity, comment
 
-**Project-specific patterns to check:** see @rules/code-style.md, @rules/architecture.md, @rules/testing.md, @rules/validation-authorization.md
+**Project-specific patterns to check:** see @rules/cts/code-style.md, @rules/local/code-style.md, @rules/cts/architecture.md, @rules/cts/testing.md, @rules/local/testing.md, @rules/cts/validation-authorization.md, @rules/local/validation-authorization.md
 
 ## Step 4: Post inline review comments
 

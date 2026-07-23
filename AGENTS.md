@@ -1,6 +1,6 @@
 ## Stack
 
-Node.js 22+ · TypeScript 5 strict · NestJS 11 · Nx 22 · Prisma 7 + PostgreSQL · Redis/BullMQ · Jest/Vitest · Docker · ESP32 firmware (PlatformIO)
+Node.js 22+ · TypeScript 5 (strict) · Vue 3 / React 18+ / Angular 17+ · Prisma (primary) / TypeORM / Drizzle · PostgreSQL 17 · Redis · BullMQ · Vitest · Playwright · Docker
 
 ## Git Safety
 
@@ -9,7 +9,7 @@ Node.js 22+ · TypeScript 5 strict · NestJS 11 · Nx 22 · Prisma 7 + PostgreSQ
 - Never force-push or run destructive git commands without explicit approval.
 - Never mention AI tools in PR title/body. Show `git diff`/`git status` before committing.
 
-PR description rules: `rules/git-operations.md`.
+PR description rules: `rules/cts/git-operations.md`.
 
 ## Code Style Essentials
 
@@ -19,9 +19,14 @@ PR description rules: `rules/git-operations.md`.
 - Files kebab-case; classes/types/interfaces PascalCase; `I`-prefix for repo/service abstractions.
 - Constants SCREAMING_SNAKE_CASE; enums as `as const` objects.
 - No magic numbers — named constants with JSDoc.
-- LIVR validation rules camelCase (`macAddress`, `telegramId`).
+- Comments are the exception: write one only when the WHY is non-obvious and cannot be expressed through renaming. Never reference task IDs, decision IDs, or task file paths in comments (`D9`, `task 11`, etc.) — these go stale. Use `// TODO:` / `// FIXME:` for deferred work with a self-contained description; remove them once the work is done.
+- **Exact-pin all `package.json` deps** — no `^` or `~` ranges, ever (dependencies, devDependencies, peerDependencies). Audit after every `pnpm add` / generator run. Full procedure: `rules/cts/dependencies.md`.
 
-Details: `rules/code-style.md`.
+Details: `rules/cts/code-style.md`.
+
+## Verification Commands
+
+**If your workspace uses Nx, read `rules/cts/workflow.md` § "Command Execution Policy (Nx Targets)" before running any build, test, lint, or type-check command.** That section is the single source of truth for the ✅/❌ command table, useful flags, and project names. Never use raw tool invocations (`tsc`, `eslint`, `vitest`, `webpack`, `playwright`) when an `nx` target exists — always prefer the `nx` target. Non-Nx workspaces: use the project's own scripts (`package.json` `scripts`), not ad-hoc tool invocations.
 
 ## Model Tiers
 
@@ -39,18 +44,29 @@ Other vendors (Gemini, Codex, Copilot): mappings added when those tools are actu
 
 Read when relevant (never preloaded):
 
-- `rules/workflow.md` — before creating teams / running pipelines
-- `rules/architecture.md` — layer placement questions
-- `rules/testing.md` — writing/structuring tests
-- `rules/validation-authorization.md` — input validation, guards
-- `rules/migrations-queue.md` — Prisma migrations, BullMQ jobs
-- `rules/docker-commands.md` — running anything in containers
-- `rules/mcp-stack.md` — MCP tool selection
-- `rules/git-operations.md` — PR description rules
-- `rules/shell-scripting.md` — bash gotchas with traps, symlinks, prettier defaults
-- `rules/task-authoring.md` — emitting backlog task files from plan/grill/grooming sessions
-- `rules/nx-generators.md` — after running ANY `nx g …` generator (apps, libs, configs) — Nx workspaces only
-- `rules/dependencies.md` — adding/updating/removing npm deps; auditing generator-injected ranges
-- `docs/KNOWLEDGE_INBOX.md` — append-only inbox for durable-but-unplaced learnings; any AI tool working in the repo may append entries in the 3-line format from `rules/workflow.md`'s Knowledge Inbox section, which also defines the distillation policy
-- `PROJECT_CONTEXT.md` — domain rules, architecture, incident history
-- `README.md` — setup, CLI commands, deployment
+- `rules/cts/workflow.md` — before creating teams / running pipelines
+- `rules/cts/architecture.md` — layer placement questions
+- `rules/cts/testing.md` — writing/structuring tests
+- `rules/cts/validation-authorization.md` — input validation, guards
+- `rules/cts/migrations-queue.md` — ORM migrations, BullMQ jobs
+- `rules/cts/docker-commands.md` — running anything in containers
+- `rules/cts/mcp-stack.md` — MCP tool selection
+- `rules/cts/git-operations.md` — PR description rules
+- `rules/cts/shell-scripting.md` — bash gotchas with traps, symlinks, prettier defaults
+- `rules/cts/task-authoring.md` — emitting backlog task files from plan/grill/grooming sessions
+- `rules/cts/nx-generators.md` — after running ANY `nx g …` generator (apps, libs, configs) — Nx workspaces only
+- `rules/cts/dependencies.md` — adding/updating/removing npm deps; auditing generator-injected ranges
+- `rules/cts/docs-style.md` — writing/editing any `.md` file (no manual prose wrapping; Prettier handles it)
+- `rules/local/**` — consumer-owned rule overrides and project-specific split files (e.g. `rules/local/architecture-backend.md`); never synced by `cts-sync.sh`. Local wins on conflict with any `rules/cts/**` file it cites.
+- `README.md` — setup, install profile, common commands
+- `docs/KNOWLEDGE_INBOX.md` — append-only inbox for durable-but-unplaced learnings; any AI tool working in the repo may append entries in the 3-line format from `rules/cts/workflow.md`'s Knowledge Inbox section, which also defines the distillation policy
+
+## Setup
+
+See `README.md` for system requirements, installation, the install profile (pruning agents/skills you don't need), and common commands.
+
+## Local Overrides
+
+@AGENTS.local.md
+
+If `AGENTS.local.md` exists (consumer-owned, never synced), its instructions override any conflicting instruction elsewhere in this file.

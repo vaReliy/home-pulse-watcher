@@ -1,0 +1,30 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "enabledPlugins": {},
+  "enabledMcpjsonServers": ["context7", "figma", "github"],
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Edit(./rules/cts/**)",
+      "Write(./rules/cts/**)",
+      "Edit(./.cts/**)",
+      "Write(./.cts/**)"
+    ]
+  },
+  "model": "opusplan",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/knowledge-capture-nudge.sh",
+            "statusMessage": "Checking knowledge-capture obligations..."
+          }
+        ]
+      }
+    ]
+  }
+}

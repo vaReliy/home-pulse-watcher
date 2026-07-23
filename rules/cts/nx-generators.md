@@ -4,7 +4,7 @@ Read this AFTER running any `nx g …` generator (apps, libs, configs) and BEFOR
 
 ## 1. Audit injected dependencies
 
-Generators write caret ranges (`^`) into `package.json` (webpack, webpack-cli, axios, …). Run the audit + exact-pin procedure in `rules/dependencies.md` before handoff. Short form: `grep -E '"\^|"~' package.json` must return empty.
+Generators write caret ranges (`^`) into `package.json` (webpack, webpack-cli, axios, …). Run the audit + exact-pin procedure in `rules/cts/dependencies.md` before handoff. Short form: `grep -E '"\^|"~' package.json` must return empty.
 
 ## 2. Fix the generated tsconfig
 
@@ -65,7 +65,7 @@ A new process entrypoint (`main.ts`, CLI, queue worker) must call `registerLivrR
 
 **Omitting it passes build and tsc but throws at the first validation call at runtime.**
 
-See `rules/validation-authorization.md` → _LIVR bootstrap_ section for the call site.
+See `rules/cts/validation-authorization.md` → _LIVR bootstrap_ section for the call site.
 
 ## 5. Audit companion projects
 
@@ -78,7 +78,7 @@ Generators scaffold sibling projects (e.g. `apps/<name>-e2e`). Audit them too:
 
 ### Skipping the generator: silently dropped out of `lint` forever
 
-A hand-scaffolded lib missing `eslint.config.mjs` gets no inferred `lint` target from `@nx/eslint/plugin` (which infers the target from that file's presence) — `nx show projects --with-target lint` silently excludes it, and `nx affected -t lint` never touches it, with no error or warning. Periodic audit: compare `nx show projects` against `nx show projects --with-target lint` (see `rules/workflow.md`'s Command Execution Policy section). If a hand-scaffolded lib is found missing config files, diff its file listing against a known-generated sibling to find the gaps.
+A hand-scaffolded lib missing `eslint.config.mjs` gets no inferred `lint` target from `@nx/eslint/plugin` (which infers the target from that file's presence) — `nx show projects --with-target lint` silently excludes it, and `nx affected -t lint` never touches it, with no error or warning. Periodic audit: compare `nx show projects` against `nx show projects --with-target lint` (see `rules/cts/workflow.md`'s Command Execution Policy section). If a hand-scaffolded lib is found missing config files, diff its file listing against a known-generated sibling to find the gaps.
 
 ### `@nx/vitest`-based projects need a manually-added `typecheck` target
 
@@ -95,4 +95,4 @@ Any per-project Nx option must validate against `project-schema.json` — if it 
 
 ## 7. A green build does not close the task
 
-`nx build` exiting 0 proves compilation, not correctness. The quality gate (`tester` + `reviewer`, see `rules/workflow.md`) still runs. Advance to Phase 4 — do not declare the task done.
+`nx build` exiting 0 proves compilation, not correctness. The quality gate (`tester` + `reviewer`, see `rules/cts/workflow.md`) still runs. Advance to Phase 4 — do not declare the task done.

@@ -78,3 +78,7 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Lead with verdict/result; details after.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.
+
+## Local Override
+
+If `.claude/agents-local/devil.md` exists, Read it first; its instructions override conflicting ones above.

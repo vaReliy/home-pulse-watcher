@@ -57,7 +57,7 @@ If this skill was invoked by a human and stale entries exist, interactively prom
 
 **Option 1: Promote to a concrete target**
 
-- User supplies the real `Belongs in: <exact-file>` value (e.g., `Belongs in: rules/code-style.md`).
+- User supplies the real `Belongs in: <exact-file>` value (e.g., `Belongs in: rules/cts/code-style.md`).
 - Re-classify the entry internally as Category B.
 - Let it flow through the existing Step 2/3/4 distillation pipeline in the same run (the entry will be inlined into the target file and deleted from inbox).
 
@@ -84,27 +84,27 @@ Use this routing map to match "Belongs in:" labels to the split rules structure:
 
 | Label matches                       | Target file                                                              |
 | ----------------------------------- | ------------------------------------------------------------------------ |
-| `rules/architecture.md`             | `rules/architecture.md` — onion/DDD/boundary core                        |
-| `rules/architecture-angular.md`     | `rules/architecture-angular.md` — InjectionToken, FE boundaries          |
-| `rules/architecture-backend.md`     | `rules/architecture-backend.md` — NestJS DI, MongoDB, auth patterns      |
-| `rules/code-style.md`               | `rules/code-style.md` — shared TS conventions                            |
-| `rules/code-style-angular.md`       | `rules/code-style-angular.md` — signals, templates, SCSS                 |
-| `rules/code-style-backend.md`       | `rules/code-style-backend.md` — pino, LIVR, cookies, InfrastructureError |
-| `rules/testing.md`                  | `rules/testing.md` — Vitest patterns, integration test limits            |
-| `rules/validation-authorization.md` | `rules/validation-authorization.md` — LIVR rules, JWT claims             |
-| `rules/workflow.md`                 | `rules/workflow.md` — pipeline, quality gate, pre-flight                 |
+| `rules/cts/architecture.md`             | `rules/cts/architecture.md` — onion/DDD/boundary core                        |
+| `rules/local/architecture-angular.md`     | `rules/local/architecture-angular.md` — InjectionToken, FE boundaries (consumer-owned split; create if absent)          |
+| `rules/local/architecture-backend.md`     | `rules/local/architecture-backend.md` — NestJS DI, MongoDB, auth patterns (consumer-owned split; create if absent)      |
+| `rules/cts/code-style.md`               | `rules/cts/code-style.md` — shared TS conventions                            |
+| `rules/local/code-style-angular.md`       | `rules/local/code-style-angular.md` — signals, templates, SCSS (consumer-owned split; create if absent)                 |
+| `rules/local/code-style-backend.md`       | `rules/local/code-style-backend.md` — pino, LIVR, cookies, InfrastructureError (consumer-owned split; create if absent) |
+| `rules/cts/testing.md`                  | `rules/cts/testing.md` — Vitest patterns, integration test limits            |
+| `rules/cts/validation-authorization.md` | `rules/cts/validation-authorization.md` — LIVR rules, JWT claims             |
+| `rules/cts/workflow.md`                 | `rules/cts/workflow.md` — pipeline, quality gate, pre-flight                 |
 | `PROJECT_CONTEXT`                   | `docs/PROJECT_CONTEXT.md` — domain patterns, infra plumbing              |
 
-If a label says `rules/architecture.md` but the content is clearly NestJS-specific, route to `rules/architecture-backend.md` and note the reroute in the report.
+If a label says `rules/cts/architecture.md` but the content is clearly NestJS-specific, route to `rules/local/architecture-backend.md` and note the reroute in the report. `rules/local/**` targets are consumer-owned and never synced by `cts-sync.sh` — a Step 3 ledger entry is still required if the entry's content ships as part of the consumer's own customization, but there is no upstream CTS obligation for these paths (only `rules/cts/**` targets need a `/cts-contribute` round trip to reach other consumers).
 
 ## Step 3 — Check CTS-managed ledger obligation
 
-For each Category B target file about to be edited, check whether it is a template-inherited file: under `rules/**`, `.claude/agents/**`, `.claude/skills/**`, or is `CLAUDE.md` or `AGENTS.md`. If the target is template-inherited, the docs-writer dispatch in Step 4 MUST also append a ledger entry in the same pass — distilling content into a template-inherited file without ledgering it makes the change invisible to `/cts-contribute`. Which ledger depends on which kind of repo this is (same detection as Step 1.5 Option 2):
+For each Category B target file about to be edited, check whether it is a template-inherited file: under `rules/cts/**`, `.claude/agents/**`, `.claude/skills/**`, or is `CLAUDE.md` or `AGENTS.md`. If the target is template-inherited, the docs-writer dispatch in Step 4 MUST also append a ledger entry in the same pass — distilling content into a template-inherited file without ledgering it makes the change invisible to `/cts-contribute`. Which ledger depends on which kind of repo this is (same detection as Step 1.5 Option 2):
 
 - **Consumer project** (has `.cts-version` file at repo root): append to `docs/CLAUDE_TS_CHANGELOG.md` (format per that file's own header).
 - **Claude-ts template repo itself** (detect via: `cts-payload.txt` present at repo root AND `.cts-version` does NOT exist): there is no upstream past this repo — append to this repo's own root `CHANGELOG.md` instead (not `docs/CLAUDE_TS_CHANGELOG.md`, as that file is consumer-only).
 
-Files outside these paths (project-local docs, infrastructure) need no ledger entry.
+`rules/local/**` targets are consumer-owned and never synced upstream — no ledger entry needed for those, even in a consumer project. Files outside these paths (project-local docs, infrastructure) need no ledger entry either.
 
 ## Step 4 — Dispatch docs-writer
 
@@ -122,11 +122,11 @@ Category A (delete only):
 <list each entry heading>
 
 Category B (distill then delete):
-TARGET: rules/code-style-angular.md
+TARGET: rules/local/code-style-angular.md
   - [entry heading + full body]
   ...
 
-TARGET: rules/architecture-backend.md
+TARGET: rules/local/architecture-backend.md
   - [entry heading + full body]
   ...
 

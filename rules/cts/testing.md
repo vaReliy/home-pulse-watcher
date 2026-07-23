@@ -37,13 +37,27 @@ test/
 
 E2E tests live in `e2e/` and are owned by the `qa` agent.
 
-## Running Tests (all in Docker)
+## Running Tests
+
+Use nx targets — never invoke vitest/jest directly (see `rules/cts/workflow.md` → Command Execution Policy).
 
 ```bash
-docker compose exec app npx vitest run                    # all tests
-docker compose exec app npx vitest run --coverage         # with coverage
-docker compose exec app npx vitest run --reporter=verbose test/unit/create-post.spec.ts
-docker compose exec app npx stryker run                   # mutation testing
+nx test api                             # run unit + integration tests for the api project
+nx test api --skip-nx-cache             # bypass cache (use when verifying correctness)
+nx test <lib-name>                      # run tests for a specific lib
+nx run-many --target=test               # run tests for all projects
+```
+
+For a single file, pass the vitest `--testFile` option through nx:
+
+```bash
+nx test api -- --reporter=verbose --testFile=test/unit/create-post.spec.ts
+```
+
+Mutation testing (no nx plugin — run directly):
+
+```bash
+docker compose exec app npx stryker run
 ```
 
 ## Writing Tests
@@ -54,7 +68,10 @@ import { CreatePostUseCase } from '@/use-cases/create-post/create-post.usecase';
 
 describe('CreatePostUseCase', () => {
   let useCase: CreatePostUseCase;
-  let mockRepository: { save: ReturnType<typeof vi.fn>; existsBySlug: ReturnType<typeof vi.fn> };
+  let mockRepository: {
+    save: ReturnType<typeof vi.fn>;
+    existsBySlug: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     mockRepository = {
@@ -113,6 +130,28 @@ export TEST_DB_URI="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/test"
 
 This avoids the tool's `Read` restriction on `.env` files while keeping all secret values off the transcript. The pattern is particularly useful when building connection strings for local test runs.
 
+## Environment Variable Stubbing
+
+When testing production env readers (e.g., config functions that read `process.env`), use `vi.stubEnv()` for correct restoration behavior:
+
+**❌ DO NOT do this:**
+
+```typescript
+delete process.env.PORT; // vi.stubEnv does not track direct deletion
+// test code
+vi.unstubAllEnvs(); // PORT is already gone — not restored
+```
+
+**✅ DO this instead:**
+
+```typescript
+vi.stubEnv('PORT', ''); // Empty string simulates absence
+// In the env reader: portRaw ? parseInt(portRaw, 10) : DEFAULT_PORT
+vi.unstubAllEnvs(); // Correctly restored
+```
+
+Rationale: `vi.stubEnv` saves and restores env vars via `vi.unstubAllEnvs()`. Direct `delete process.env[KEY]` operates outside that tracking and leaves the var permanently deleted — breaking subsequent tests or production code that reads the same var. Treat empty string as "absent" in your env readers instead.
+
 ## Mutation Testing
 
 Minimum mutation score: **80%** for covered code.
@@ -122,6 +161,8 @@ docker compose exec app npx stryker run
 ```
 
 Fix surviving mutants by improving test assertions to test behavior, not implementation.
+
+> Stryker has no nx plugin in this repo — invoke it directly inside Docker only.
 
 ## NestJS-Specific Testing
 
@@ -142,10 +183,10 @@ Also: `mockLogger` must be declared as `let` at the `describe` scope (not `const
 ```typescript
 describe('MyExceptionFilter', () => {
   let filter: MyExceptionFilter;
-  let mockLogger: { warn: jest.Mock }; // ✓ describe scope
+  let mockLogger: ReturnType<typeof vi.fn>; // ✓ describe scope
 
   beforeEach(() => {
-    mockLogger = { warn: jest.fn() }; // Mocked pino logger
+    mockLogger = vi.fn(); // Mocked pino logger
     filter = new MyExceptionFilter(mockLogger);
   });
 
@@ -158,6 +199,25 @@ describe('MyExceptionFilter', () => {
   });
 });
 ```
+
+### E2E static server: `@nx/web:file-server` not raw `http-server`
+
+Raw `http-server` has no SPA fallback — `page.goto('/some-route')` in a Playwright spec gets a 404 for client-side routes. Use the project's existing Nx target instead.
+
+**Production-bundle testing in CI**: E2E tests must verify the production-built artifact, not the dev server. The dev server's transformations (bundler compilation, CSS injection) can hide production-only issues — e.g. a reverse-proxy string-match rewrite (like an nginx `sub_filter` CSP-nonce injection) can silently break when the production bundler minifies an HTML attribute the proxy's string match depends on. A `serve-static` target (`@nx/web:file-server` executor with `"spa": true`) configured to serve the built bundle with SPA fallback routing, depending on the app's `build` target so the artifact is always current, closes this gap. Use the dev server locally for faster iteration, but switch to the static-server target in CI:
+
+```typescript
+// playwright.config.mts
+export default defineConfig({
+  webServer: {
+    command: process.env['CI'] ? 'pnpm exec nx run web:serve-static' : 'pnpm exec nx run web:serve',
+    url: 'http://localhost:4200',
+    reuseExistingServer: !process.env['CI'],
+  },
+});
+```
+
+Set `CI: 'true'` in your CI workflow with a clear comment explaining that this switches to production-artifact testing. The `@nx/web:file-server` executor correctly falls back to `index.html` for unknown routes and needs no extra configuration beyond `"spa": true`.
 
 ### Never trust a comment/doc claim of test skip-behavior — grep the actual guard
 

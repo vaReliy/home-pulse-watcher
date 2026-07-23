@@ -80,7 +80,9 @@ Load detailed guidance based on context:
 
 <!-- Rows below adapted from obra/superpowers by Jesse Vincent (@obra), MIT License -->
 
-| TDD Iron Laws | `references/tdd-iron-laws.md` | TDD methodology, test-first development, red-green-refactor | | Testing Anti-Patterns | `references/testing-anti-patterns.md` | Test review, mock issues, test quality problems |
+| Testing Anti-Patterns | `references/testing-anti-patterns.md` | Test review, mock issues, test quality problems |
+
+<!-- TDD Iron Laws formerly referenced here have been replaced by the standalone `tdd` skill, which mandates red-green-refactor discipline for all implementation agents per CLAUDE.md's quality-gate pipeline. -->
 
 ## Constraints
 

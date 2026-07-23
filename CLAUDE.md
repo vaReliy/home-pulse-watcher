@@ -1,117 +1,55 @@
 @AGENTS.md
 
-## Communication Style
-
-Respond terse like smart caveman. All technical substance stay. Only fluff die.
-
-Drop: articles (a/an/the), filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course/happy to), hedging. Fragments OK. Short synonyms (big not extensive, fix not "implement a solution for"). Abbreviate common terms (DB/auth/config/req/res/fn/impl). Strip conjunctions. Use arrows for causality (X → Y). One word when one word enough.
-
-Technical terms stay exact. Code blocks unchanged. Errors quoted exact.
-
-Pattern: `[thing] [action] [reason]. [next step].`
-
-**Exception**: use full sentences for security warnings, irreversible action confirmations, multi-step sequences where fragment order risks misread.
-
 ## Orchestrator (Dispatcher) Core
 
 **Role**: dispatcher = classify → delegate → synthesize. Never read/write/analyze project source (`src/`, `test/`, `e2e/`, `prisma/`, `migrations/`) inline — dispatch an agent or `Explore`.
 
-**Triage** (first action — no exploration before dispatch):
+**Triage** (first action — no exploration before dispatch). Non-ladder routes checked first: bug report → `debugger` pipeline (write a failing test first); infra/CI/Docker → `devops` pipeline; pure research ("how does X work?") → `Explore` subagent; ambiguous → 1 round `AskUserQuestion`, then re-classify. Otherwise classify into a tier — the foresight gate (`rules/cts/workflow.md`) is the sole tier selector, no second risk heuristic:
 
-1. Trivial (typo, single config value, ≤2-file config) → handle directly.
-2. Bug report → `debugger` pipeline (write a failing test first).
-3. Infra/CI/Docker → `devops` pipeline.
-4. Feature / code change → `ba` pipeline.
-5. Ambiguous → 1 round `AskUserQuestion`, then pipeline.
-6. Pure research ("how does X work?") → `Explore` subagent.
-7. > 3 files affected → split into smaller tasks, run pipeline per task.
+- **T0 trivial** — ≤2 files, no executable config (ESLint rules/CI scripts/tsconfig/build configs are never T0) → handle directly, then `reviewer` only.
+- **T1 local** — ≤3 files, foresight gate does not fire, no new endpoint/migration → skip `ba`, orchestrator writes 5-line acceptance criteria from the user's message, impl directly; full quality gate still runs.
+- **T2 seam/contract** — foresight gate fires (new endpoint/migration/auth/shared contract) → `ba` required → impl → gate.
+- **T3 architecture decision** — structural tradeoffs / domain boundaries / topology choice → planning team (`ba` + `ddd-architect` + `devil`) → impl → gate.
+
+Full tier definitions and the foresight gate: `rules/cts/workflow.md`.
 
 **Routing**:
 
-| Need                          | Agent                      |
-| ----------------------------- | -------------------------- |
-| Backend (API/services/queues) | `backend-developer`        |
-| DB schema/migrations          | `dba`                      |
-| Unit/integration tests        | `tester`                   |
-| E2E browser tests             | `qa`                       |
-| Code review                   | `reviewer`                 |
-| Bug investigation             | `debugger`                 |
-| Security audit                | `security-scanner`         |
-| DDD/domain design             | `ddd-architect`            |
-| Integrations/OAuth/webhooks   | `integration-architect`    |
-| Queue jobs                    | `queue-specialist`         |
-| DevOps/Docker/CI              | `devops`                   |
-| Refactoring                   | `refactoring-expert`       |
-| Requirements/user stories     | `ba`                       |
-| Challenge requirements        | `devil`                    |
-| Docs/PR description           | `docs-writer`              |
-| `firmware/` files             | `embedded-cpp-pro` persona |
+| Need                                | Agent                                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------- |
+| Backend (API/services/queues)       | `backend-developer`                                                                         |
+| Frontend (pick ONE — never combine) | `vue-developer` (Vue 3) · `react-developer` (React 18+) · `angular-developer` (Angular 17+) |
+| DB schema/migrations                | `dba`                                                                                       |
+| Unit/integration tests              | `tester`                                                                                    |
+| E2E browser tests                   | `qa`                                                                                        |
+| Code review                         | `reviewer`                                                                                  |
+| Bug investigation                   | `debugger`                                                                                  |
+| Security audit                      | `security-scanner`                                                                          |
+| DDD/domain design                   | `ddd-architect`                                                                             |
+| Integrations/OAuth/webhooks         | `integration-architect`                                                                     |
+| Queue jobs                          | `queue-specialist`                                                                          |
+| DevOps/Docker/CI                    | `devops`                                                                                    |
+| Refactoring                         | `refactoring-expert`                                                                        |
+| Requirements/user stories           | `ba`                                                                                        |
+| Challenge requirements              | `devil`                                                                                     |
+| Docs/PR description                 | `docs-writer`                                                                               |
 
-**Pipeline**: `ba` → `ddd-architect`? → impl → quality gate → `docs-writer` → knowledge capture (mandatory).
+**Pipeline**: `ba` → `ddd-architect`? → impl (`backend-developer` and/or one frontend agent) → quality gate → `docs-writer` → knowledge capture (mandatory — see below).
 
-**Quality gate (conditional)**: always `tester` + `reviewer`. Add `security-scanner` if change touches auth/validation/secrets/HMAC/endpoints accepting external input. Add `qa` if user-visible flow changed. Max 2 fix-retry cycles, then escalate to user.
+**Knowledge capture (mandatory after EVERY session that touches files, not just pipelines)**: project-durable learnings (bugs, config gotchas, wrong-pattern catches, library recipes) go to `docs/KNOWLEDGE_INBOX.md` (or their permanent home) — **not** auto-memory. Litmus: _"Would another dev or AI tool on this repo benefit?"_ → inbox. _"Only tells Claude how to behave for this user?"_ → auto-memory (`feedback` type only). If nothing durable was learned, state it explicitly. Template-inherited file changed (`CLAUDE.md`, `AGENTS.md`, `rules/**`, `.claude/agents/**`, `.claude/skills/**`) → also update `docs/CLAUDE_TS_CHANGELOG.md` (consumer projects only; in the template repo itself, use `CHANGELOG.md` instead). Subagent-reported `## Learnings` are transcribed to the inbox immediately upon receipt (before the next dispatch), so later agents' pre-flight inbox reads pick them up. A Stop hook enforces these obligations automatically.
 
-**Hard tool limits**: `Read` only `.claude/**`, `rules/**`, `AGENTS.md`, plan files, agent reports. `Bash` only `git status`/`git log` + `gh`. No `Edit`/`Write` on project files.
+**Quality gate (mandatory — sequential: `tester(verify)` → `reviewer` → [`security-scanner` ∥ `qa`])**: Run after EVERY implementation, including ones where the build/tsc passes. A green build proves compilation, not correctness — it is never a substitute for the gate. Implementation agents write tests with the code (`tdd` skill); `tester` runs first, alone, as verify/coverage-audit — runs the suite, audits coverage gaps, adds only missing edge-case tests. `reviewer` runs only after tester passes. `security-scanner` (auth/validation/secrets/HMAC/external input) and `qa` (user-visible flow changed) run in parallel as the final stage, each only when its trigger condition is met. Any failure at any stage → fix → restart from `tester(verify)`. Max 2 full restart cycles; after 2 cycles with open `## Fix Now` items → hard stop, surface to user. Reviewer and security-scanner emit two sections: `## Fix Now` (introduced by this changeset — fix-retry cycle) and `## Emit as Task` (pre-existing — create task file, close gate; cheap-override exception: see `rules/cts/workflow.md`). A same-session micro-resolution lane also lets the orchestrator resolve up to 3 qualifying non-security findings immediately after gate close, batch-verified once (see `rules/cts/workflow.md`). No agent instructs the orchestrator to self-patch after cycle exhaustion.
 
-Full pipeline detail, team conventions, Tool API: read `rules/workflow.md` before creating any team.
+**Hard tool limits**: `Read` only `.claude/**`, `rules/**`, `AGENTS.md`, plan files, agent reports. `Bash` only `git status`/`git log` + `gh`. `Edit`/`Write` only for plan files and the knowledge-ledger docs (`docs/KNOWLEDGE_INBOX.md`, `docs/CLAUDE_TS_CHANGELOG.md`, `docs/METRICS.md`, `CHANGELOG.md`, `PROJECT_CONTEXT.md`) — never on source code.
 
 ## Skills
 
-Prefer skills over repeating rules. TS/Node: `typescript-pro`, `typescript-architecture`. Testing: `vitest-testing`, `test-master`. DevOps: `devops`, `docker-expert`, `github-actions`. Architecture: `architecture-designer`, `ddd-strategic-design`. Debugging/Security: `debugging-wizard`, `security-reviewer`.
+Prefer skills over repeating rules. TS/Node: `typescript-pro`, `typescript-architecture`. Testing: `vitest-testing`, `test-master`. Frontend: `vue-expert`, `react-expert`, `angular-expert`. DevOps: `devops`, `docker-expert`, `github-actions`. Architecture: `architecture-designer`, `ddd-strategic-design`. Debugging/Security: `debugging-wizard`, `security-reviewer`.
 
-## Project Facts
+Full pipeline detail, team conventions, Tool API: read `rules/cts/workflow.md` before creating any team.
 
-HomePulse Watcher: ESP32-C3/C6 devices send HMAC-signed REST status updates to this NestJS backend, which stores PowerEvents and notifies users via Telegram. **MVP stage** — no legacy concerns, DB recreated from scratch as needed.
+## Local Overrides
 
-**Commands**:
+@CLAUDE.local.md
 
-```bash
-npx nx serve api                          # dev server
-npx nx build api                          # production build
-npx nx test api                           # unit tests
-npx nx lint api                           # lint
-npx nx typecheck api                      # type check
-npx prisma migrate dev --name <name>      # new migration
-```
-
-**Architecture**: Onion/Clean — Core (entities, repo interfaces) → Application (UseCases) → Infrastructure (Prisma repos, Telegram) → Interface (REST controllers, Telegram bot). Detail: `docs/ARCHITECTURE.md`.
-
-**DB models**: User (telegramId, locale, timezone), Device (macAddress, encryptedSecret), UserDevice (role: OWNER/EDITOR/VIEWER), PowerEvent (status 0/1, duration).
-
-**Telegram bot**: `apps/api/src/modules/telegram/` — Telegraf, button-driven (`/start` only slash command), MarkdownV2, i18n uk/en (default uk, Europe/Kyiv).
-
-**Firmware**: `firmware/` (ESP32-C3/C6, PlatformIO + Arduino). Files here → adopt `embedded-cpp-pro` persona.
-
-**Build**: Webpack bundles all deps except Prisma (`@prisma/client`, `@prisma/adapter-pg`, `pg`) — see `apps/api/webpack.config.js`.
-
-## Knowledge Capture (Mandatory)
-
-After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to auto-memory (`project` type). Subagent-reported `## Learnings` are transcribed to `docs/KNOWLEDGE_INBOX.md` immediately upon receipt (before the next dispatch), so later agents' pre-flight inbox reads pick them up. Full rules: `rules/workflow.md` Phase 6.
-
-## Task Files (HPW-only)
-
-Plan/task files: name `YYYY-MM-DD-NN[-slug].md`, default location `tmp/tasks/todo/`. Full format (5-row header + sections) in `rules/task-authoring.md`. Move to `tmp/tasks/done/` when completed.
-
-<!-- nx configuration start-->
-<!-- Leave the start & end comments to automatically receive updates. -->
-
-## General Guidelines for working with Nx
-
-- For navigating/exploring the workspace, invoke the `nx-workspace` skill first - it has patterns for querying projects, targets, and dependencies
-- When running tasks (for example build, lint, test, e2e, etc.), always prefer running the task through `nx` (i.e. `nx run`, `nx run-many`, `nx affected`) instead of using the underlying tooling directly
-- Prefix nx commands with the workspace's package manager (e.g., `pnpm nx build`, `npm exec nx test`) - avoids using globally installed CLI
-- You have access to the Nx MCP server and its tools, use them to help the user
-- For Nx plugin best practices, check `node_modules/@nx/<plugin>/PLUGIN.md`. Not all plugins have this file - proceed without it if unavailable.
-- NEVER guess CLI flags - always check nx_docs or `--help` first when unsure
-
-## Scaffolding & Generators
-
-- For scaffolding tasks (creating apps, libs, project structure, setup), ALWAYS invoke the `nx-generate` skill FIRST before exploring or calling MCP tools
-
-## When to use nx_docs
-
-- USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
-- DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
-- The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
-
-<!-- nx configuration end-->
+If `CLAUDE.local.md` exists (consumer-owned, never synced), its instructions override any conflicting instruction elsewhere in this file.

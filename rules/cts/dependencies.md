@@ -42,7 +42,7 @@ When resolving a tag to a commit SHA for pinning, always dereference via `refs/t
 
 Declare every workspace-lib import as a real dependency in the importing project's `package.json` (`nx lint <project> --fix` writes these automatically) — never blanket `ignoredDependencies`, which mutes exactly the drift the rule exists to catch.
 
-**Verification is not a claim** — see `rules/workflow.md`'s quality-gate scratch-violation-proof rule: confirm a dependency-checks fix actually fires by removing an imported dep, running `nx lint <project>`, and watching it fail, before trusting "it will fire" from an agent's report.
+**Verification is not a claim** — see `rules/cts/workflow.md`'s quality-gate scratch-violation-proof rule: confirm a dependency-checks fix actually fires by removing an imported dep, running `nx lint <project>`, and watching it fail, before trusting "it will fire" from an agent's report.
 
 **Lockfile-diff false alarm**: a large lockfile diff after an install can be pure re-serialization by a newer package-manager version (e.g. inlining `resolution:` objects that an older format spread over multiple lines) rather than an actual dependency change. Verify by diffing the sorted package-key sets before suspecting dependency drift — if they're byte-identical, it's reserialization noise.
 

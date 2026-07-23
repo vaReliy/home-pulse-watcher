@@ -46,8 +46,8 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 Before writing or modifying any code, additionally read (QA runs E2E tests against the frontend):
 
-- `rules/code-style.md` (shared TypeScript)
-- If your project splits rules by platform (e.g. `rules/code-style-angular.md`, `rules/architecture-angular.md`), also read the ones matching your frontend framework.
+- `rules/cts/code-style.md` (shared TypeScript)
+- If your project splits rules by platform (e.g. `rules/local/code-style-angular.md`, `rules/local/architecture-angular.md`), also read the ones matching your frontend framework.
 
 ## Scope Boundary
 
@@ -95,7 +95,7 @@ Navigate → Snapshot → Interact → Wait → Snapshot → Debug (console/netw
 - **DO**: Complete user journeys, critical business flows, third-party integrations (payment, OAuth), form validation from UI, cross-browser
 - **DON'T**: Unit tests, model tests, Action/Service tests in isolation (use `tester`)
 
-> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
+> Conventions: see @rules/cts/code-style.md, @rules/cts/docker-commands.md, @rules/cts/git-operations.md.
 
 ## Report Format (mandatory)
 
@@ -106,3 +106,7 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
 - If you discovered something durable and non-obvious (config recipe, wrong-pattern gotcha, test anti-pattern, library constraint), add a `## Learnings` section at the end of your report — the orchestrator records it in `docs/KNOWLEDGE_INBOX.md`.
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.
+
+## Local Override
+
+If `.claude/agents-local/qa.md` exists, Read it first; its instructions override conflicting ones above.

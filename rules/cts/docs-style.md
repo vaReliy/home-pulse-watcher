@@ -16,7 +16,7 @@ Practical effect: don't worry about wrapping while writing or editing a `.md` fi
 
 Prettier's markdown parser needs a blank line before a table, or before a distinct labeled line that should stay visually separate (e.g. two different `**Bold Label:**` metadata lines in a row). Without a blank line, it treats the whole block as one paragraph and merges it into a single line — for a table, this silently destroys the table syntax; for two adjacent bold-label lines, it silently glues them together into one confusing line.
 
-Rule of thumb: always put a blank line before a table, and before any standalone bold-label line that is logically distinct from the line above it. This is caught twice in this repo already (`rules/workflow.md`'s "Frontend agent selection" table, `libs/identity/infrastructure/README.md`'s `**Tags**`/`**May import**` lines) — both were pre-existing missing-blank-line bugs that predate this rule, not something Prettier itself gets wrong.
+Rule of thumb: always put a blank line before a table, and before any standalone bold-label line that is logically distinct from the line above it. This is caught twice in this repo already (`rules/cts/workflow.md`'s "Frontend agent selection" table, `libs/identity/infrastructure/README.md`'s `**Tags**`/`**May import**` lines) — both were pre-existing missing-blank-line bugs that predate this rule, not something Prettier itself gets wrong.
 
 ## What Prettier already knows to leave alone
 

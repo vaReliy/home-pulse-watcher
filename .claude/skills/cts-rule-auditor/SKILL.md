@@ -1,7 +1,7 @@
 ---
 name: cts-rule-auditor
 description: >-
-  Audits the consistency of .claude/agents/, rules/, AGENTS.md, and docs/KNOWLEDGE_INBOX.md. Runs 11 structural checks: broken pre-flight paths, wrong-platform keyword leaks, stale KNOWLEDGE_INBOX labels, rules files missing from the AGENTS.md index, unanchored .ctsignore entries, foresight gate presence, severity floor coverage, project-scope pre-flight, roadmap rule, stale rules-auditor references, and settings.json hook-path validation. Emits a ranked HIGH/MED/LOW finding report. Use after any change to .claude/** or rules/**, or run periodically to catch silent drift.
+  Audits the consistency of .claude/agents/, rules/, AGENTS.md, and docs/KNOWLEDGE_INBOX.md. Runs 11 structural checks: broken pre-flight paths, wrong-platform keyword leaks, stale KNOWLEDGE_INBOX labels, rules files missing from the AGENTS.md index, unanchored .ctsignore entries, foresight gate presence, severity floor coverage, project-scope pre-flight, roadmap rule, stale rules-auditor references, and .cts/settings.cts.json hook-path validation. Emits a ranked HIGH/MED/LOW finding report. Use after any change to .claude/** or rules/**, or run periodically to catch silent drift.
   
   Українською: аудит правил, перевірка агентів, дрейф конфігурації, перевірити rules, перевірити агентів, KNOWLEDGE_INBOX застарілий.
 
@@ -16,7 +16,7 @@ triggers:
 
 # CTS Rule Auditor
 
-Runs 11 structural consistency checks across `.claude/agents/`, `rules/`, `AGENTS.md`, `docs/KNOWLEDGE_INBOX.md`, `.ctsignore`, and `.claude/settings.json`. Emits a ranked report and offers to create tasks for confirmed findings.
+Runs 11 structural consistency checks across `.claude/agents/`, `rules/`, `AGENTS.md`, `docs/KNOWLEDGE_INBOX.md`, `.ctsignore`, and `.cts/settings.cts.json`. Emits a ranked report and offers to create tasks for confirmed findings.
 
 ## Step 1 — Determine scope
 
@@ -56,11 +56,11 @@ Run all checks. Collect findings across all 10 before reporting.
 For each file in `.claude/agents/*.md`:
 
 1. Find the `## Pre-flight` section.
-2. Extract every `rules/X.md` path referenced in that section.
-3. Verify each path exists: `ls rules/X.md`
-4. For any missing path, find the commit that introduced the reference using pickaxe search (finds the commit where that exact string was added):
+2. Extract every `rules/cts/X.md` or `rules/local/X.md` path referenced in that section.
+3. Verify each path exists: `ls <path>`. A `rules/local/X.md` reference is always an EXAMPLE of a consumer-project split file, not a real path in this repo — do not flag it missing here; only verify `rules/cts/X.md` paths (real CTS-owned files) actually exist.
+4. For any missing `rules/cts/X.md` path, find the commit that introduced the reference using pickaxe search (finds the commit where that exact string was added):
    ```
-   git log -S "rules/X.md" --oneline -- .claude/agents/<agent>.md | head -1
+   git log -S "rules/cts/X.md" --oneline -- .claude/agents/<agent>.md | head -1
    ```
 
 **Finding format**:
@@ -74,14 +74,16 @@ For each file in `.claude/agents/*.md`:
 
 ### Check 2 — Wrong-platform keyword leak
 
-Derive Angular keywords: terms that appear in `rules/code-style-angular.md` or `rules/architecture-angular.md` but are **absent** from `rules/code-style.md`. Focus on structural terms: `signal`, `toSignal`, `@let`, `NgRx`, `@Component`, `InjectionToken`, `providedIn`, `inject(`, `HttpClient`, `RouterLink`, `SCSS`, `ChangeDetection`, `async pipe`, `template`, `standalone`.
+Derive Angular keywords: terms that appear in `rules/local/code-style-angular.md` or `rules/local/architecture-angular.md` (if this consumer project has created them) but are **absent** from `rules/cts/code-style.md`. Focus on structural terms: `signal`, `toSignal`, `@let`, `NgRx`, `@Component`, `InjectionToken`, `providedIn`, `inject(`, `HttpClient`, `RouterLink`, `SCSS`, `ChangeDetection`, `async pipe`, `template`, `standalone`.
 
-Derive backend keywords: terms that appear in `rules/code-style-backend.md` or `rules/architecture-backend.md` but are absent from `rules/code-style.md`. Focus on: `NestJS`, `@Injectable`, `@Module`, `mongoose`, `Typegoose`, `BullMQ`, `pino`, `LIVR`, `@UseGuards`, `Mongoose`, `Schema(`, `@Prop(`.
+Derive backend keywords: terms that appear in `rules/local/code-style-backend.md` or `rules/local/architecture-backend.md` (if present) but are absent from `rules/cts/code-style.md`. Focus on: `NestJS`, `@Injectable`, `@Module`, `mongoose`, `Typegoose`, `BullMQ`, `pino`, `LIVR`, `@UseGuards`, `Mongoose`, `Schema(`, `@Prop(`.
+
+This check only applies when the consumer project has actually created platform-split files under `rules/local/`; if none exist, report nothing for this check rather than flagging their absence.
 
 Flag:
 
-- Any Angular keyword found in `rules/*-backend.md` files
-- Any backend keyword found in `rules/*-angular.md` files
+- Any Angular keyword found in `rules/local/*-backend.md` files
+- Any backend keyword found in `rules/local/*-angular.md` files
 
 Skip occurrences inside code examples (fenced blocks) unless they appear in prose sentences or rule headings.
 
@@ -106,8 +108,8 @@ Both forms are valid; `(guess):` entries are common and must not be skipped.
 For each matched line:
 
 1. Extract the file path: capture the token starting with `rules/` up to the first whitespace, `(`, `—`, `|`, or `+` character after the `.md` extension. Examples:
-   - `Belongs in: rules/workflow.md (routing guidance...)` → `rules/workflow.md`
-   - `Belongs in (guess): rules/dependencies.md | AGENTS.md` → `rules/dependencies.md` (and also check `AGENTS.md` if it resolves to a `rules/` path)
+   - `Belongs in: rules/cts/workflow.md (routing guidance...)` → `rules/cts/workflow.md`
+   - `Belongs in (guess): rules/cts/dependencies.md | AGENTS.md` → `rules/cts/dependencies.md` (and also check `AGENTS.md` if it resolves to a `rules/` path)
 2. Verify each extracted path exists: `ls <path>`
 3. Note the section heading (`##` line) that contains this entry.
 
@@ -122,21 +124,23 @@ For each matched line:
 
 ### Check 4 — Rules files missing from AGENTS.md index
 
-1. List all files: `ls rules/`
+1. List all files: `ls rules/cts/`
 2. Read the "On-Demand Rules Index" section of `AGENTS.md`.
-3. For each file in `rules/`, check whether it appears anywhere in that index section (match on filename, not full path).
+3. For each file in `rules/cts/`, check whether it appears anywhere in that index section (match on filename, not full path).
+4. Separately, confirm the index also lists a `rules/local/**` line documenting the consumer-override convention ("local wins on conflict") — files actually placed under `rules/local/` by a consumer project are never individually indexed, only the convention itself needs to be documented.
 
 **Finding format**:
 
 ```
-[MED]  rules/<file>.md: present in rules/ but absent from AGENTS.md on-demand index
+[MED]  rules/cts/<file>.md: present in rules/cts/ but absent from AGENTS.md on-demand index
+[MED]  AGENTS.md on-demand index: no rules/local/** convention line found
 ```
 
 ---
 
 ### Check 5 — `.ctsignore` anchor validation
 
-Read `.ctsignore`. Find all non-comment, non-blank lines that reference a path starting with `rules/` (e.g. `rules/architecture.md`).
+Read `.ctsignore`. Find all non-comment, non-blank lines that reference a path starting with `rules/` (e.g. `rules/cts/architecture.md`).
 
 Flag any such entry that is missing the leading `/` anchor — i.e., the entry reads `rules/X.md` rather than `/rules/X.md`.
 
@@ -148,28 +152,28 @@ Flag any such entry that is missing the leading `/` anchor — i.e., the entry r
 
 ---
 
-### Check 6 — Foresight gate present in rules/workflow.md
+### Check 6 — Foresight gate present in rules/cts/workflow.md
 
-Read `rules/workflow.md`. Check whether it contains a foresight gate section with a seam trigger definition (new enum, cross-layer field, topology change triggering a blast-radius map requirement).
+Read `rules/cts/workflow.md`. Check whether it contains a foresight gate section with a seam trigger definition (new enum, cross-layer field, topology change triggering a blast-radius map requirement).
 
 **Finding format**:
 
 ```
-[HIGH] rules/workflow.md: foresight gate section missing or seam trigger definition absent
+[HIGH] rules/cts/workflow.md: foresight gate section missing or seam trigger definition absent
 ```
 
 ---
 
-### Check 7 — Severity floor in rules/workflow.md, reviewer.md, and security-scanner.md
+### Check 7 — Severity floor in rules/cts/workflow.md, reviewer.md, and security-scanner.md
 
-1. Read `rules/workflow.md` — must contain a 4-tier severity floor table (Correctness/Security, Comprehension, Consistency-with-op-impact, Polish/preference).
+1. Read `rules/cts/workflow.md` — must contain a 4-tier severity floor table (Correctness/Security, Comprehension, Consistency-with-op-impact, Polish/preference).
 2. Read `.claude/agents/reviewer.md` — must contain a severity floor instruction referencing the floor and the sub-floor ledger (`docs/KNOWLEDGE_INBOX.md`).
 3. Read `.claude/agents/security-scanner.md` — same requirement as reviewer.md.
 
 **Finding format**:
 
 ```
-[HIGH] rules/workflow.md: 4-tier severity floor table missing
+[HIGH] rules/cts/workflow.md: 4-tier severity floor table missing
 [HIGH] .claude/agents/reviewer.md: severity floor instruction missing
 [HIGH] .claude/agents/security-scanner.md: severity floor instruction missing
 ```
@@ -192,9 +196,9 @@ Read `rules/workflow.md`. Check whether it contains a foresight gate section wit
 
 ---
 
-### Check 9 — Roadmap-prioritization rule present in rules/workflow.md
+### Check 9 — Roadmap-prioritization rule present in rules/cts/workflow.md
 
-Read `rules/workflow.md`. Check whether it contains both:
+Read `rules/cts/workflow.md`. Check whether it contains both:
 
 - The parked-task convention (tasks blocked on upstream decisions use `## ⚠️ PARKED`).
 - The "prioritized against backlog" rule (emitted tasks ranked against the existing backlog, premature tasks parked with blocking dep named).
@@ -202,7 +206,7 @@ Read `rules/workflow.md`. Check whether it contains both:
 **Finding format**:
 
 ```
-[MED]  rules/workflow.md: roadmap-prioritization rule missing (parked-task convention and/or backlog-priority rule)
+[MED]  rules/cts/workflow.md: roadmap-prioritization rule missing (parked-task convention and/or backlog-priority rule)
 ```
 
 ---
@@ -224,18 +228,21 @@ grep -r "rules-auditor" .claude/ rules/ AGENTS.md
 
 ---
 
-### Check 11 — `.claude/settings.json` hook paths must exist in `cts-payload.txt`
+### Check 11 — `.cts/settings.cts.json` hook paths must exist in `cts-payload.txt`
 
-If `.claude/settings.json` exists, read it and extract all `command` fields from any hooks (e.g., `"command": ".claude/hooks/knowledge-capture-nudge.sh"`). For each extracted command path:
+`.cts/settings.cts.json` (not `.claude/settings.json`, which is consumer-owned and merged into, not shipped) is the CTS-owned settings fragment every consumer receives verbatim. If it exists, read it and extract all `command` fields from any hooks (e.g., `"command": ".claude/hooks/knowledge-capture-nudge.sh"`). For each extracted command path:
 
 1. Verify the path is listed somewhere in `cts-payload.txt`
-2. If not found, the hook script's directory is missing from the payload manifest, and a fresh `/cts-setup` or `/cts-update` in any consumer would sync the settings file pointing at a nonexistent script.
+2. If not found, the hook script's directory is missing from the payload manifest, and a fresh `/cts-setup` or `/cts-update` in any consumer would merge a settings fragment pointing at a nonexistent script.
+3. Also verify `.cts/settings.cts.json`'s `permissions.deny` array contains all four ownership-enforcement entries: `Edit(./rules/cts/**)`, `Write(./rules/cts/**)`, `Edit(./.cts/**)`, `Write(./.cts/**)`. Both tools must be denied for both paths — `Edit` and `Write` are separate Claude Code tools, and denying only `Edit` leaves `Write` as an unblocked bypass. Note this deny list is a partial guard, not a full guarantee: Claude Code's permission system cannot path-restrict the `Bash` tool, so it can't stop a `sed -i`/`cat >` write to these paths — the manifest-hash ownership-violation detector in `cts-sync.sh` is the actual backstop for that case, catching and overwriting the drift on the next sync rather than preventing it.
 
 **Finding format**:
 
 ```
-[HIGH] .claude/settings.json: hook command "<path>" does not resolve to any entry in cts-payload.txt
+[HIGH] .cts/settings.cts.json: hook command "<path>" does not resolve to any entry in cts-payload.txt
        Sync would fail in a consumer that lacks this path
+[HIGH] .cts/settings.cts.json: permissions.deny missing one or more of "Edit(./rules/cts/**)" / "Write(./rules/cts/**)" / "Edit(./.cts/**)" / "Write(./.cts/**)"
+       Ownership enforcement would not fully propagate to consumers (Write-tool bypass)
 ```
 
 ---

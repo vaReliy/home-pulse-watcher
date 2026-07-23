@@ -1,11 +1,13 @@
 ---
 name: cts-contribute
-description: "Consumer-side flow for contributing improvements back to the CTS template. Diffs the current project against its CTS baseline, classifies changes into three cases (net-new skills, CTS-managed file edits, .ctsignore'd file improvements), interactively guides hunk-level decisions for overridden files, then writes accepted changes to the local CTS repo and updates both changelogs. NOT for first-time installs (cts-setup), upstream sync (cts-update), or importing external third-party skills into CTS (cts-import-skill).\n\nTrigger — EN: cts-contribute, export to CTS, contribute back, push improvements upstream, share with CTS, export skill to template.\nTrigger — UA: експортувати до CTS, поділитися з CTS, зворотній експорт, contribute до шаблону, передати зміни в CTS."
+description: "Consumer-side flow for contributing improvements back to the CTS template. Diffs the current project against its CTS checkout, classifies changes into three cases (net-new skills, CTS-managed file edits, .ctsignore'd fork improvements), confirms each as a whole-file copy (no hunk editing — single ownership means the consumer's file already IS the proposed replacement), then writes accepted files to the local CTS repo and updates both changelogs. NOT for first-time installs (cts-setup), upstream sync (cts-update), or importing external third-party skills into CTS (cts-import-skill).\n\nTrigger — EN: cts-contribute, export to CTS, contribute back, push improvements upstream, share with CTS, export skill to template.\nTrigger — UA: експортувати до CTS, поділитися з CTS, зворотній експорт, contribute до шаблону, передати зміни в CTS."
 ---
 
 # /cts-contribute
 
 Guides a consumer project through contributing its improvements back to a local CTS checkout. Run from inside the consumer project (e.g. `penny`, `hpw`). Make **no writes** to CTS until Step 5 — all decisions are collected first.
+
+Two-layer distribution model: contribution is always a **whole-file copy**, never a hunk merge. Under single ownership, a CTS-owned file the consumer edited (an ownership violation `cts-sync.sh` already warned about) is, by definition, either the whole proposed replacement or not worth contributing — there is no partial-hunk state to negotiate, because the file was never merged into pieces in the first place. This is also why the round trip is a no-op by construction: `/cts-update` afterward overwrites the consumer's copy with byte-identical content.
 
 ## 1. Pre-flight (four hard blocks — fail fast, fail loud)
 
@@ -29,24 +31,26 @@ Scan three cases in parallel and build a candidate list — no user interaction 
 
 List every directory in `.claude/skills/` that does **not** exist in `<cts-path>/.claude/skills/`. These are new skills the consumer created. Auto-queue all for export.
 
-### Case B — CTS-managed file changes
+### Case B — CTS-managed file edits
 
-For each file in `cts-payload.txt` that is **not** in `.ctsignore`, diff the consumer's copy against CTS:
+For each payload file listed in `cts-payload.txt` that is **not** in `.ctsignore`, diff the consumer's copy against CTS:
 
 ```
 diff <(cat <consumer-file>) <(cat <cts-path>/<file>)
 ```
 
-If a diff exists, flag it — a CTS-managed file was edited outside the sync flow. These are unusual and need explicit review.
+If a diff exists, this is a CTS-owned file the consumer edited directly instead of through an override file — `cts-sync.sh update` will already have printed an `OWNERSHIP WARNING` for it on the most recent sync (check the captured output or `git log` for that line if unsure). Queue the consumer's current content as a whole-file replacement candidate.
 
-### Case C — `.ctsignore`'d file improvements
+### Case C — `.ctsignore`'d fork improvements
 
-For each path in `.ctsignore` that also exists in CTS, diff consumer vs. CTS. Pre-filter hunks:
+For each path in `.ctsignore` that also exists in CTS, diff consumer vs. CTS. Pre-filter:
 
-- **Auto-skip (project-specific signals)**: hunk contains stack names, app names, domain terms, file paths, or language identifiers tied to this project (e.g. `MongoDB`, `Mongoose`, `Typegoose`, `Telegram`, `Angular` when paired with project-specific routing, `NestJS` module names, repo-specific paths). Log as "skipped — project-specific."
-- **Queue for review**: all remaining hunks where the change looks like a general workflow rule, quality gate, orchestrator improvement, or skill update.
+- **Auto-skip (project-specific signals)**: the file is a deliberate whole-file fork for project-specific reasons (stack names, app names, domain terms tied to this project). Log as "skipped — project-specific fork."
+- **Queue for review**: the fork looks like a general improvement that would also help other consumers.
 
 Also check `docs/CLAUDE_TS_CHANGELOG.md` if it exists — its entries describe what changed since the last CTS sync, making it the primary extraction guide. Mention it to the user at the start of Case C review.
+
+Note: under the two-layer model, most customization goes through an override file (`rules/local/**`, `.claude/agents-local/<name>.md`, `AGENTS.local.md`, `CLAUDE.local.md`) instead of `.ctsignore`-ing a whole CTS file — those override files are consumer-owned by design and are never contribution candidates themselves (there's nothing to "merge back"; if an override's replacement text is broadly useful, propose editing the CTS file it cites directly instead, which routes through Case B on a later run). Case C should mostly surface genuinely forked files.
 
 ---
 
@@ -54,18 +58,18 @@ Also check `docs/CLAUDE_TS_CHANGELOG.md` if it exists — its entries describe w
 
 Print a summary table:
 
-| Category                   | Count | Action                         |
-| -------------------------- | ----- | ------------------------------ |
-| Net-new skills (Case A)    | N     | Will export                    |
-| CTS-managed edits (Case B) | N     | Needs review                   |
-| Improvement hunks (Case C) | N     | Interactive review             |
-| Skipped (project-specific) | N     | Will skip (escape hatch below) |
+| Category                     | Count | Action                         |
+| ----------------------------- | ----- | ------------------------------- |
+| Net-new skills (Case A)       | N     | Will export                     |
+| CTS-managed edits (Case B)    | N     | Whole-file replacement candidate |
+| Forked-file improvements (Case C) | N | Whole-file replacement candidate |
+| Skipped (project-specific)    | N     | Will skip (escape hatch below)  |
 
-Ask: "Proceed with interactive review?" If the user wants to re-examine any skipped hunk, they can say so now — add it back to the queue.
+Ask: "Proceed with review?" If the user wants to re-examine any skipped item, they can say so now — add it back to the queue.
 
 ---
 
-## 4. Interactive review
+## 4. Review
 
 Work through the queue one item at a time. For each:
 
@@ -78,14 +82,13 @@ Work through the queue one item at a time. For each:
 Suggested: EXPORT / SKIP
 Reason: <one-line classification rationale>
 
-Your decision? [export / skip / edit before export]
+Your decision? [export / skip]
 ```
 
-- **export**: accept as-is, queue for write.
+- **export**: the consumer's current file content is queued for write to CTS, verbatim, as a whole-file replacement — no hunk editing. If the content still contains project-specific wording that shouldn't ship to every consumer, say so now and ask the user to fix the wording IN THE CONSUMER'S OWN FILE first (this keeps the consumer's copy and the CTS copy byte-identical after the round trip, per the no-op guarantee — editing only at export time would reintroduce the divergence `/cts-update` would immediately re-flag as an ownership violation next sync).
 - **skip**: drop from export.
-- **edit before export**: show the hunk, let the user dictate the cleaned version (strip project-specific parts), then queue the edited version. Note: this path only writes the edited text into CTS (Step 5) — it does **not** update the consumer's own copy of the file, which keeps its original wording. The next `/cts-update` here will therefore not be a no-op on that hunk, though the signal differs by case: for **Case B** (CTS-managed, not `.ctsignore`'d) it produces a real `CONFLICT:` (base/local/upstream are three genuinely different texts); for **Case C** (`.ctsignore`'d) the file is never eligible for merge or `CONFLICT:` at all — the engine checks `.ctsignore` before the merge path — so it instead surfaces as `ignored, but changed upstream — review manually`. That's expected — see Step 7.
 
-For Case A (net-new skills), show the skill's `name` and `description` frontmatter and ask if it should be contributed as-is or stripped of project-specific content first.
+For Case A (net-new skills), show the skill's `name` and `description` frontmatter and ask if it should be contributed as-is or stripped of project-specific content first (same rule: fix it in the consumer's own copy, not just at export time).
 
 Continue until all queued items are resolved.
 
@@ -95,10 +98,10 @@ Continue until all queued items are resolved.
 
 Only after all decisions are confirmed — write nothing before this step.
 
-For each accepted item:
+For each accepted item, copy the whole file:
 
-- **Case A skills**: copy `.claude/skills/<name>/` → `<cts-path>/.claude/skills/<name>/`. If a same-named skill already exists (shouldn't, but guard), stop and ask.
-- **Case B / C hunks**: apply the accepted hunks to the corresponding CTS file using the edited content collected in Step 4.
+- **Case A skills**: `.claude/skills/<name>/` → `<cts-path>/.claude/skills/<name>/`. If a same-named skill already exists (shouldn't, but guard), stop and ask.
+- **Case B / C files**: the consumer's current file content → the corresponding path in `<cts-path>`.
 
 Report each write: `✓ wrote <path>`.
 
@@ -141,14 +144,12 @@ Next steps:
   1. cd <cts-path> && git diff   ← review before committing
   2. Commit and push CTS when satisfied
   3. Run /cts-update in other consumer projects (e.g. HPW) to receive changes
-  4. Run /cts-update here — not a no-op for any hunk you edited-before-
-     export: on CTS-managed (Case B) files it shows CONFLICT:, on
-     .ctsignore'd (Case C) files it shows "ignored, but changed
-     upstream" instead (that path never produces CONFLICT:). Either
-     way the correct resolution is almost always "take upstream" /
-     "remove from .ctsignore," since upstream now holds your own
-     contribution in its generalized form (see cts-update's round-trip
-     triage note)
+  4. Run /cts-update here — this is a no-op by construction: the file you
+     just exported is already byte-identical to what CTS now ships, so the
+     next sync writes the same bytes back. You may still see one final
+     OWNERSHIP WARNING on that run if this was the first sync since the
+     edit was made (the warning fires on divergence from the LAST recorded
+     sync, not on divergence from upstream) — that's expected, not an error.
 ────────────────────────────────────────────────────────
 ```
 

@@ -27,9 +27,9 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 Before writing or modifying any code, additionally read:
 
-- `rules/architecture.md` (shared onion patterns, NX boundaries)
-- `rules/code-style.md` (shared TypeScript)
-- If your project splits rules by platform (e.g. `rules/architecture-backend.md`, `rules/code-style-backend.md`), also read those.
+- `rules/cts/architecture.md` (shared onion patterns, NX boundaries)
+- `rules/cts/code-style.md` (shared TypeScript)
+- If your project splits rules by platform (e.g. `rules/local/architecture-backend.md`, `rules/local/code-style-backend.md`), also read those.
 
 ## Scope
 
@@ -43,7 +43,7 @@ Before writing or modifying any code, additionally read:
 
 ## Conventions
 
-> See @rules/code-style.md, @rules/validation-authorization.md, @rules/architecture.md, @rules/docker-commands.md. Code patterns: see skill `typescript-pro` and `typescript-architecture`.
+> See @rules/cts/code-style.md, @rules/cts/validation-authorization.md, @rules/cts/architecture.md, @rules/cts/docker-commands.md. Code patterns: see skill `typescript-pro` and `typescript-architecture`.
 
 ## Project Stack
 
@@ -59,7 +59,7 @@ Before writing or modifying any code, additionally read:
 | Logging    | pino                                 |
 | Testing    | Vitest                               |
 
-> See `rules/mcp-stack.md` for MCP tool reference.
+> See `rules/cts/mcp-stack.md` for MCP tool reference.
 
 ## Workflow
 
@@ -100,3 +100,7 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
 - If you discovered something durable and non-obvious (config recipe, wrong-pattern gotcha, test anti-pattern, library constraint), add a `## Learnings` section at the end of your report — the orchestrator records it in `docs/KNOWLEDGE_INBOX.md`.
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.
+
+## Local Override
+
+If `.claude/agents-local/backend-developer.md` exists, Read it first; its instructions override conflicting ones above.

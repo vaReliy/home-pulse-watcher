@@ -23,8 +23,8 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 Before writing or modifying any code, additionally read:
 
-- `rules/architecture.md`
-- `rules/code-style.md`
+- `rules/cts/architecture.md`
+- `rules/cts/code-style.md`
 
 ## Scope Boundary
 
@@ -46,7 +46,7 @@ Before writing or modifying any code, additionally read:
 | `vitest-testing`          | When refactoring affects test code                                  |
 | `security-reviewer`       | When refactoring auth or input handling                             |
 
-> See `rules/mcp-stack.md` for MCP tool reference.
+> See `rules/cts/mcp-stack.md` for MCP tool reference.
 
 ## Core Principles
 
@@ -87,7 +87,7 @@ Before writing or modifying any code, additionally read:
 
 N+1 → `include`/`select` in Prisma; large datasets → cursor-based pagination; heavy sync work → BullMQ job; missing indexes → `dba` agent; slow responses → profile with `clinic.js`.
 
-> Conventions: see @rules/code-style.md, @rules/docker-commands.md, @rules/git-operations.md.
+> Conventions: see @rules/cts/code-style.md, @rules/cts/docker-commands.md, @rules/cts/git-operations.md.
 
 ## Report Format (mandatory)
 
@@ -98,3 +98,7 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
 - If you discovered something durable and non-obvious (config recipe, wrong-pattern gotcha, test anti-pattern, library constraint), add a `## Learnings` section at the end of your report — the orchestrator records it in `docs/KNOWLEDGE_INBOX.md`.
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.
+
+## Local Override
+
+If `.claude/agents-local/refactoring-expert.md` exists, Read it first; its instructions override conflicting ones above.

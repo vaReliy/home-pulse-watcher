@@ -31,13 +31,13 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 | Skill                                         | When to Activate                                      |
 | --------------------------------------------- | ----------------------------------------------------- |
-| `brainstorming` / `superpowers:brainstorming` | **Always** — explore approaches before committing     |
-| `plan-writing` / `superpowers:writing-plans`  | **Always** — structured implementation roadmaps       |
+| `brainstorming`                               | **Always** — explore approaches before committing     |
+| `rules/cts/task-authoring.md`                     | **Always** — structured implementation roadmaps       |
 | `typescript-architecture`                     | Technical feasibility and Node.js/TypeScript patterns |
 | `architecture-designer`                       | System architecture and design decisions              |
 | `ddd-strategic-design`                        | Domain boundaries and bounded contexts                |
 
-> See `rules/mcp-stack.md` for MCP tool reference.
+> See `rules/cts/mcp-stack.md` for MCP tool reference.
 
 ## Scope Boundary
 
@@ -66,3 +66,7 @@ Reports back to orchestrator: terse fragments, bullets, no prose, ≤300 words.
 - Status markers: 🔴 critical / 🟡 important / 🟢 ok (quality-gate agents).
 - If you discovered something durable and non-obvious (requirements gotcha, domain pattern, architecture constraint), add a `## Learnings` section at the end of your report — the orchestrator records it in `docs/KNOWLEDGE_INBOX.md`.
 - EXEMPT from compression: code, migrations, API contracts, user stories consumed by next phase, PR descriptions — these stay complete and precise.
+
+## Local Override
+
+If `.claude/agents-local/ba.md` exists, Read it first; its instructions override conflicting ones above.

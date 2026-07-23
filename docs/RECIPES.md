@@ -11,12 +11,12 @@ This guide is for human operators running Claude Code sessions. It documents six
 **Flow:**
 
 1. Run a grilling session (activate `grill-me` skill or `brainstorming` for open-ended ideation). Record decisions, scope, assumptions.
-2. Orchestrator classifies the work into a tier: **T0** (≤2 files, no executable config), **T1** (≤3 files, no seam crossing), **T2** (seam/contract change, new endpoint/migration/auth logic, requires `ba`), or **T3** (architecture decision, requires `ba` + `ddd-architect` + `devil`). See `rules/workflow.md` section "Tiered Planning Ladder" and "Foresight gate" for exact definitions.
-3. Author one or more task files in `tasks/todo/` using the canonical 8-row header (see `rules/task-authoring.md` "Header" section): Clean session, Executor model, Repo/branch, Planning tier, Planning (roles: done/required/skipped), Generation, Depends on, On completion. Each file name follows the pattern `YYYY-MM-DD-NN-slug.md` — NN resets daily, enabling fresh independent batches.
+2. Orchestrator classifies the work into a tier: **T0** (≤2 files, no executable config), **T1** (≤3 files, no seam crossing), **T2** (seam/contract change, new endpoint/migration/auth logic, requires `ba`), or **T3** (architecture decision, requires `ba` + `ddd-architect` + `devil`). See `rules/cts/workflow.md` section "Tiered Planning Ladder" and "Foresight gate" for exact definitions.
+3. Author one or more task files in `tasks/todo/` using the canonical 8-row header (see `rules/cts/task-authoring.md` "Header" section): Clean session, Executor model, Repo/branch, Planning tier, Planning (roles: done/required/skipped), Generation, Depends on, On completion. Each file name follows the pattern `YYYY-MM-DD-NN-slug.md` — NN resets daily, enabling fresh independent batches.
 4. In the Planning row, mark each role's status: `ba: done` (if authored by this session's `ba`), `devil: done` (if challenged), `ddd-architect: required` (if T2+ and seam spans domain layers), or `skipped` (if not applicable to this tier).
 5. Emit tasks into `tasks/todo/` — they are git-excluded working artifacts. The durable record lives in commits, `CHANGELOG.md`, and `docs/KNOWLEDGE_INBOX.md` (for learnings, not tasks themselves).
 
-**Reference:** `rules/task-authoring.md` (header format, naming, body sections, splitting rule, emission control).
+**Reference:** `rules/cts/task-authoring.md` (header format, naming, body sections, splitting rule, emission control).
 
 ---
 
@@ -31,9 +31,9 @@ This guide is for human operators running Claude Code sessions. It documents six
 1. Operator opens the task file and confirms the Planning row: roles marked `required` (e.g., `ba: required`) must be run by this session; roles marked `done` or `skipped` are already resolved and need not be re-run.
 2. Executor reads the task's Planning row and dispatches **only the marked-required roles**. Example: if the header says `ba: done, devil: skipped, ddd-architect: required`, the executor runs `ddd-architect` alone and skips `ba` and `devil`.
 3. Executor implements the task body and runs the full quality gate (tester → reviewer → conditional security-scanner/qa).
-4. **Guard: seam-vs-stamp contradiction.** If the task body visibly touches a seam (new endpoint, migration, or shared cross-layer contract) but the stamped Planning tier says T0 or T1, the executor **must STOP and flag this** — it must not proceed silently with the stale tier, and must not re-triage on its own authority. Surface to orchestrator or user for re-authoring. See `rules/task-authoring.md` section "Seam-vs-stamp contradiction guard".
+4. **Guard: seam-vs-stamp contradiction.** If the task body visibly touches a seam (new endpoint, migration, or shared cross-layer contract) but the stamped Planning tier says T0 or T1, the executor **must STOP and flag this** — it must not proceed silently with the stale tier, and must not re-triage on its own authority. Surface to orchestrator or user for re-authoring. See `rules/cts/task-authoring.md` section "Seam-vs-stamp contradiction guard".
 
-**Reference:** `rules/task-authoring.md` sections "Executor obey-the-stamp rule" and "Seam-vs-stamp contradiction guard".
+**Reference:** `rules/cts/task-authoring.md` sections "Executor obey-the-stamp rule" and "Seam-vs-stamp contradiction guard".
 
 ---
 
@@ -46,10 +46,10 @@ This guide is for human operators running Claude Code sessions. It documents six
 **Flow:**
 
 1. After restart cycle 2 fails: orchestrator does not try a 3rd cycle. Instead, it runs the `handoff` skill, which compacts the current conversation into an attempt log (what was tried, why it didn't close the issue) and best-guess hypotheses for root causes.
-2. Orchestrator emits a **continuation task** to `tasks/todo/` using the continuation-task template (see `rules/task-authoring.md` "Continuation-task template"): header inherits the original task's tier and Generation, Planning row is all `done` (planning already happened; don't re-run it), Depends-on cites the original task + its upstream deps. Body includes: original title + "(continuation)", reference to `handoff` output, the open Fix Now items, attempt log, and current hypotheses.
+2. Orchestrator emits a **continuation task** to `tasks/todo/` using the continuation-task template (see `rules/cts/task-authoring.md` "Continuation-task template"): header inherits the original task's tier and Generation, Planning row is all `done` (planning already happened; don't re-run it), Depends-on cites the original task + its upstream deps. Body includes: original title + "(continuation)", reference to `handoff` output, the open Fix Now items, attempt log, and current hypotheses.
 3. Operator reviews the continuation task in `tasks/todo/`, hands it to a fresh clean session to take it from where the first session stalled.
 
-**Reference:** `rules/workflow.md` section "Quality Gate" (max 2 cycles rule); `rules/task-authoring.md` "Continuation-task template"; `handoff` skill.
+**Reference:** `rules/cts/workflow.md` section "Quality Gate" (max 2 cycles rule); `rules/cts/task-authoring.md` "Continuation-task template"; `handoff` skill.
 
 ---
 
@@ -106,13 +106,13 @@ This guide is for human operators running Claude Code sessions. It documents six
    - Delete the entry from the inbox.
 4. **Record:** update `CHANGELOG.md` with a summary of what was distilled and where it went.
 
-**Reference:** `rules/workflow.md` section "Knowledge Capture" and "Knowledge Inbox"; `docs/KNOWLEDGE_INBOX.md` format and litmus test (would another developer or AI tool on this repo benefit?).
+**Reference:** `rules/cts/workflow.md` section "Knowledge Capture" and "Knowledge Inbox"; `docs/KNOWLEDGE_INBOX.md` format and litmus test (would another developer or AI tool on this repo benefit?).
 
 ---
 
 ## Further Reading
 
-- **Orchestrator and pipeline:** `rules/workflow.md` — First Action (Triage), Tiered Planning Ladder, Foresight gate, Standard Feature Pipeline, Quality Gate, Knowledge Capture.
-- **Task file mechanics:** `rules/task-authoring.md` — canonical header, executor stamp rule, seam-vs-stamp guard, continuation-task template, splitting rule, blast-radius map.
+- **Orchestrator and pipeline:** `rules/cts/workflow.md` — First Action (Triage), Tiered Planning Ladder, Foresight gate, Standard Feature Pipeline, Quality Gate, Knowledge Capture.
+- **Task file mechanics:** `rules/cts/task-authoring.md` — canonical header, executor stamp rule, seam-vs-stamp guard, continuation-task template, splitting rule, blast-radius map.
 - **CTS consumer operations:** README.md "Quick Start", "Updating", "Customization" sections.
 - **Skills reference:** `README.md` Skills section lists all bundled skills, including `grill-me`, `handoff`, `cts-update`, `cts-contribute`, `distill-inbox`.

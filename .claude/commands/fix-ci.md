@@ -86,7 +86,7 @@ The CI has two job groups. Map the failed job name to one of these:
 **Lint matrix** (`🪄 Lints | ...`):
 
 - `🔍 TypeScript` — type check failure (`tsc --noEmit`)
-- `🔯 ESLint` — linting failure (often auto-fixable with `npx eslint . --fix`)
+- `🔯 ESLint` — linting failure (often auto-fixable with `npx nx lint <project> -- --fix`)
 - `🅿️ Prettier` — formatting failure (auto-fixable with `npx prettier --write .`)
 
 **Test matrix** (`♻️ Tests | ...`):
@@ -143,20 +143,23 @@ If the debugger determined that a code fix is needed, launch the `backend-develo
 The agent prompt must instruct the developer to:
 
 - Apply the minimal fix to resolve the CI failure
-- Follow project standards: `CLAUDE.md`, `rules/code-style.md`, `rules/architecture.md`
-- For **lint failures**, run the relevant linter to verify the fix:
+- Follow project standards: `CLAUDE.md`, `CLAUDE.local.md`, `rules/cts/code-style.md`, `rules/local/code-style.md`, `rules/cts/architecture.md`
+- For **lint failures**, run the relevant check to verify the fix (this repo is Nx-managed — always
+  run through `nx`, never the underlying tool directly, per `CLAUDE.local.md`):
   ```bash
-  docker compose exec app npx tsc --noEmit
-  docker compose exec app npx eslint .
-  docker compose exec app npx prettier --check .
+  npx nx typecheck <project>
+  npx nx lint <project>
+  npx prettier --check .
   ```
-- For **test failures**, run the failing test to verify the fix:
+- For **test failures**, run the failing test to verify the fix (this repo is pure Jest — zero
+  Vitest — see `rules/local/testing.md`; always invoke via `nx test`, never `vitest` or a raw
+  `jest`/docker invocation):
   ```bash
-  docker compose exec app npx vitest run test/unit/failing-test.spec.ts
+  npx nx test <project> -- <path-to-failing-test>
   ```
-- If tests pass, run the broader suite for the affected area:
+- If tests pass, run the broader suite for the affected project:
   ```bash
-  docker compose exec app npx vitest run
+  npx nx test <project>
   ```
 - Do NOT make changes beyond what is needed to fix the CI failure
 - Do NOT refactor, improve, or "clean up" adjacent code
