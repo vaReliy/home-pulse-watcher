@@ -501,6 +501,15 @@ else
   for entry in "${PAYLOAD[@]}"; do sync_path "$entry"; done
   detect_override_rot
 
+  # Loud warning if this is the first sync (no manifest baseline yet): every payload
+  # path is flagged as a fresh collision below, and that list MUST be manually
+  # diffed against pre-refactor upstream before trusting it — any consumer
+  # customizations that were never .ctsignore'd under the old 3-way-merge model
+  # (which didn't require an ignore entry) will be silently overwritten otherwise.
+  if [ -z "$(cat "$MANIFEST_FILE" 2>/dev/null || echo "")" ] || [ "$(cat "$MANIFEST_FILE" 2>/dev/null)" = "{}" ]; then
+    echo "WARNING: No manifest baseline found — this appears to be the first sync under the new engine. Every payload path below is being treated as a fresh collision. If this consumer has pre-refactor customizations that were never .ctsignore'd (the old model didn't require it), diff each collision against the resolved pre-refactor upstream commit before trusting this list, or those customizations will be silently overwritten."
+  fi
+
   for rel in "${OWNERSHIP_WARNINGS[@]}"; do
     echo "OWNERSHIP WARNING: $rel was edited locally but is CTS-owned — overwritten with upstream's content. Move your changes into an override file (rules/local/**, .claude/agents-local/<name>.md, AGENTS.local.md, CLAUDE.local.md) or run /cts-contribute to send them upstream."
     NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))

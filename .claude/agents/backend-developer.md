@@ -30,6 +30,7 @@ Before writing or modifying any code, additionally read:
 - `rules/cts/architecture.md` (shared onion patterns, NX boundaries)
 - `rules/cts/code-style.md` (shared TypeScript)
 - If your project splits rules by platform (e.g. `rules/local/architecture-backend.md`, `rules/local/code-style-backend.md`), also read those.
+- For any `rules/cts/<name>.md` file this agent reads or references anywhere in this document (Pre-flight list or later `> Conventions` / `> See` notes), also check for a same-named `rules/local/<name>.md`. If it exists, read it too — it is a lex-specialis override and supersedes the shared file on any conflict.
 
 ## Scope
 

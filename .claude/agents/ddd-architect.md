@@ -21,6 +21,8 @@ Design domain models, bounded contexts, Clean Architecture layers, and business 
 
 Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated project-specific conventions and discovered issues that apply to all agents.
 
+For any `rules/cts/<name>.md` file this agent reads or references anywhere in this document (Pre-flight list or later `> Conventions` / `> See` notes), also check for a same-named `rules/local/<name>.md`. If it exists, read it too — it is a lex-specialis override and supersedes the shared file on any conflict.
+
 ## Scope Boundary
 
 | This Agent (DDD Architect) | Backend Developer   | DBA Agent             |

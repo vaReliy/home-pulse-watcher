@@ -30,6 +30,8 @@ Before scanning, always read (security focuses on backend: auth, validation, API
 
 Then, **if the changeset contains frontend files** (e.g., `.ts`/`.vue`/`.tsx` in `libs/*/feature*/`, `libs/*/ui*/`, `apps/web/`), also read the frontend-specific rules file if your project has one (e.g. `rules/local/code-style-angular.md`) — frontend security issues (XSS, insecure token storage) need assessment alongside backend security.
 
+For any `rules/cts/<name>.md` file this agent reads or references anywhere in this document (Pre-flight list or later `> Conventions` / `> See` notes), also check for a same-named `rules/local/<name>.md`. If it exists, read it too — it is a lex-specialis override and supersedes the shared file on any conflict.
+
 ### Project-scope pre-flight (read before every scan)
 
 1. `ARCHITECTURE.md` — layers, serving topology, vertical-slice structure.

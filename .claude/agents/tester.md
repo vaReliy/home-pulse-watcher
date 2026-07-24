@@ -36,6 +36,8 @@ Before writing or modifying any code, additionally read:
 
 If your project splits rules by platform, also read the applicable platform-specific files (e.g. `rules/local/architecture-backend.md` + `rules/local/code-style-backend.md` for backend tests; `rules/local/architecture-angular.md` + `rules/local/code-style-angular.md` for frontend component tests).
 
+For any `rules/cts/<name>.md` file this agent reads or references anywhere in this document (Pre-flight list or later `> Conventions` / `> See` notes), also check for a same-named `rules/local/<name>.md`. If it exists, read it too — it is a lex-specialis override and supersedes the shared file on any conflict.
+
 ## Scope Boundary
 
 | This Agent (Tester)                              | Implementation Agents                      | QA Agent                 |

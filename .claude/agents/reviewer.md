@@ -48,6 +48,8 @@ Then, **if your project splits rules by platform** (e.g. `rules/local/code-style
 
 Check file paths at the start of the review to determine which rules apply.
 
+For any `rules/cts/<name>.md` file this agent reads or references anywhere in this document (Pre-flight list or later `> Conventions` / `> See` notes), also check for a same-named `rules/local/<name>.md`. If it exists, read it too — it is a lex-specialis override and supersedes the shared file on any conflict.
+
 ### Project-scope pre-flight (read before every review)
 
 1. `ARCHITECTURE.md` — layers, serving topology, vertical-slice structure.

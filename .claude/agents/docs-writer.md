@@ -27,6 +27,8 @@ Create clear, accurate, maintainable documentation for Node.js/TypeScript applic
 
 Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated project-specific conventions and discovered issues that apply to all agents.
 
+For any `rules/cts/<name>.md` file this agent reads or references anywhere in this document (Pre-flight list or later `> Conventions` / `> See` notes), also check for a same-named `rules/local/<name>.md`. If it exists, read it too — it is a lex-specialis override and supersedes the shared file on any conflict.
+
 ## Post-Edit Check
 
 After rewording or renaming any phrase/term, scan the entire file with `grep -n "<old phrase>" <file>` to catch other stale occurrences. Phrase-level edits require whole-file verification.

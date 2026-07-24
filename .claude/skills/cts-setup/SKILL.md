@@ -12,6 +12,7 @@ Wraps `.claude/scripts/cts-sync.sh` ("engine call") to install or merge the CTS 
 - `git rev-parse --is-inside-work-tree` — if it fails, stop: "not a git repo".
 - `git status --porcelain` — if non-empty, warn the user the tree isn't clean but continue if they confirm.
 - If `.cts-version` exists, this project already has CTS installed — tell the user to run `/cts-update` instead and stop.
+- **Stale pre-two-layer engine guard**: run `grep -q CTS_SYNC_REEXEC .claude/scripts/cts-sync.sh || echo STALE`. If it prints `STALE` (marker absent), the on-disk engine predates the two-layer refactor entirely and has no self-update-first mechanism — invoking it directly would run its old 3-way-merge logic against the current payload and can leave `<<<<<<<` conflict markers in payload files. Replace it BEFORE the engine call: if `--source` resolves to a local directory, `cp <source>/.claude/scripts/cts-sync.sh .claude/scripts/cts-sync.sh`; otherwise re-run the curl command (see Step 2 below). **Verify the replacement before proceeding**: check the `cp`/`curl` command's own exit code, then re-run `grep -q CTS_SYNC_REEXEC .claude/scripts/cts-sync.sh || echo STALE`. If the `cp`/`curl` exited non-zero, or `grep` still prints `STALE`, the replacement failed — stop here, tell the user, and do NOT proceed to the engine call in Step 2. Only once both checks pass, continue to Step 2.
 
 ## 2. Engine call
 

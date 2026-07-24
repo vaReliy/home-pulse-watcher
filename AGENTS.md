@@ -59,6 +59,7 @@ Read when relevant (never preloaded):
 - `rules/cts/docs-style.md` — writing/editing any `.md` file (no manual prose wrapping; Prettier handles it)
 - `rules/local/**` — consumer-owned rule overrides and project-specific split files (e.g. `rules/local/architecture-backend.md`); never synced by `cts-sync.sh`. Local wins on conflict with any `rules/cts/**` file it cites.
 - `README.md` — setup, install profile, common commands
+- `docs/USAGE.md` — day-to-day operator recipes: grill sessions, tier triage, sync/override/contribute workflows, model tips
 - `docs/KNOWLEDGE_INBOX.md` — append-only inbox for durable-but-unplaced learnings; any AI tool working in the repo may append entries in the 3-line format from `rules/cts/workflow.md`'s Knowledge Inbox section, which also defines the distillation policy
 
 ## Setup
