@@ -82,18 +82,18 @@ If this skill was invoked by a human and stale entries exist, interactively prom
 
 Use this routing map to match "Belongs in:" labels to the split rules structure:
 
-| Label matches                       | Target file                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------ |
-| `rules/cts/architecture.md`             | `rules/cts/architecture.md` — onion/DDD/boundary core                        |
-| `rules/local/architecture-angular.md`     | `rules/local/architecture-angular.md` — InjectionToken, FE boundaries (consumer-owned split; create if absent)          |
-| `rules/local/architecture-backend.md`     | `rules/local/architecture-backend.md` — NestJS DI, MongoDB, auth patterns (consumer-owned split; create if absent)      |
-| `rules/cts/code-style.md`               | `rules/cts/code-style.md` — shared TS conventions                            |
-| `rules/local/code-style-angular.md`       | `rules/local/code-style-angular.md` — signals, templates, SCSS (consumer-owned split; create if absent)                 |
-| `rules/local/code-style-backend.md`       | `rules/local/code-style-backend.md` — pino, LIVR, cookies, InfrastructureError (consumer-owned split; create if absent) |
-| `rules/cts/testing.md`                  | `rules/cts/testing.md` — Vitest patterns, integration test limits            |
-| `rules/cts/validation-authorization.md` | `rules/cts/validation-authorization.md` — LIVR rules, JWT claims             |
-| `rules/cts/workflow.md`                 | `rules/cts/workflow.md` — pipeline, quality gate, pre-flight                 |
-| `PROJECT_CONTEXT`                   | `docs/PROJECT_CONTEXT.md` — domain patterns, infra plumbing              |
+| Label matches                           | Target file                                                                                                             |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `rules/cts/architecture.md`             | `rules/cts/architecture.md` — onion/DDD/boundary core                                                                   |
+| `rules/local/architecture-angular.md`   | `rules/local/architecture-angular.md` — InjectionToken, FE boundaries (consumer-owned split; create if absent)          |
+| `rules/local/architecture-backend.md`   | `rules/local/architecture-backend.md` — NestJS DI, MongoDB, auth patterns (consumer-owned split; create if absent)      |
+| `rules/cts/code-style.md`               | `rules/cts/code-style.md` — shared TS conventions                                                                       |
+| `rules/local/code-style-angular.md`     | `rules/local/code-style-angular.md` — signals, templates, SCSS (consumer-owned split; create if absent)                 |
+| `rules/local/code-style-backend.md`     | `rules/local/code-style-backend.md` — pino, LIVR, cookies, InfrastructureError (consumer-owned split; create if absent) |
+| `rules/cts/testing.md`                  | `rules/cts/testing.md` — Vitest patterns, integration test limits                                                       |
+| `rules/cts/validation-authorization.md` | `rules/cts/validation-authorization.md` — LIVR rules, JWT claims                                                        |
+| `rules/cts/workflow.md`                 | `rules/cts/workflow.md` — pipeline, quality gate, pre-flight                                                            |
+| `PROJECT_CONTEXT`                       | `docs/PROJECT_CONTEXT.md` — domain patterns, infra plumbing                                                             |
 
 If a label says `rules/cts/architecture.md` but the content is clearly NestJS-specific, route to `rules/local/architecture-backend.md` and note the reroute in the report. `rules/local/**` targets are consumer-owned and never synced by `cts-sync.sh` — a Step 3 ledger entry is still required if the entry's content ships as part of the consumer's own customization, but there is no upstream CTS obligation for these paths (only `rules/cts/**` targets need a `/cts-contribute` round trip to reach other consumers).
 

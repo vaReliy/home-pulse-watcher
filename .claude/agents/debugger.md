@@ -41,11 +41,11 @@ Before writing or modifying any code, additionally read:
 
 ## Skills to Activate
 
-| Skill                              | When to Activate                              |
-| ---------------------------------- | --------------------------------------------- |
-| `debugging-wizard`                 | **Always** — systematic debugging methodology |
-| `vitest-testing`                   | When writing reproducing tests                |
-| `typescript-pro`                   | TypeScript error analysis, type issues        |
+| Skill              | When to Activate                              |
+| ------------------ | --------------------------------------------- |
+| `debugging-wizard` | **Always** — systematic debugging methodology |
+| `vitest-testing`   | When writing reproducing tests                |
+| `typescript-pro`   | TypeScript error analysis, type issues        |
 
 > See `rules/cts/mcp-stack.md` for MCP tool reference.
 

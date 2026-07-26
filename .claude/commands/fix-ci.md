@@ -144,16 +144,13 @@ The agent prompt must instruct the developer to:
 
 - Apply the minimal fix to resolve the CI failure
 - Follow project standards: `CLAUDE.md`, `CLAUDE.local.md`, `rules/cts/code-style.md`, `rules/local/code-style.md`, `rules/cts/architecture.md`
-- For **lint failures**, run the relevant check to verify the fix (this repo is Nx-managed — always
-  run through `nx`, never the underlying tool directly, per `CLAUDE.local.md`):
+- For **lint failures**, run the relevant check to verify the fix (this repo is Nx-managed — always run through `nx`, never the underlying tool directly, per `CLAUDE.local.md`):
   ```bash
   npx nx typecheck <project>
   npx nx lint <project>
   npx prettier --check .
   ```
-- For **test failures**, run the failing test to verify the fix (this repo is pure Jest — zero
-  Vitest — see `rules/local/testing.md`; always invoke via `nx test`, never `vitest` or a raw
-  `jest`/docker invocation):
+- For **test failures**, run the failing test to verify the fix (this repo is pure Jest — zero Vitest — see `rules/local/testing.md`; always invoke via `nx test`, never `vitest` or a raw `jest`/docker invocation):
   ```bash
   npx nx test <project> -- <path-to-failing-test>
   ```

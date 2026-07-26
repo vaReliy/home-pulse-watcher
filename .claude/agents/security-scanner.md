@@ -65,10 +65,10 @@ Guided by the dependency maps in ARCHITECTURE.md and DECISIONS.md. The goal: det
 
 ## Skills to Activate
 
-| Skill                                        | When to Activate                         |
-| -------------------------------------------- | ---------------------------------------- |
-| `security-reviewer`                          | **Always** — security review methodology |
-| `typescript-pro`                             | Node.js security patterns, type safety   |
+| Skill               | When to Activate                         |
+| ------------------- | ---------------------------------------- |
+| `security-reviewer` | **Always** — security review methodology |
+| `typescript-pro`    | Node.js security patterns, type safety   |
 
 > See `rules/cts/mcp-stack.md` for MCP tool reference.
 

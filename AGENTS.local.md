@@ -15,8 +15,8 @@ Node.js 22+ · TypeScript 5 (strict) · NestJS 11 · Nx 22 · Prisma 7 + Postgre
 
 ## Extends AGENTS.md § "Routing" table
 
-| Need               | Agent                      |
-| ------------------ | --------------------------- |
-| `firmware/` files  | `embedded-cpp-pro` persona |
+| Need              | Agent                      |
+| ----------------- | -------------------------- |
+| `firmware/` files | `embedded-cpp-pro` persona |
 
 No frontend framework in this repo — `vue-developer`/`react-developer`/`angular-developer` rows in the synced AGENTS.md do not apply here and are harmless to leave as-is (agents are pruned from `.claude/agents/`, so the dispatcher can't reach them regardless).

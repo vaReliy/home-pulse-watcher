@@ -43,7 +43,7 @@ When reading a file line-by-line with `while IFS= read -r var; do ... done < fil
 
 ## Lazy `mktemp` for Artifacts That Must Outlive the Script
 
-A temp file/dir that's created for a human to consume *after* the script exits (e.g. a path printed in a "run this to verify" hint) must not be `mktemp`'d unconditionally at scope entry — if a test asserts "no leaked temp files" over a pinned `TMPDIR` (checking that nothing survives a run with zero relevant events), an eagerly-created-but-empty temp dir looks identical to a real leak and trips the assertion on every run, even ones that never needed the artifact.
+A temp file/dir that's created for a human to consume _after_ the script exits (e.g. a path printed in a "run this to verify" hint) must not be `mktemp`'d unconditionally at scope entry — if a test asserts "no leaked temp files" over a pinned `TMPDIR` (checking that nothing survives a run with zero relevant events), an eagerly-created-but-empty temp dir looks identical to a real leak and trips the assertion on every run, even ones that never needed the artifact.
 
 **Solution**: guard the `mktemp` call so it only fires on first actual use: `[ -n "$VAR" ] || VAR=$(mktemp -d)`. Do not `rm -rf` it in the script's own cleanup/trap — it's meant to survive process exit. See `CROSSCHECK_STASH_DIR` in `merge_one()` in `.claude/scripts/cts-sync.sh` for a working example (stashes a pre-merge file copy so a printed verification hint stays valid after the merge overwrites the working-tree file).
 
@@ -52,6 +52,7 @@ A temp file/dir that's created for a human to consume *after* the script exits (
 A bare `cond && action` statement (e.g., `[ "$x" = "$y" ] && do_thing`) is exempt from `set -e` when `cond` is false — bash's AND-OR-list special case prevents errexit from triggering. However, if this bare statement is the **terminal statement** (last-executed statement) along some code path inside a function, and that function is called as a bare/unguarded statement somewhere up the call chain, the exit status of the false `cond` (exit code 1) gets silently promoted to the function's own return status. The next time that function is called and its `cond` happens to be false, `set -e` kills the entire script with **zero error output**.
 
 Real examples from `cts-sync.sh`:
+
 - `[ "$target" = "$changed" ] && ROT_WARNINGS+=(...)` as the last statement in a loop inside a function.
 - `is_owner_only_skill "$rel" && { ...; return; }` — same shape but called in production-critical code paths.
 

@@ -49,16 +49,16 @@ For any `rules/cts/<name>.md` file this agent reads or references anywhere in th
 
 ## Skills to Activate
 
-| Skill                                 | When to Activate                                               |
-| ------------------------------------- | -------------------------------------------------------------- |
-| `vitest-testing`                      | **Always** — mandatory for all testing tasks                   |
-| `test-master`                         | When planning test strategy or reviewing coverage              |
-| `debugging-wizard`                    | When tests fail or debugging complex issues                    |
-| `tdd`                                 | TDD workflow — red/green/refactor                              |
-| `typescript-pro`                      | Strict TypeScript 5+ in test code                              |
-| `vue-expert`                          | When writing Vue component tests (Vue Test Utils)              |
-| `react-expert`                        | When writing React component tests (React Testing Library)     |
-| `angular-expert`                      | When writing Angular component tests (Angular Testing Library) |
+| Skill              | When to Activate                                               |
+| ------------------ | -------------------------------------------------------------- |
+| `vitest-testing`   | **Always** — mandatory for all testing tasks                   |
+| `test-master`      | When planning test strategy or reviewing coverage              |
+| `debugging-wizard` | When tests fail or debugging complex issues                    |
+| `tdd`              | TDD workflow — red/green/refactor                              |
+| `typescript-pro`   | Strict TypeScript 5+ in test code                              |
+| `vue-expert`       | When writing Vue component tests (Vue Test Utils)              |
+| `react-expert`     | When writing React component tests (React Testing Library)     |
+| `angular-expert`   | When writing Angular component tests (Angular Testing Library) |
 
 > See `rules/cts/testing.md` for project testing policy. See `rules/cts/docker-commands.md` for all commands. See `rules/cts/mcp-stack.md` for MCP tool reference.
 

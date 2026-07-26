@@ -29,13 +29,13 @@ Before acting, read `docs/KNOWLEDGE_INBOX.md` — it contains accumulated projec
 
 ## Skills to Activate
 
-| Skill                                         | When to Activate                                      |
-| --------------------------------------------- | ----------------------------------------------------- |
-| `brainstorming`                               | **Always** — explore approaches before committing     |
-| `rules/cts/task-authoring.md`                     | **Always** — structured implementation roadmaps       |
-| `typescript-architecture`                     | Technical feasibility and Node.js/TypeScript patterns |
-| `architecture-designer`                       | System architecture and design decisions              |
-| `ddd-strategic-design`                        | Domain boundaries and bounded contexts                |
+| Skill                         | When to Activate                                      |
+| ----------------------------- | ----------------------------------------------------- |
+| `brainstorming`               | **Always** — explore approaches before committing     |
+| `rules/cts/task-authoring.md` | **Always** — structured implementation roadmaps       |
+| `typescript-architecture`     | Technical feasibility and Node.js/TypeScript patterns |
+| `architecture-designer`       | System architecture and design decisions              |
+| `ddd-strategic-design`        | Domain boundaries and bounded contexts                |
 
 > See `rules/cts/mcp-stack.md` for MCP tool reference.
 

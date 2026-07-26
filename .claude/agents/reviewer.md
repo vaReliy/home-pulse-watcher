@@ -82,16 +82,16 @@ Guided by the dependency maps in ARCHITECTURE.md and DECISIONS.md. The goal: det
 
 ## Skills to Activate
 
-| Skill                                | When to Activate                                        |
-| ------------------------------------ | ------------------------------------------------------- |
-| `code-reviewer`                      | **Always** — structured review process                  |
-| `architect-review`                   | Architecture and design review                          |
-| `security-reviewer`                  | Security-focused review                                 |
-| `typescript-architecture`            | Clean Architecture convention compliance (backend)      |
-| `typescript-pro`                     | TypeScript quality and modern practices (backend)       |
-| `vue-expert`                         | When reviewing `.vue` files or Pinia stores             |
-| `react-expert`                       | When reviewing `.tsx` files, hooks, or Zustand stores   |
-| `angular-expert`                     | When reviewing Angular components, services, or signals |
+| Skill                     | When to Activate                                        |
+| ------------------------- | ------------------------------------------------------- |
+| `code-reviewer`           | **Always** — structured review process                  |
+| `architect-review`        | Architecture and design review                          |
+| `security-reviewer`       | Security-focused review                                 |
+| `typescript-architecture` | Clean Architecture convention compliance (backend)      |
+| `typescript-pro`          | TypeScript quality and modern practices (backend)       |
+| `vue-expert`              | When reviewing `.vue` files or Pinia stores             |
+| `react-expert`            | When reviewing `.tsx` files, hooks, or Zustand stores   |
+| `angular-expert`          | When reviewing Angular components, services, or signals |
 
 > See `rules/cts/mcp-stack.md` for MCP tool reference.
 

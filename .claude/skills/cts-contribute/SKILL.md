@@ -58,12 +58,12 @@ Note: under the two-layer model, most customization goes through an override fil
 
 Print a summary table:
 
-| Category                     | Count | Action                         |
-| ----------------------------- | ----- | ------------------------------- |
-| Net-new skills (Case A)       | N     | Will export                     |
-| CTS-managed edits (Case B)    | N     | Whole-file replacement candidate |
-| Forked-file improvements (Case C) | N | Whole-file replacement candidate |
-| Skipped (project-specific)    | N     | Will skip (escape hatch below)  |
+| Category                          | Count | Action                           |
+| --------------------------------- | ----- | -------------------------------- |
+| Net-new skills (Case A)           | N     | Will export                      |
+| CTS-managed edits (Case B)        | N     | Whole-file replacement candidate |
+| Forked-file improvements (Case C) | N     | Whole-file replacement candidate |
+| Skipped (project-specific)        | N     | Will skip (escape hatch below)   |
 
 Ask: "Proceed with review?" If the user wants to re-examine any skipped item, they can say so now — add it back to the queue.
 
