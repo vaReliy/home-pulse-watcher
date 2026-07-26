@@ -5,7 +5,6 @@ description: >-
   
   Українською: очистити inbox, дистилювати знання, перенести записи до rules, прибрати KNOWLEDGE_INBOX, розкласти по місцях.
 
-
 triggers:
   - distill-inbox
   - distill inbox
@@ -93,7 +92,7 @@ Use this routing map to match "Belongs in:" labels to the split rules structure:
 | `rules/cts/testing.md`                  | `rules/cts/testing.md` — Vitest patterns, integration test limits                                                       |
 | `rules/cts/validation-authorization.md` | `rules/cts/validation-authorization.md` — LIVR rules, JWT claims                                                        |
 | `rules/cts/workflow.md`                 | `rules/cts/workflow.md` — pipeline, quality gate, pre-flight                                                            |
-| `PROJECT_CONTEXT`                       | `docs/PROJECT_CONTEXT.md` — domain patterns, infra plumbing                                                             |
+| `CONTEXT.md`                            | `CONTEXT.md` (at the repo root) — domain patterns, infra plumbing                                                       |
 
 If a label says `rules/cts/architecture.md` but the content is clearly NestJS-specific, route to `rules/local/architecture-backend.md` and note the reroute in the report. `rules/local/**` targets are consumer-owned and never synced by `cts-sync.sh` — a Step 3 ledger entry is still required if the entry's content ships as part of the consumer's own customization, but there is no upstream CTS obligation for these paths (only `rules/cts/**` targets need a `/cts-contribute` round trip to reach other consumers).
 

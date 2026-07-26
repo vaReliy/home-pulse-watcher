@@ -21,17 +21,31 @@
 .claude/skills/angular-expert/
 
 # customized — HPW is pure Jest (jest.config.ts/.cts in every app/lib,
-# jest/ts-jest/@swc/jest deps, zero vitest in package.json). No lex-specialis
-# override mechanism exists for skills (unlike rules/** and .claude/agents/**),
-# so this remains a whole-file fork. Candidate for upstream contribution as a
-# wider Vitest-or-Jest skill (or split into two) — not yet done, see
-# docs/CLAUDE_TS_CHANGELOG.md.
+# jest/ts-jest/@swc/jest deps, zero vitest in package.json), so this is a
+# whole-file fork of the shipped skill.
+#
+# NOTE (claude-ts 0.2.0): the reason this fork existed — "no lex-specialis
+# override mechanism exists for skills" — no longer holds. CTS now ships
+# .claude/skills-local/<name>/SKILL.md as the skills override layer, and
+# vitest-testing was its pilot. Retiring this fork in favour of
+# .claude/skills-local/vitest-testing/SKILL.md (vi.fn → jest.fn, nx test in
+# place of npx vitest run) removes the whole-file fork and stops the recurring
+# "ignored, but changed upstream" report on every sync. Not yet done.
 .claude/skills/vitest-testing/
 
 # customized — project-specific additions with no lex-specialis override
-# mechanism (plain payload files, not rules/** or .claude/agents/**). The
-# 2026-07-23 first sync under the new engine overwrote both of these before
-# this .ctsignore entry existed (no prior manifest baseline to detect drift
+# mechanism (plain payload file, not rules/** or .claude/agents/**). The
+# 2026-07-23 first sync under the new engine overwrote this before the
+# .ctsignore entry existed (no prior manifest baseline to detect drift
 # against) — content was manually restored from git history afterward.
 /.prettierignore
-/docs/METRICS.md
+
+# customized — HPW's own /fix-ci and /review-pr predate CTS claiming
+# .claude/commands/ as payload (claude-ts 3ea81a0). Both carry real local
+# adaptations CTS's copies lack: fix-ci.md is Nx-aware (nx typecheck/lint per
+# project, ~63 differing lines), and both point reviewers at the two-layer
+# override files (CLAUDE.local.md, rules/local/**) that upstream's copies
+# still omit. Protect them until those improvements are contributed upstream,
+# then drop these two entries and take CTS's copies.
+/.claude/commands/fix-ci.md
+/.claude/commands/review-pr.md

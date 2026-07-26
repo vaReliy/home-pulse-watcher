@@ -335,14 +335,14 @@ When any subagent's final report contains a `## Learnings` section, the orchestr
 
 ### What to update
 
-| Artifact                             | When to update                                    | What goes in                                                                                                                               |
-| ------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `CHANGELOG.md`                       | **Always**                                        | Concise summary of what changed and why; one entry per task                                                                                |
-| `PROJECT_CONTEXT.md` (or equivalent) | Architecture/domain changed                       | New modules, domain rule changes, infra changes, historical incidents                                                                      |
-| `docs/KNOWLEDGE_INBOX.md`            | Durable, project-relevant learning (default path) | A 3-line entry (see Knowledge Inbox below)                                                                                                 |
-| `docs/CLAUDE_TS_CHANGELOG.md`        | Template-inherited file changed                   | Divergence/fix log entry (see entry format in that file)                                                                                   |
-| `docs/METRICS.md`                    | **Always**                                        | One append-only table row per completed task (see format in that file); never `@`-referenced, same constraint as `docs/KNOWLEDGE_INBOX.md` |
-| Auto-memory (`feedback` type)        | Personal workflow preference — this user only     | Agent behavior to repeat or avoid for this user's sessions                                                                                 |
+| Artifact                      | When to update                                    | What goes in                                                                                                                               |
+| ----------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CHANGELOG.md`                | **Always**                                        | Concise summary of what changed and why; one entry per task                                                                                |
+| `CONTEXT.md` (or equivalent)  | Architecture/domain changed                       | New modules, domain rule changes, infra changes, historical incidents                                                                      |
+| `docs/KNOWLEDGE_INBOX.md`     | Durable, project-relevant learning (default path) | A 3-line entry (see Knowledge Inbox below)                                                                                                 |
+| `docs/CLAUDE_TS_CHANGELOG.md` | Template-inherited file changed                   | Divergence/fix log entry (see entry format in that file)                                                                                   |
+| `docs/METRICS.md`             | **Always**                                        | One append-only table row per completed task (see format in that file); never `@`-referenced, same constraint as `docs/KNOWLEDGE_INBOX.md` |
+| Auto-memory (`feedback` type) | Personal workflow preference — this user only     | Agent behavior to repeat or avoid for this user's sessions                                                                                 |
 
 ### Decision rules
 
@@ -351,7 +351,7 @@ When any subagent's final report contains a `## Learnings` section, the orchestr
 - Changed a UseCase, domain rule, or layer boundary → update project context docs
 - Added a module, endpoint, or schema model → update project context docs
 - Discovered a subtle bug, config gotcha, wrong-pattern catch, or library recipe → append to `docs/KNOWLEDGE_INBOX.md` (or directly to its permanent home if clear). **Do NOT route to auto-memory** — these are project-durable, agent-agnostic learnings.
-- Durable, project-relevant learning whose final home (`PROJECT_CONTEXT.md` / `CLAUDE.md` / a rule / a skill) is unclear → append an entry to `docs/KNOWLEDGE_INBOX.md` (see Knowledge Inbox below).
+- Durable, project-relevant learning whose final home (`CONTEXT.md` / `CLAUDE.md` / a rule / a skill) is unclear → append an entry to `docs/KNOWLEDGE_INBOX.md` (see Knowledge Inbox below).
 - Discovered a bug, gap, or improvement in a file inherited from the claude-ts template (`AGENTS.md`, `CLAUDE.md`, `rules/**`, `.claude/agents/**`, `.claude/skills/**`) → write the entry **directly to `docs/CLAUDE_TS_CHANGELOG.md`** (not the inbox) so it survives in the repo until PR'd back upstream. Use the format already established in that file.
 - Everything else → `CHANGELOG.md` only
 - If nothing non-obvious was learned → `CHANGELOG.md` only; state this explicitly so the obligation is acknowledged
@@ -383,21 +383,25 @@ How to apply: any new list endpoint must reuse the constant, not hardcode a valu
 
 An append-only queue for durable, project-relevant learnings whose final home isn't clear yet — the **agent-agnostic memory layer**: any AI tool working in the repo (Claude, Codex, Gemini, Copilot, ...) may append to it, unlike vendor-private auto-memory. It trends toward empty — a queue, not an archive.
 
+Entries are distilled into their permanent homes (`CONTEXT.md` at the repo root for domain/architecture truths, `CLAUDE.md` for Claude-specific workflows, rules, skills, etc.) during Phase 6 distillation or explicit "distill the inbox" requests; a project may legitimately not have a `CONTEXT.md` file yet.
+
 If the file doesn't exist yet, create it with this header + format:
 
 ```markdown
 # Knowledge Inbox
 
-Append-only queue for durable, project-relevant learnings whose final home isn't clear yet. Distilled into PROJECT_CONTEXT.md / CLAUDE.md / a rule / a skill, then deleted from here — this file should trend toward empty.
+Append-only queue for durable, project-relevant learnings whose final home isn't clear yet. Distilled into CONTEXT.md / CLAUDE.md / a rule / a skill, then deleted from here — this file should trend toward empty.
 
 ## YYYY-MM-DD — [area] short fact
 
-Why: … Belongs in (guess): PROJECT_CONTEXT | CLAUDE.md | rule | skill | claude-ts-upstream | discard
+Why: … Belongs in (guess): CONTEXT.md | CLAUDE.md | rule | skill | claude-ts-upstream | discard
 ```
 
 Append new entries using the same 3-line format (header line + `Why:` + `Belongs in (guess):`).
 
-**Automatic distillation:** during every Phase 6, check `docs/KNOWLEDGE_INBOX.md`. If it has more than 10 entries or exceeds ~3 KB, distill it as part of this phase (a `cheap`-tier agent may be dispatched for this): move each entry into its permanent home (`PROJECT_CONTEXT.md`, `CLAUDE.md`, a rule, a skill, or `docs/CLAUDE_TS_CHANGELOG.md` for upstream-bound learnings — or discard if no longer useful), then delete the entry from the inbox. Also distill on explicit request ("distill the knowledge inbox") or at the end of a roadmap phase.
+**Automatic distillation:** during every Phase 6, check `docs/KNOWLEDGE_INBOX.md`. If it has more than 10 entries or exceeds ~3 KB, distill it as part of this phase (a `cheap`-tier agent may be dispatched for this): move each entry into its permanent home (`CONTEXT.md`, `CLAUDE.md`, a rule, a skill, or `docs/CLAUDE_TS_CHANGELOG.md` for upstream-bound learnings — or discard if no longer useful), then delete the entry from the inbox. Also distill on explicit request ("distill the knowledge inbox") or at the end of a roadmap phase.
+
+**Parallel branches:** the inbox stays a single append-only file — conflicts are prevented at the git layer, not by splitting entries into per-entry files. A CTS-managed block in the repo-root `.gitattributes` marks the inbox (and the other three append-only ledgers) `merge=union`, so two branches appending different learnings merge with zero conflicts. One consequence to know: merging a distillation branch (which _deletes_ entries) against a branch that appended can resurrect deleted entries — re-run `/distill-inbox` after such a merge. Full rationale and resolution recipe: `rules/cts/git-operations.md` § Parallel Branches.
 
 **Hard constraint:** never `@`-reference `docs/KNOWLEDGE_INBOX.md` from `CLAUDE.md` or `AGENTS.md` — that would force-load it into every conversation as noise. Reference it only as a plain path in on-demand indexes. The same constraint applies to `docs/METRICS.md`: never `@`-referenced, for the same reason.
 
@@ -405,8 +409,8 @@ Append new entries using the same 3-line format (header line + `Why:` + `Belongs
 
 - `docs/KNOWLEDGE_INBOX.md` — **default target** for project-durable knowledge in transit (agent-agnostic, travels with the repo; any AI tool may append)
 - `docs/CLAUDE_TS_CHANGELOG.md` — permanent ledger of claude-ts template divergences/fixes, ready to port upstream — entries persist until actually ported, unlike the inbox
-- `docs/METRICS.md` — append-only raw-data ledger, one table row per completed task, feeding a future measurement-design session; never `@`-referenced
-- `PROJECT_CONTEXT.md` (or equivalent) — distilled, stable domain truth
+- `docs/METRICS.md` — append-only raw-data ledger, one table row per completed task, feeding a future measurement-design session; never `@`-referenced. Project-local, like `docs/KNOWLEDGE_INBOX.md`: `cts-sync.sh` seeds it once on `init` from the shipped `docs/METRICS.md.example` and never touches it again — your rows are yours, and no `.ctsignore` entry is needed to protect them
+- `CONTEXT.md` (at the repo root, or equivalent) — distilled, stable domain truth
 - `CHANGELOG.md` — what changed and why, per task
 - Auto-memory (`feedback` type only) — **narrow exception**: personal Claude workflow preferences for this user's sessions only. Never use for project-level learnings (bugs, gotchas, library recipes, wrong patterns) — those go in the inbox or their permanent home regardless of vendor.
 
@@ -449,6 +453,47 @@ Also update any references in `AGENTS.md` skill tables and, in consumer projects
 | Business analysis / user stories        | `ba`                    |
 | Challenge requirements                  | `devil`                 |
 | External docs / API / README            | `docs-writer`           |
+
+## Override-rot detector
+
+The override-rot detector protects against stale consumer overrides when CTS-owned files change. It runs automatically during each `/cts-update` sync run and flags overrides that cite a target path that was changed by the upstream sync.
+
+**How it works:**
+
+An override file declares a lex specialis (narrow, cited replacement) via a `## Overrides <path>` line in its frontmatter. This line names the specific CTS file or section the override displaces. If that cited path's content changes during a sync run, the detector flags the override file as potentially stale ("override rot") so a human or agent can review whether the override still applies. Detection is grep-level (substring matching on changed filenames), not semantic merging — the override file itself is never touched.
+
+**Paths covered:**
+
+Override directories (all `.md` files inside them):
+
+- `rules/local/**`
+- `.claude/agents-local/**`
+- `.claude/skills-local/**`
+
+Override extra files (checked individually):
+
+- `AGENTS.local.md`
+- `CLAUDE.local.md`
+
+**When it fires:**
+
+During a `cts-update` sync run, for each override file found, the detector:
+
+1. Extracts all `## Overrides <path>` citations.
+2. For each citation, checks if the target path is in the set of files whose content changed this sync run (built from git diff between old and new upstream HEAD).
+3. Emits a warning if a cited path changed: `OVERRIDE ROT: <override_file> cites "<target>", which changed content in this sync — review whether the override still applies.`
+
+A changed path means the upstream file's content diffed; a pure rename or metadata-only change (permissions, gitattributes) does not trigger rot.
+
+**Resolution:**
+
+When override rot is detected, the consumering agent or human should:
+
+1. Compare the override file's content against the target path's new version.
+2. Adjust the override if the upstream change affects its applicability (e.g., context shifted, a cited function renamed).
+3. Remove the `## Overrides <path>` line if the override is no longer needed.
+
+Override files are never auto-merged or reverted by the detector — rot is a flag, not an action.
 
 ## Tool API Reference
 

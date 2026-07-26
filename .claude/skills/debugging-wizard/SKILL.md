@@ -99,3 +99,7 @@ Debuggers (Chrome DevTools, VS Code, pdb, delve), profilers, log aggregation, di
 - **Test Master** - Writing regression tests
 - **Fullstack Guardian** - Implementing fixes
 - **Monitoring Expert** - Setting up alerting
+
+## Local Override
+
+If `.claude/skills-local/debugging-wizard/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/debugging-wizard/` and re-point to it from your local `SKILL.md`.

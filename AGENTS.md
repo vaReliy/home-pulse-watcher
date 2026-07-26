@@ -8,6 +8,7 @@ Node.js 22+ · TypeScript 5 (strict) · Vue 3 / React 18+ / Angular 17+ · Prism
 - Never push to remote without explicit request.
 - Never force-push or run destructive git commands without explicit approval.
 - Never mention AI tools in PR title/body. Show `git diff`/`git status` before committing.
+- Never change staged state (`git add`, `git restore --staged`, `git reset`, `git stash`) unless asked. A staged index is normal mid-session — it is often a human's review in progress, not a stray mutation. Report what you see and let them decide; do not flag it as an anomaly and do not offer to unstage it.
 
 PR description rules: `rules/cts/git-operations.md`.
 

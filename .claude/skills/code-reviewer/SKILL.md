@@ -188,3 +188,7 @@ Master code reviewer focused on ensuring code quality, security, performance, an
 - "Analyze this caching strategy for race conditions and data consistency"
 - "Review this CI/CD pipeline for security and deployment best practices"
 - "Assess this error handling implementation for observability and debugging"
+
+## Local Override
+
+If `.claude/skills-local/code-reviewer/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/code-reviewer/` and re-point to it from your local `SKILL.md`.

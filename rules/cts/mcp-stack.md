@@ -25,4 +25,18 @@
 
 ## Playwright MCP
 
-Used exclusively by `qa` agent for E2E browser automation.
+Used exclusively by the `qa` agent for E2E browser automation.
+
+**Not provided by `.mcp.json`.** Unlike Context7/GitHub/Figma above, the Playwright tools are namespaced `mcp__plugin_playwright_playwright__*` — they come from a separately installed Claude Code **plugin**, not from this repo's `.mcp.json`. If that plugin isn't installed, every tool in `qa`'s frontmatter is inert and `qa` cannot run.
+
+| Tool                                                   | When to Use                           |
+| ------------------------------------------------------ | ------------------------------------- |
+| `browser_navigate`, `browser_snapshot`                 | Load a page and capture its state     |
+| `browser_click`, `browser_type`, `browser_fill_form`   | Drive the user flow under test        |
+| `browser_take_screenshot`                              | Visual regression comparison          |
+| `browser_console_messages`, `browser_network_requests` | Diagnose failures from the page side  |
+| `browser_wait_for`                                     | Synchronize on async UI (never sleep) |
+
+## IDE MCP
+
+`mcp__ide__getDiagnostics` (used by `backend-developer` and the frontend agents) is provided by the Claude Code **IDE extension**, not by `.mcp.json`. Without the extension, fall back to the project's own type-check target — see AGENTS.md § Verification Commands.

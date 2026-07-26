@@ -238,3 +238,7 @@ If the design is high-impact, high-risk, or requires elevated confidence, you MU
 ## When to Use
 
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Local Override
+
+If `.claude/skills-local/brainstorming/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/brainstorming/` and re-point to it from your local `SKILL.md`.

@@ -56,6 +56,78 @@ Real examples from `cts-sync.sh`:
 - `[ "$target" = "$changed" ] && ROT_WARNINGS+=(...)` as the last statement in a loop inside a function.
 - `is_owner_only_skill "$rel" && { ...; return; }` — same shape but called in production-critical code paths.
 
+## Never Parse `ls` in a Script — the Interactive Shell May Have Aliased It
+
+Agent `Bash` calls run through the user's shell, which is initialized from their profile. Many developers alias `ls` to a table-formatting lister (`eza`, `exa`, `lsd`) that prints a header row and permission/size/date columns. A loop like `ls rules/cts/ | while read f; do ... done` then iterates over column headers and metadata instead of filenames, and every downstream check silently tests garbage — the loop still "succeeds", so nothing looks wrong.
+
+**Solution**: use `find` with an explicit format for any machine-consumed listing:
+
+```bash
+find rules/cts -name '*.md' -printf '%f\n' | sort
+```
+
+Same reasoning applies to `git status --porcelain`, whose stability is guaranteed only for the `--porcelain` form — and even there, paths containing spaces are quoted, so `awk '{print $NF}'` is not a safe path extractor. Use `-z` with NUL-delimited reads when paths may contain whitespace.
+
+## Greedy `sed` Regex Silently Truncates Multi-Digit Numbers
+
+GNU sed's leftmost-longest matching allows a leading `.*` to consume into a digit run, truncating the captured number. For example, `sed -E 's/.*([0-9]+) commands.*/\1/'` on the string "99 commands" matches the `.*` against "9", leaving only "9" to capture, yielding "9" instead of "99". This is especially hazardous in CI fixtures or test assertions where the error passes silently (the regex succeeds, the script continues) but the extracted value is wrong.
+
+**Solution**: Use `grep -oE` with anchors or use non-greedy alternatives: `echo "99 commands" | grep -oE '[0-9]+ commands' | grep -oE '^[0-9]+'` extracts the full "99". When sed is unavoidable, anchor the leading match tightly to avoid consuming digits — e.g., `sed -E 's/.*(^|[^0-9])([0-9]+) commands.*/\2/'` (the `(^|[^0-9])` prefix ensures `.*` cannot consume digits). See `tests/payload-sanity.test.sh` (`check_counts()` function) for a working example using `grep -oE` anchors.
+
+## An Unanchored `grep -L` Verification Gate Silently Passes on Prose Mentions
+
+A coverage gate of the form `grep -L "Some Heading" <files>` ("list files missing this section") matches the phrase **anywhere** in the file, including inside prose, a code fence, or a documented example command. Any file that merely _talks about_ the heading is treated as having it, and drops out of the gate's output — a false negative that reads as a pass.
+
+Hit for real: `grep -L "Local Override" .claude/skills/*/SKILL.md` was the stated gate for the skills-local rollout, but `cts-setup/SKILL.md` documents a verification command containing that exact string, so it never appeared in the missing list despite correctly having no such section. The gate could not distinguish "has the section" from "mentions the words".
+
+**Solution**: anchor structural greps to the structure. `grep -L '^## Local Override'` matches only a real heading at line start. The same applies to `grep -l`, `grep -c`, and any test assertion checking for a section's presence — if you mean "has this heading", say `^##`, never the bare phrase.
+
+## A `local` Statement Cannot Reference Its Own Earlier Names Under `set -u`
+
+`local dir="$1" hook_path="${2:-$dir/default}"` fails with `dir: unbound variable`: bash evaluates the whole `local` statement's word list before the assignments become visible, so the second initializer's `$dir` is still unset. The failure is loud but easy to misread — it prints to stderr, and if the function's output is captured with `out=$(fn ...)` the caller just sees an empty string and every downstream `assert_not_contains` passes for the wrong reason.
+
+**Solution**: split the declarations — one `local` per name whenever a later default refers to an earlier one.
+
+## State Mutated Inside `$( )` Is Discarded — Never Derive Per-Call Uniqueness From a Counter
+
+A helper called as `out=$(run_thing ...)` runs in a subshell, so `COUNTER=$((COUNTER + 1))` inside it never reaches the parent. Test harnesses that hand a script a "unique" id this way actually hand it the same id every time. That is silent when the script under test keys per-id state off it — e.g. `.claude/hooks/knowledge-capture-nudge.sh` writes one `$TMPDIR/cts-kc-nudge-<session>-<category>` marker per session and suppresses repeats — so every case after the first sees a suppressed no-op and passes vacuously.
+
+**Solution**: generate the id inside the subshell from a self-contained source (`printf 's%s%s' "$$" "$RANDOM"`), and pair every "nudge X absent" assertion with a liveness partner asserting some other output is present. A negative assertion alone cannot distinguish "withheld" from "never ran".
+
+## `git status --porcelain` Collapses Untracked Directories to a Single Entry
+
+A brand-new untracked directory is reported as one record for the directory (`?? src/`), not one per file inside it. A test that creates `src/my file.ts` to prove spaced paths are extracted correctly therefore proves nothing — the extractor only ever sees `src/`, which any naive field-splitting version handles fine, so the negative control passes and the case is non-discriminating.
+
+**Solution**: commit the file in the fixture baseline first and modify it in the case, so the status record carries the full path. Use `-u`/`--untracked-files=all` only if the untracked form is specifically what's under test.
+
+## Changing the Sync Engine or the Payload List Means Running Both Test Suites
+
+`tests/` holds two independent gates, and passing one says nothing about the other. `tests/cts-sync.test.sh` tests sync _behavior_; `tests/payload-sanity.test.sh` tests payload _content_ — it resolves every `cts-payload.txt` entry and greps for phrasings that assume the reader sits in the upstream CTS source checkout rather than in an installed project (see that test's own phrase list). Any edit to `.claude/scripts/cts-sync.sh`, `cts-payload.txt`, or any payload-listed file can break the second while the first stays green: comments and error messages inside the engine ship to every consumer, so wording that reads naturally while working upstream becomes a leak once installed. This rule file is payload too — the same constraint applies to the words you write here.
+
+**Solution**: run both after any such change:
+
+```bash
+bash tests/cts-sync.test.sh && bash tests/payload-sanity.test.sh
+```
+
+When a new match is a genuine two-way rule the consumer also needs (e.g. a guard whose error message must name the upstream source to be actionable), add a `"relative/path:phrase"` pair to that test's `ALLOWLIST` with a comment justifying it — one entry per matching phrase, since the check greps each phrase separately. Do not soften the message into vagueness just to dodge the grep.
+
+## Payload Completeness Invariant: Two Lists, One Definition
+
+`cts-payload.txt` maintains two independent lists: shipped-paths (lines 16–29) and an "Explicitly NOT payload" comment block (lines 31–42) listing excluded paths with reasons. An implicit invariant requires **every** top-level `.claude/**` subdirectory and other candidate payload paths to appear in exactly one of these two lists — not both, not neither. Currently, no test enforces this completeness; `tests/payload-sanity.test.sh` validates only the _content_ of listed paths (self-containment, no upstream-only phrasing), not whether all candidates are accounted for. When this invariant drifts (a candidate path is listed in neither section), that path is silently omitted from `cts-sync.sh` copies to consumer projects, even if advertised in README.md or docs — the breach can persist undetected for a long time. Concrete example: `.claude/commands/` fell through this gap for over a version, never reaching consumers despite being advertised in feature counts and README. **Solution**: Before shipping a new `.claude/**` entry, audit `cts-payload.txt` to ensure it appears in exactly one list. A follow-up enforcement task (a completeness check in `payload-sanity.test.sh`) is warranted but not yet implemented. // TODO: add payload completeness test.
+
+## A Sync-Time Writer Into a Consumer-Owned File Must Not Write When Already Current
+
+Anything the sync engine writes on **every** run (not just `init`) into a file it doesn't own outright — the `.claude/settings.json` deep-merge, the `.gitattributes` managed block — must compare first and return without touching the file when the content is already correct. Writing identical bytes is not harmless: it re-stamps the mtime and dirties the working tree, so a genuine no-op sync stops looking like one, `git diff` after `/cts-update` shows churn the user has to read past, and the engine's own ownership-violation detector (which compares content hashes) has one more moving file to reason about. The compare-then-skip is a correctness requirement, not an optimization.
+
+The corollary for tests: assert the _absence_ of the write message on a second run, not just the presence of the right content. Content-only assertions pass whether or not the guard exists.
+
+## `$( )` Already Strips Trailing Newlines — Don't Re-Strip Them With `sed`
+
+Command substitution removes **all** trailing newlines from its output, so a value captured with `rest=$(…)` can never end in a blank line. The classic `sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba'` trailing-blank-line dance is dead code in that position. Re-separate with an explicit `printf '%s\n\n%s\n'` instead — that composes cleanly with the guarantee `$( )` already gives you, and repeated runs can't accumulate whitespace.
+
+The same guarantee is why comparing two `$( )` captures for equality is safe even when one source file ends with a newline and the other doesn't.
+
 ## Fixtures Simulating a Stale/Old-Model Engine Need a Real Baseline, Not Just an Old Script Binary
 
 When a `tests/cts-sync.test.sh` case exists to prove behavior around an old-model (pre-refactor) `cts-sync.sh`, dropping the old script into the fixture directory is not sufficient by itself. The old engine's merge/conflict code paths (e.g. `is_locally_modified()`, `merge_one()` in the pre-two-layer 3-way-merge model) gate on `OLD_SHA`, sourced from `.cts-version`. A fixture with no pre-existing `.cts-version` never reaches those code paths at all — `update` silently degrades to a plain file copy regardless of which engine is on disk, and the test will pass identically whether or not the fix under test is even present.

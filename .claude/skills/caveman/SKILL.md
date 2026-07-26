@@ -1,7 +1,7 @@
 ---
 name: caveman
 description: >
-  Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. Use when user says "caveman mode", "talk like caveman", "use caveman", "less tokens", "be brief", or invokes /caveman.
+  Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler, articles, and pleasantries while keeping full technical accuracy. NOT for writing code, docs, or commit messages — those keep their normal form; this changes only how replies are phrased. Trigger — EN: caveman mode, talk like caveman, use caveman, less tokens, be brief, /caveman. Trigger — UA: режим печерної людини, говори як печерна людина, коротше, менше токенів, стисло.
 ---
 
 Respond terse like smart caveman. All technical substance stay. Only fluff die.
@@ -43,3 +43,7 @@ Example -- destructive op:
 > ```
 >
 > Caveman resume. Verify backup exist first.
+
+## Local Override
+
+If `.claude/skills-local/caveman/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/caveman/` and re-point to it from your local `SKILL.md`.

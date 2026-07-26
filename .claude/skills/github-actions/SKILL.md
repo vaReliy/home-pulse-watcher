@@ -109,7 +109,6 @@ services:
     options: >-
       --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
 
-
   redis:
     image: redis:7
     ports: ['6379:6379']
@@ -183,3 +182,7 @@ Working examples in `examples/`:
 
 - **`examples/node-ci.yml`** — Node.js/TypeScript lint + test + build
 - **`examples/docker-deploy.yml`** — Docker build, push, and deploy
+
+## Local Override
+
+If `.claude/skills-local/github-actions/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/github-actions/` and re-point to it from your local `SKILL.md`.

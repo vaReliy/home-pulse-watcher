@@ -49,3 +49,7 @@ classify subdomains, and propose team ownership.
 - This skill does not produce executable code.
 - It cannot infer business truth without stakeholder input.
 - It should be followed by tactical design before implementation.
+
+## Local Override
+
+If `.claude/skills-local/ddd-strategic-design/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/ddd-strategic-design/` and re-point to it from your local `SKILL.md`.

@@ -32,6 +32,20 @@ Example fix:
 
 Reproducible installs across machines and CI; no silent minor/patch drift. Nx generators are the most common source of injected caret ranges (webpack, webpack-cli, webpack-dev-server, axios, etc.), so the audit is mandatory whenever a generator touched `package.json`.
 
+## Lockfile-Faithful Installs — Never `npm install` in CI, Docker, or Generated Instructions
+
+Any non-interactive install — CI steps, Dockerfiles, container commands, scripts, and instructions an agent writes for others to run — must install strictly from the lockfile:
+
+```bash
+npm ci                            # never `npm install`
+pnpm install --frozen-lockfile    # pnpm equivalent
+yarn install --immutable          # yarn equivalent
+```
+
+`npm install` reconciles `package.json` against the lockfile and **rewrites the lockfile** when they disagree, so a drifted or partially-committed lockfile silently produces a different dependency tree than the one that was reviewed — the failure surfaces later as an unreproducible build rather than at install time. `npm ci` fails loudly on that mismatch instead, which is the desired behavior everywhere a human is not watching. It is also faster, since it skips resolution entirely and wipes `node_modules` first.
+
+This pairs with the exact-pin rule above: pinning removes range drift from `package.json`, lockfile-faithful installs remove drift between the lockfile and what actually gets installed. Container-specific forms: `rules/cts/docker-commands.md`.
+
 ## Pinning CI Actions to a Commit SHA
 
 When resolving a tag to a commit SHA for pinning, always dereference via `refs/tags/<tag>^{}` (or use `gh api repos/<owner>/<repo>/commits/<tag>`, which returns the commit directly) — never trust the bare `refs/tags/<tag>` SHA without checking whether the tag is annotated. `git ls-remote refs/tags/<tag>` on an **annotated** tag returns the tag _object_ SHA, not the commit it points at; both are 40 hex characters, so "is this 40 hex chars" does not catch the mistake. A GitHub Action pinned via the bare ref can silently resolve to a tag-object SHA instead of the actual commit — only independently re-resolving and diffing every pin catches this, since lightweight tags (where the bare ref already equals the commit SHA) aren't affected and can mask the pattern in a batch of pins.

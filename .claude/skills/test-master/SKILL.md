@@ -109,3 +109,7 @@ Jest, Vitest, pytest, React Testing Library, Supertest, Playwright, Cypress, k6,
 - **Fullstack Guardian** - Receives features for testing
 - **Playwright Expert** - E2E testing specifics
 - **DevOps Engineer** - CI/CD test integration
+
+## Local Override
+
+If `.claude/skills-local/test-master/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/test-master/` and re-point to it from your local `SKILL.md`.

@@ -15,24 +15,7 @@ Full tier definitions and the foresight gate: `rules/cts/workflow.md`.
 
 **Routing**:
 
-| Need                                | Agent                                                                                       |
-| ----------------------------------- | ------------------------------------------------------------------------------------------- |
-| Backend (API/services/queues)       | `backend-developer`                                                                         |
-| Frontend (pick ONE — never combine) | `vue-developer` (Vue 3) · `react-developer` (React 18+) · `angular-developer` (Angular 17+) |
-| DB schema/migrations                | `dba`                                                                                       |
-| Unit/integration tests              | `tester`                                                                                    |
-| E2E browser tests                   | `qa`                                                                                        |
-| Code review                         | `reviewer`                                                                                  |
-| Bug investigation                   | `debugger`                                                                                  |
-| Security audit                      | `security-scanner`                                                                          |
-| DDD/domain design                   | `ddd-architect`                                                                             |
-| Integrations/OAuth/webhooks         | `integration-architect`                                                                     |
-| Queue jobs                          | `queue-specialist`                                                                          |
-| DevOps/Docker/CI                    | `devops`                                                                                    |
-| Refactoring                         | `refactoring-expert`                                                                        |
-| Requirements/user stories           | `ba`                                                                                        |
-| Challenge requirements              | `devil`                                                                                     |
-| Docs/PR description                 | `docs-writer`                                                                               |
+See the `Agent Quick Routing` table in `rules/cts/workflow.md` for the canonical routing map — it lists all agents and their trigger keywords. This CLAUDE.md file skips the full table and delegates to workflow.md to avoid hand-maintaining two identical copies.
 
 **Pipeline**: `ba` → `ddd-architect`? → impl (`backend-developer` and/or one frontend agent) → quality gate → `docs-writer` → knowledge capture (mandatory — see below).
 
@@ -40,7 +23,7 @@ Full tier definitions and the foresight gate: `rules/cts/workflow.md`.
 
 **Quality gate (mandatory — sequential: `tester(verify)` → `reviewer` → [`security-scanner` ∥ `qa`])**: Run after EVERY implementation, including ones where the build/tsc passes. A green build proves compilation, not correctness — it is never a substitute for the gate. Implementation agents write tests with the code (`tdd` skill); `tester` runs first, alone, as verify/coverage-audit — runs the suite, audits coverage gaps, adds only missing edge-case tests. `reviewer` runs only after tester passes. `security-scanner` (auth/validation/secrets/HMAC/external input) and `qa` (user-visible flow changed) run in parallel as the final stage, each only when its trigger condition is met. Any failure at any stage → fix → restart from `tester(verify)`. Max 2 full restart cycles; after 2 cycles with open `## Fix Now` items → hard stop, surface to user. Reviewer and security-scanner emit two sections: `## Fix Now` (introduced by this changeset — fix-retry cycle) and `## Emit as Task` (pre-existing — create task file, close gate; cheap-override exception: see `rules/cts/workflow.md`). A same-session micro-resolution lane also lets the orchestrator resolve up to 3 qualifying non-security findings immediately after gate close, batch-verified once (see `rules/cts/workflow.md`). No agent instructs the orchestrator to self-patch after cycle exhaustion.
 
-**Hard tool limits**: `Read` only `.claude/**`, `rules/**`, `AGENTS.md`, plan files, agent reports. `Bash` only `git status`/`git log` + `gh`. `Edit`/`Write` only for plan files and the knowledge-ledger docs (`docs/KNOWLEDGE_INBOX.md`, `docs/CLAUDE_TS_CHANGELOG.md`, `docs/METRICS.md`, `CHANGELOG.md`, `PROJECT_CONTEXT.md`) — never on source code.
+**Hard tool limits**: `Read` only `.claude/**`, `rules/**`, `AGENTS.md`, plan files, agent reports. `Bash` only `git status`/`git log` + `gh`. `Edit`/`Write` only for plan files and the knowledge-ledger docs (`docs/KNOWLEDGE_INBOX.md`, `docs/CLAUDE_TS_CHANGELOG.md`, `docs/METRICS.md`, `CHANGELOG.md`, `CONTEXT.md`) — never on source code.
 
 ## Skills
 

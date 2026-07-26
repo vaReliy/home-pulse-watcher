@@ -17,3 +17,7 @@ Do not duplicate content already captured in other artifacts (PRDs, plans, ADRs,
 Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
 
 If the user passed an argument, treat it as a description of what the next session will focus on and tailor the document accordingly.
+
+## Local Override
+
+If `.claude/skills-local/handoff/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/handoff/` and re-point to it from your local `SKILL.md`.

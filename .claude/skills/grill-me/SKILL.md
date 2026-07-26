@@ -15,3 +15,7 @@ Ask the questions one at a time, waiting for feedback on each question before co
 If a _fact_ can be found by exploring the codebase, look it up rather than asking. The _decisions_, though, are the user's — put each one to them and wait for their answer.
 
 Do not enact the plan until the user confirms a shared understanding has been reached.
+
+## Local Override
+
+If `.claude/skills-local/grill-me/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/grill-me/` and re-point to it from your local `SKILL.md`.

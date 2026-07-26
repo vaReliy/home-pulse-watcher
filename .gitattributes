@@ -1,0 +1,17 @@
+# >>> CTS managed: ledger merge strategy >>>
+# Append-only knowledge ledgers: every branch appends at EOF, so a normal
+# 3-way merge conflicts on every cross-branch merge. merge=union keeps both
+# sides' lines instead of raising a conflict.
+#
+# Caveat: union NEVER conflicts, so merging a branch that deleted entries (a
+# distillation) against a branch that appended can resurrect deleted lines.
+# That is recoverable noise, not data loss — re-run /distill-inbox after such
+# a merge. See rules/cts/git-operations.md.
+#
+# Managed by .claude/scripts/cts-sync.sh — edits inside this block are
+# overwritten on every sync. Put your own rules outside it.
+/docs/KNOWLEDGE_INBOX.md merge=union
+/docs/METRICS.md merge=union
+/docs/CLAUDE_TS_CHANGELOG.md merge=union
+/CHANGELOG.md merge=union
+# <<< CTS managed: ledger merge strategy <<<

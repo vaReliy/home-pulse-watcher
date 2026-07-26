@@ -70,12 +70,40 @@ if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
   exit 0
 fi
 
-# ── 3. Detect changed paths ───────────────────────────────────────────────────
-# git status --porcelain columns: XY<space>path  (or XY<space>old -> new for renames)
-# $NF gives the last field — the destination path for renames, the path otherwise.
-CHANGED_PATHS=$(git status --porcelain 2>/dev/null | awk '{print $NF}' || true)
+# ── 2.5. Which kind of checkout is this? ──────────────────────────────────────
+# cts-payload.txt is the CTS source checkout's own manifest and is on that
+# file's "Explicitly NOT payload" list, so an installed project never has one.
+# Its presence therefore identifies a checkout of the CTS sources, where the
+# changelog of record is the root CHANGELOG.md rather than the per-project
+# docs/CLAUDE_TS_CHANGELOG.md (which tracks divergence FROM CTS and so has no
+# meaning where CTS is authored).
+CTS_SOURCE_CHECKOUT=false
+GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
+[ -z "$GIT_ROOT" ] && GIT_ROOT="$PWD"
+if [ -f "$GIT_ROOT/cts-payload.txt" ]; then
+  CTS_SOURCE_CHECKOUT=true
+fi
 
-if [ -z "$CHANGED_PATHS" ]; then
+# ── 3. Detect changed paths ───────────────────────────────────────────────────
+# `--porcelain -z` emits NUL-terminated "XY<space>path" records with no quoting
+# or escaping, so paths containing spaces survive intact (the newline form
+# quotes them, which defeats field-splitting extraction). Rename/copy entries
+# are followed by a second record holding the original path; consume it in the
+# same iteration or every later record is off by one.
+CHANGED_PATHS=()
+while IFS= read -r -d '' record; do
+  [ -z "$record" ] && continue
+  CHANGED_PATHS+=("${record:3}")
+  case "${record:0:2}" in
+    [RC]?|?[RC])
+      if IFS= read -r -d '' original; then
+        CHANGED_PATHS+=("$original")
+      fi
+      ;;
+  esac
+done < <(git status --porcelain -z 2>/dev/null || true)
+
+if [ ${#CHANGED_PATHS[@]} -eq 0 ]; then
   exit 0  # Clean working tree — nothing to check
 fi
 
@@ -84,9 +112,10 @@ SOURCE_CHANGED=false
 TEMPLATE_CHANGED=false
 INBOX_UPDATED=false
 CHANGELOG_UPDATED=false
+ROOT_CHANGELOG_UPDATED=false
 METRICS_UPDATED=false
 
-while IFS= read -r p; do
+for p in "${CHANGED_PATHS[@]}"; do
   [ -z "$p" ] && continue
 
   # Source / executable config — real work happened
@@ -118,10 +147,13 @@ while IFS= read -r p; do
   if printf '%s' "$p" | grep -q 'docs/CLAUDE_TS_CHANGELOG\.md'; then
     CHANGELOG_UPDATED=true
   fi
+  if printf '%s' "$p" | grep -qE '^CHANGELOG\.md$'; then
+    ROOT_CHANGELOG_UPDATED=true
+  fi
   if printf '%s' "$p" | grep -q 'docs/METRICS\.md'; then
     METRICS_UPDATED=true
   fi
-done <<< "$CHANGED_PATHS"
+done
 
 # ── 5. Cadence guard — nudge once per session per unmet category ──────────────
 TMPDIR_SAFE="${TMPDIR:-/tmp}"
@@ -136,14 +168,31 @@ REMINDERS=()
 if [ "$SOURCE_CHANGED" = "true" ] && [ "$INBOX_UPDATED" = "false" ]; then
   if ! already_nudged "inbox"; then
     mark_nudged "inbox"
-    REMINDERS+=("KNOWLEDGE CAPTURE REQUIRED: This session changed source or config files. Evaluate now: did a durable, project-relevant learning emerge? Examples: a library setup recipe, a wrong-pattern catch (e.g. missing .js imports), a test anti-pattern, a non-obvious architectural decision. If yes — append a 3-line entry to docs/KNOWLEDGE_INBOX.md right now: '## YYYY-MM-DD — [area] short fact' + 'Why: ...' + 'Belongs in (guess): PROJECT_CONTEXT | CLAUDE.md | rule | skill | claude-ts-upstream | discard'. If nothing durable was learned, state it explicitly: 'Nothing durable — no inbox entry needed.'")
+    if [ "$CTS_SOURCE_CHECKOUT" = "true" ]; then
+      # Where CTS is authored the inbox is a last resort, not the default sink:
+      # a learning about the rules IS an edit to the rules, so it can be filed
+      # at its permanent home in the same session.
+      REMINDERS+=("KNOWLEDGE CAPTURE REQUIRED: This session changed source or config files. Evaluate now: did a durable learning emerge? Examples: a shell gotcha, a wrong-pattern catch, a sync/payload constraint, a non-obvious design decision. If yes — write it into its permanent home right now (the matching rules/cts/*.md, agent, skill, or AGENTS.md section); stage it in docs/KNOWLEDGE_INBOX.md only if the destination is genuinely uncertain. If nothing durable was learned, state it explicitly: 'Nothing durable — no knowledge entry needed.'")
+    else
+      REMINDERS+=("KNOWLEDGE CAPTURE REQUIRED: This session changed source or config files. Evaluate now: did a durable, project-relevant learning emerge? Examples: a library setup recipe, a wrong-pattern catch (e.g. missing .js imports), a test anti-pattern, a non-obvious architectural decision. If yes — append a 3-line entry to docs/KNOWLEDGE_INBOX.md right now: '## YYYY-MM-DD — [area] short fact' + 'Why: ...' + 'Belongs in (guess): CONTEXT.md | CLAUDE.md | rule | skill | claude-ts-upstream | discard'. If nothing durable was learned, state it explicitly: 'Nothing durable — no inbox entry needed.'")
+    fi
   fi
 fi
 
-if [ "$TEMPLATE_CHANGED" = "true" ] && [ "$CHANGELOG_UPDATED" = "false" ]; then
+if [ "$CTS_SOURCE_CHECKOUT" = "true" ]; then
+  CHANGELOG_SATISFIED="$ROOT_CHANGELOG_UPDATED"
+else
+  CHANGELOG_SATISFIED="$CHANGELOG_UPDATED"
+fi
+
+if [ "$TEMPLATE_CHANGED" = "true" ] && [ "$CHANGELOG_SATISFIED" = "false" ]; then
   if ! already_nudged "changelog"; then
     mark_nudged "changelog"
-    REMINDERS+=("CLAUDE_TS_CHANGELOG REQUIRED: This session modified a claude-ts template-inherited file (CLAUDE.md, AGENTS.md, rules/**, .claude/agents/**, .claude/skills/**) but docs/CLAUDE_TS_CHANGELOG.md was not updated. Log the divergence or fix in docs/CLAUDE_TS_CHANGELOG.md now using the format in that file (Component / Type / What happened / Why it matters upstream / Suggested upstream change / Status: pending-port).")
+    if [ "$CTS_SOURCE_CHECKOUT" = "true" ]; then
+      REMINDERS+=("CHANGELOG REQUIRED: This session modified a CTS-owned file (CLAUDE.md, AGENTS.md, rules/**, .claude/agents/**, .claude/skills/**) but CHANGELOG.md was not updated. Add the change to the Unreleased section of CHANGELOG.md now, following the format already used there. docs/CLAUDE_TS_CHANGELOG.md does not apply here — it records a project's divergence from CTS, and this checkout is where CTS itself is authored.")
+    else
+      REMINDERS+=("CLAUDE_TS_CHANGELOG REQUIRED: This session modified a claude-ts template-inherited file (CLAUDE.md, AGENTS.md, rules/**, .claude/agents/**, .claude/skills/**) but docs/CLAUDE_TS_CHANGELOG.md was not updated. Log the divergence or fix in docs/CLAUDE_TS_CHANGELOG.md now using the format in that file (Component / Type / What happened / Why it matters upstream / Suggested upstream change / Status: pending-port).")
+    fi
   fi
 fi
 

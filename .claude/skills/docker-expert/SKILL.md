@@ -432,3 +432,7 @@ I provide comprehensive Docker containerization expertise with focus on practica
 ## When to Use
 
 This skill is applicable to execute the workflow or actions described in the overview.
+
+## Local Override
+
+If `.claude/skills-local/docker-expert/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/docker-expert/` and re-point to it from your local `SKILL.md`.

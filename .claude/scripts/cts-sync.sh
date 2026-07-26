@@ -2,23 +2,29 @@
 # CTS sync engine — installs/updates the claude-ts (CTS) payload in a project.
 # Normally invoked by the /cts-setup and /cts-update skills, not run directly.
 #
+# Safety: This script refuses to run against the official claude-ts template repo
+# itself (detected by git remote URL). To sync the template repo during development,
+# set CTS_SYNC_ALLOW_SELF_SYNC=1 (also use --dry-run to preview).
+#
 # Two-layer distribution model: every payload path is CTS-owned and is
 # plain-overwritten on sync (rsync semantics) — there is no 3-way merge, no
 # baseline reconciliation, and .cts-version is purely an informational
 # engine/release marker, never a merge base. Consumer customizations live in
 # a SEPARATE path that is never listed in cts-payload.txt and therefore never
 # touched by this script: rules/local/**, .claude/agents-local/*.md,
-# AGENTS.local.md, CLAUDE.local.md. .claude/settings.json is consumer-owned;
-# .cts/settings.cts.json is the CTS-owned fragment deep-merged into it.
+# .claude/skills-local/**/*.md, AGENTS.local.md, CLAUDE.local.md.
+# .claude/settings.json is consumer-owned; .cts/settings.cts.json is the
+# CTS-owned fragment deep-merged into it.
 #
 # In place of merging, the engine runs two detectors:
 #   - ownership violation: a CTS-owned file whose on-disk content no longer
 #     matches the hash recorded for it at the last sync — i.e. it was edited
 #     outside an override file. Reported loudly; the file is overwritten
 #     anyway (updates never skip wholesale).
-#   - override rot: an override file (rules/local/**, .claude/agents-local/*)
-#     that cites a CTS file/section via a "## Overrides <path>" line, where
-#     the cited path changed content in this sync run.
+#   - override rot: an override file (rules/local/**, .claude/agents-local/*,
+#     .claude/skills-local/**) that cites a CTS file/section via a
+#     "## Overrides <path>" line, where the cited path changed content in
+#     this sync run.
 set -euo pipefail
 
 ORIG_ARGS=("$@")
@@ -71,6 +77,27 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
 
 command -v jq >/dev/null 2>&1 \
   || { echo "Error: jq is required by cts-sync.sh (settings deep-merge, manifest bookkeeping). Install jq and retry." >&2; exit 1; }
+
+# Safety guard: refuse to run against the official claude-ts template repo itself.
+# Prevents accidental destructive syncs that would overwrite the template's own files.
+# Detection: check if the current repo's origin remote URL matches the official source.
+# Comparison is protocol-agnostic (handles both HTTPS and SSH remote forms).
+normalize_remote() {
+  # Strip protocol prefixes (https://, http://, git@, ssh://git@)
+  # Convert SSH colon separator to slash (git@host:owner/repo -> git@host/owner/repo)
+  # Strip trailing .git extension
+  echo "$1" | sed -E 's#^(https?://|git@|ssh://git@)##; s#:#/#; s#\.git$##'
+}
+TARGET_REMOTE=$(git config --get remote.origin.url 2>/dev/null || echo "")
+if [ -n "$TARGET_REMOTE" ] && [ "$(normalize_remote "$TARGET_REMOTE")" = "$(normalize_remote "$DEFAULT_SOURCE")" ]; then
+  if [ "${CTS_SYNC_ALLOW_SELF_SYNC:-0}" != "1" ]; then
+    echo "Error: cts-sync.sh refuses to run against the official claude-ts template repo itself." >&2
+    echo "       Running init/update here would overwrite the template's own payload files." >&2
+    echo "       If you are developing the template and intend this, set the escape hatch:" >&2
+    echo "         CTS_SYNC_ALLOW_SELF_SYNC=1 <command> [options]" >&2
+    exit 1
+  fi
+fi
 
 # Resolve the source checkout. Local paths are used as-is; URLs are mirrored
 # into a local cache so repeat runs avoid a full clone.
@@ -126,12 +153,19 @@ mapfile -t PAYLOAD < <(grep -vE '^[[:space:]]*(#|$)' "$SRC_DIR/$PAYLOAD_FILE")
 # entry; this guard turns a future careless edit (e.g. listing "docs/" as a
 # whole directory instead of individual files) into a loud failure instead of
 # a silent leak.
-NEVER_PAYLOAD=(docs/KNOWLEDGE_INBOX.md .cts/manifest.json)
+NEVER_PAYLOAD=(docs/KNOWLEDGE_INBOX.md docs/METRICS.md .cts/manifest.json)
 covers_forbidden() {
   local entry="$1" forbidden="$2"
   [ "$entry" = "$forbidden" ] && return 0
   [ -d "$SRC_DIR/$entry" ] || return 1
   case "$forbidden" in "$entry"/*) return 0 ;; *) return 1 ;; esac
+}
+is_never_payload() {
+  local rel="$1" never
+  for never in "${NEVER_PAYLOAD[@]}"; do
+    case "$rel" in "$never"|"$never"/*) return 0 ;; esac
+  done
+  return 1
 }
 for entry in "${PAYLOAD[@]}"; do
   entry="${entry%/}"
@@ -435,13 +469,120 @@ merge_settings() {
   echo "merged CTS defaults into: $dest"
 }
 
+# ── Ledger merge strategy (.gitattributes managed block) ──────────────────────
+# The workflow's append-only ledgers are all written the same way: every branch
+# appends at EOF (or into the same `## [Unreleased]` region). A plain 3-way
+# merge therefore conflicts on EVERY cross-branch merge. `merge=union` resolves
+# those hunks by keeping both sides' lines instead of conflicting.
+#
+# `union` is a git BUILT-IN driver, which is the whole reason it was chosen over
+# a custom merge driver: a custom driver needs `git config merge.<name>.driver`
+# in every clone's .git/config, so it silently no-ops for anyone who skipped
+# that step. This works the moment the file lands.
+#
+# .gitattributes is consumer-owned (LFS rules, eol settings), so it is NOT a
+# payload path — plain-overwriting it would clobber the consumer's own rules.
+# Instead CTS owns one delimited block inside it, re-asserted on every sync so
+# consumers installed before this existed pick it up on their next update.
+# Placement is deliberate: the block is appended at the END, and in
+# .gitattributes the LAST matching pattern wins.
+GITATTRIBUTES_FILE=".gitattributes"
+GITATTRIBUTES_BEGIN="# >>> CTS managed: ledger merge strategy >>>"
+GITATTRIBUTES_END="# <<< CTS managed: ledger merge strategy <<<"
+# Paths covered by the block — also used to warn about consumer rules that
+# would silently win over it.
+GITATTRIBUTES_PATHS=(
+  /docs/KNOWLEDGE_INBOX.md
+  /docs/METRICS.md
+  /docs/CLAUDE_TS_CHANGELOG.md
+  /CHANGELOG.md
+)
+
+gitattributes_block() {
+  local p
+  echo "$GITATTRIBUTES_BEGIN"
+  cat <<'EOF'
+# Append-only knowledge ledgers: every branch appends at EOF, so a normal
+# 3-way merge conflicts on every cross-branch merge. merge=union keeps both
+# sides' lines instead of raising a conflict.
+#
+# Caveat: union NEVER conflicts, so merging a branch that deleted entries (a
+# distillation) against a branch that appended can resurrect deleted lines.
+# That is recoverable noise, not data loss — re-run /distill-inbox after such
+# a merge. See rules/cts/git-operations.md.
+#
+# Managed by .claude/scripts/cts-sync.sh — edits inside this block are
+# overwritten on every sync. Put your own rules outside it.
+EOF
+  for p in "${GITATTRIBUTES_PATHS[@]}"; do
+    printf '%s merge=union\n' "$p"
+  done
+  echo "$GITATTRIBUTES_END"
+}
+
+# Print $1's contents with the managed block (inclusive) removed. An
+# unterminated block — someone deleted the end marker — swallows the rest of
+# the file, which is the self-healing outcome: the block is rewritten whole.
+strip_managed_block() {
+  awk -v b="$GITATTRIBUTES_BEGIN" -v e="$GITATTRIBUTES_END" '
+    $0 == b { skip = 1 }
+    !skip   { print }
+    $0 == e { skip = 0 }
+  ' "$1"
+}
+
+ensure_gitattributes() {
+  local dest="./$GITATTRIBUTES_FILE"
+  local block rest p
+  block=$(gitattributes_block)
+
+  if [ -f "$dest" ]; then
+    # Already current → write nothing. Not an optimization: rewriting identical
+    # bytes on every sync re-stamps the mtime and dirties the working tree, so
+    # a genuine no-op sync stops looking like one in `git diff` and the
+    # ownership detector has one more moving file to reason about.
+    local current
+    current=$(awk -v b="$GITATTRIBUTES_BEGIN" -v e="$GITATTRIBUTES_END" '
+      $0 == b { inb = 1 }
+      inb     { print }
+      $0 == e { inb = 0 }
+    ' "$dest")
+    [ "$current" = "$block" ] && return 0
+    rest=$(strip_managed_block "$dest")
+  else
+    rest=""
+  fi
+
+  if [ "$DRY_RUN" = 1 ]; then
+    echo "gitattributes (dry-run): $dest <- CTS ledger merge strategy block"
+    return 0
+  fi
+
+  # `$(…)` already ate the consumer part's trailing newlines, so re-separating
+  # with exactly one blank line keeps repeated syncs from growing whitespace.
+  if [ -n "$rest" ]; then
+    printf '%s\n\n%s\n' "$rest" "$block" > "$dest"
+  else
+    printf '%s\n' "$block" > "$dest"
+  fi
+  echo "ensured ledger merge strategy in: $dest"
+
+  # A consumer rule for the same path placed AFTER our block would win; one
+  # placed before is simply overridden. Either way they should know.
+  for p in "${GITATTRIBUTES_PATHS[@]}"; do
+    if printf '%s\n' "$rest" | grep -qF -- "${p#/}"; then
+      echo "GITATTRIBUTES NOTE: $dest already had a rule mentioning ${p#/} outside the CTS block — the CTS block is appended last and wins. Remove one of the two if that is not what you want."
+    fi
+  done
+}
+
 # Override-rot detector: an override file cites the CTS file/section it
 # displaces via a "## Overrides <path> ..." line (lex specialis — the
 # override is a narrow, cited replacement, not a whole-file fork). If the
 # cited path changed content this run (CHANGED_PATHS), the override may now
 # be stale — flag it for review. Grep-level, not merging: the override file
 # itself is never touched.
-OVERRIDE_DIRS=(rules/local .claude/agents-local)
+OVERRIDE_DIRS=(rules/local .claude/agents-local .claude/skills-local)
 OVERRIDE_EXTRA_FILES=(AGENTS.local.md CLAUDE.local.md)
 ROT_WARNINGS=()
 detect_override_rot() {
@@ -478,8 +619,15 @@ if [ "$CMD" = init ]; then
     done
   fi
   for entry in "${PAYLOAD[@]}"; do sync_path "$entry"; done
+  ensure_gitattributes
   if [ "$DRY_RUN" != 1 ]; then
     merge_settings
+    # Initialize docs/METRICS.md from .example on first init if it doesn't exist.
+    # METRICS.md is project-specific accumulated data (never synced on update),
+    # so only the .example template is shipped in the payload.
+    if [ ! -f ./docs/METRICS.md ] && [ -f ./docs/METRICS.md.example ]; then
+      cp ./docs/METRICS.md.example ./docs/METRICS.md
+    fi
     echo "$NEW_SHA" > "$VERSION_FILE"
     write_source_file "${#COPIED[@]}" 0 0
     write_manifest
@@ -488,8 +636,9 @@ if [ "$CMD" = init ]; then
 # Use for: pruned CTS files (prevents re-adding them) and project-only
 # additions placed under payload directories. Customizing a CTS-owned file
 # should almost always go through an override file instead (rules/local/**,
-# .claude/agents-local/<name>.md, AGENTS.local.md, CLAUDE.local.md) — those
-# are never synced by construction and don't need a .ctsignore entry.
+# .claude/agents-local/<name>.md, .claude/skills-local/<name>/SKILL.md,
+# AGENTS.local.md, CLAUDE.local.md) — those are never synced by construction
+# and don't need a .ctsignore entry.
 # A leading "/" anchors to the project root: "/AGENTS.md" protects only the
 # root file; a bare "AGENTS.md" would also match nested files with that name.
 EOF
@@ -511,7 +660,7 @@ else
   fi
 
   for rel in "${OWNERSHIP_WARNINGS[@]}"; do
-    echo "OWNERSHIP WARNING: $rel was edited locally but is CTS-owned — overwritten with upstream's content. Move your changes into an override file (rules/local/**, .claude/agents-local/<name>.md, AGENTS.local.md, CLAUDE.local.md) or run /cts-contribute to send them upstream."
+    echo "OWNERSHIP WARNING: $rel was edited locally but is CTS-owned — overwritten with upstream's content. Move your changes into an override file (rules/local/**, .claude/agents-local/<name>.md, .claude/skills-local/<name>/SKILL.md, AGENTS.local.md, CLAUDE.local.md) or run /cts-contribute to send them upstream."
     NEEDS_ATTENTION=$((NEEDS_ATTENTION + 1))
   done
   for rel in "${NEW_COLLISIONS[@]}"; do
@@ -537,9 +686,12 @@ else
   done
 
   # Ignored files are never touched, but silence must not hide upstream drift.
+  # Exception: NEVER_PAYLOAD paths are guaranteed-untouched by construction,
+  # so don't warn about them even if they appear in git diff and have stale
+  # .ctsignore entries from older workarounds. This avoids perpetual noise.
   if [ -n "$OLD_SHA" ] && [ "$OLD_SHA" != "$NEW_SHA" ] && git -C "$SRC_DIR" cat-file -e "$OLD_SHA" 2>/dev/null; then
     while IFS= read -r f; do
-      if is_ignored "$f"; then
+      if is_ignored "$f" && ! is_never_payload "$f"; then
         echo "ignored, but changed upstream — review manually: $f"
         echo "  git -C \"$SRC_DIR\" diff $OLD_SHA..$NEW_SHA -- \"$f\""
         IGNORED_CHANGED_UPSTREAM+=("$f")
@@ -552,6 +704,7 @@ else
     fi
   fi
 
+  ensure_gitattributes
   if [ "$DRY_RUN" != 1 ]; then
     merge_settings
     echo "$NEW_SHA" > "$VERSION_FILE"

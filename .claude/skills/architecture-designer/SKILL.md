@@ -95,3 +95,7 @@ Distributed systems, microservices, event-driven architecture, CQRS, DDD, CAP th
 - **Fullstack Guardian** - Implementing designs
 - **DevOps Engineer** - Infrastructure implementation
 - **Secure Code Guardian** - Security architecture
+
+## Local Override
+
+If `.claude/skills-local/architecture-designer/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/architecture-designer/` and re-point to it from your local `SKILL.md`.

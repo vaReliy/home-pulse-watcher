@@ -111,7 +111,6 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 10s
 
-
       redis:
         image: redis:7
     steps:
@@ -149,3 +148,7 @@ Validate all required env vars on startup — fail fast before accepting request
 - **PM2** cluster mode: `pm2 start dist/main.js -i max`
 - **Health check**: `GET /health` endpoint returning `{ status: 'ok' }`
 - **Graceful shutdown**: handle `SIGTERM` — close HTTP server, drain queue workers, disconnect DB
+
+## Local Override
+
+If `.claude/skills-local/devops/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/devops/` and re-point to it from your local `SKILL.md`.

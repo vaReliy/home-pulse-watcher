@@ -5,7 +5,6 @@ description: >-
   
   Українською: TypeScript, Node.js, строга типізація, async/await, NestJS, Prisma, Express, Fastify, декоратори, generic типи, utility types.
 
-
 triggers:
   - TypeScript
   - Node.js
@@ -152,3 +151,7 @@ docker compose exec app npx tsc --noEmit
 docker compose exec app npx eslint .
 docker compose exec app npx prettier --check .
 ```
+
+## Local Override
+
+If `.claude/skills-local/typescript-pro/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/typescript-pro/` and re-point to it from your local `SKILL.md`.

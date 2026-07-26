@@ -88,3 +88,7 @@ Playwright, Page Object Model, auto-waiting, locators, fixtures, API mocking, tr
 - **Test Master** - Overall testing strategy
 - **React Expert** - Testing React applications
 - **DevOps Engineer** - CI/CD pipeline integration
+
+## Local Override
+
+If `.claude/skills-local/playwright-expert/SKILL.md` exists, read it first; treat its instructions as overriding conflicting guidance above. This override file carries no frontmatter — skill discovery does not scan `.claude/skills-local/**`, so a `name:`/`description:`/`triggers:` block there would be inert and only risks a name collision if ever promoted to `.claude/skills/`. The override covers this `SKILL.md` only — bundled resources are never auto-shadowed; to replace one, place your copy under `.claude/skills-local/playwright-expert/` and re-point to it from your local `SKILL.md`.
