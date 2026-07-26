@@ -66,7 +66,7 @@ info "Dumping database to gs://${BACKUP_BUCKET}/${BACKUP_FILENAME}..."
 # Flags: --no-owner --no-acl to skip Neon-specific role/privilege statements
 # (harmless locally, but noisy when restoring into non-Neon Postgres)
 BACKUP_STDERR=$(mktemp)
-if ! pg_dump --no-owner --no-acl "$DATABASE_URL" 2>"$BACKUP_STDERR" | gzip | gsutil -h "Cache-Control:no-cache" cp - "gs://${BACKUP_BUCKET}/${BACKUP_FILENAME}"; then
+if ! pg_dump --no-owner --no-acl "$DATABASE_URL" 2>"$BACKUP_STDERR" | gzip | gcloud storage cp --cache-control="no-cache" - "gs://${BACKUP_BUCKET}/${BACKUP_FILENAME}"; then
   # Scrub connection string from stderr to avoid leaking DB password
   sed 's|postgresql://[^@]*@[^/]*|postgresql://***@***|g' "$BACKUP_STDERR" >&2
   rm -f "$BACKUP_STDERR"
@@ -78,7 +78,7 @@ ok "Backup completed: gs://${BACKUP_BUCKET}/${BACKUP_FILENAME}"
 
 # List recent backups
 info "Recent backups:"
-gsutil ls -r "gs://${BACKUP_BUCKET}/postgresql/backup-*.sql.gz" | tail -5 || true
+gcloud storage ls --recursive "gs://${BACKUP_BUCKET}/postgresql/backup-*.sql.gz" | tail -5 || true
 
 info "Backup size:"
-gsutil du "gs://${BACKUP_BUCKET}/${BACKUP_FILENAME}" || true
+gcloud storage du "gs://${BACKUP_BUCKET}/${BACKUP_FILENAME}" || true
