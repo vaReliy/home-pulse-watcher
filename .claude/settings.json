@@ -1,9 +1,5 @@
 {
-  "enabledMcpjsonServers": [
-    "context7",
-    "figma",
-    "github"
-  ],
+  "enabledMcpjsonServers": ["context7", "figma", "github"],
   "enabledPlugins": {
     "nx@nx-claude-plugins": true
   },

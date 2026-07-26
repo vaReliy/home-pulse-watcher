@@ -7,3 +7,12 @@
 # Vendored third-party skill with its own build/validate process — never
 # reformat its content, per its own README.md.
 .claude/skills/postgres-best-practices/
+
+# CTS-owned payload — plain-overwritten by cts-sync.sh on every /cts-update
+# (single ownership, no merge). Local reformatting is pointless (lost on next
+# sync) and VS Code's editor.formatOnSave + Prettier extension has raced sync
+# writes and corrupted these files with non-idempotent blank-line insertion —
+# see docs/CLAUDE_TS_CHANGELOG.md, 2026-07-26 entry.
+.claude/agents/
+.claude/skills/
+.claude/settings.json
