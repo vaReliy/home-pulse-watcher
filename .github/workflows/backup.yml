@@ -36,7 +36,8 @@ jobs:
           gcloud config set project "$PROJECT_ID"
 
       - name: Run database backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          export DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)"
           echo "::add-mask::$DATABASE_URL"
           bash scripts/backup-database.sh

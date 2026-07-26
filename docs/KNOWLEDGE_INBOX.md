@@ -26,6 +26,10 @@ Why: Response `expiresAt` is computed server-side as `Date.now() + SIGNED_URL_TT
 
 Why: New firmware rejects OTA responses missing `sig`. Old backend doesn't emit `sig`. Deploying sig-verifying firmware before backend sig-emit → every OTA check returns `ParseError` → device stuck. Old firmware safely ignores the unknown `sig` field (JSON parser skips unknown keys), so backend-first is always safe. Belongs in (guess): PROJECT_CONTEXT (deployment/rollout notes)
 
+## 2026-07-26 — backup CI job needs `secretmanager.versions.access`, not just bucket IAM
+
+Why: `.github/workflows/backup.yml` fetched `DATABASE_URL` via `gcloud secrets versions access latest --secret=database-url`, but the 2026-07-07 ops-safety-net task only granted the deploy SA backup-bucket read/write + `database-url` secret access was expected but the actual IAM binding was missing/insufficient — job failed `PERMISSION_DENIED` on every scheduled run since setup, unnoticed until user checked GH Actions. Fixed by switching the job to read `DATABASE_URL` from a GitHub Actions repo secret instead of GCP Secret Manager (removes the extra IAM dependency for this MVP-stage repo). Manual step: repo secret `DATABASE_URL` must be added by the user (Settings → Secrets and variables → Actions). Belongs in (guess): PROJECT_CONTEXT (ops/backup section) — flag that scheduled workflows relying on `gcloud secrets versions access` should be checked for actual runs, not just IAM-grant intent, since a cron job's first real failure can go unnoticed for weeks.
+
 ## 2026-07-02 — shared firmware headers need explicit `<cstdint>`/`<cstddef>` includes
 
 Why: `Arduino.h` pulls in `stdint.h` transitively via the ESP32 toolchain, but a native/clang-analyzer build doesn't have those paths. Any function in `libs/firmware-shared` (e.g. `SecurityUtils.h`) using `uint8_t`/`size_t`/`uint32_t` cascades clang errors without explicit includes. Belongs in (guess): CLAUDE.md (firmware/embedded-cpp-pro section) or a rule
