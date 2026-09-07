@@ -17,6 +17,7 @@
 
 ### Chore
 
+- **`.claude/settings.json` cleanup (2026-09-07)**: Removed dead `Write(./rules/cts/**)` / `Write(./.cts/**)` deny rules — duplicated the adjacent `Edit(...)` rules for the same paths without adding protection. Same fix already landed in `penny`; ported upstream to `claude-ts`'s `.cts/settings.cts.json` so future syncs stop reintroducing the duplication.
 - **`/cts-update` re-sync (2026-07-26)**: Ran against `../claude-ts` @ `main`; no upstream commit changes (`.cts-version` unchanged). Cleaned up 6 files (`settings.json`, 5 `SKILL.md`) that picked up a stray extra blank line from an external post-sync reformat (traced via `.cts/manifest.json` hash comparison to something outside `cts-sync.sh` itself, likely editor format-on-save) — reset to source content; `settings.json`'s array-formatting diff against source is legitimate and kept.
 
 ### Fixes
