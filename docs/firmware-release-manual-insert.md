@@ -137,12 +137,12 @@ DELETE FROM "FirmwareRelease" WHERE version = '3.5.1' AND "boardType" = 'esp32c6
 
 ### Computing the correct checksum
 
-`checksum` is the **embedded SHA-256** that esptool appends to the binary footer — **not** the file SHA-256 (`shasum -a 256`). The firmware reads it back via `esp_partition_get_sha256()` after flashing.
+`checksum` is the **plain file SHA-256** of `firmware.bin` — the same value `firmware:upload` stores automatically (`createHash('sha256').update(fileBuffer)` in `upload-firmware.service.ts`).
 
 ```bash
-# Correct — embedded SHA-256 (last 32 bytes of the .bin file)
-python3 -c "data=open('firmware.bin','rb').read(); print(data[-32:].hex())"
-
-# Wrong — do NOT use this as the checksum value
-shasum -a 256 firmware.bin
+shasum -a 256 firmware.bin | cut -d' ' -f1
 ```
+
+The firmware hashes the byte stream as it downloads and compares that to this value, so both sides hash identical bytes.
+
+> **Superseded advice:** earlier revisions of this guide told you to use the embedded SHA-256 from the binary's footer (`data[-32:].hex()`) because the firmware verified via `esp_partition_get_sha256()`. That call returns the _appended_ hash from ESP-IDF's `hash_appended` format, which hashes the image excluding its own trailing 32-byte field — it can never equal a plain file SHA-256. Using the footer value now causes a checksum mismatch, and the device reverts its boot partition rather than installing.

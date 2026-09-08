@@ -36,9 +36,8 @@ ESP32-based power monitoring firmware for HomePulse Watcher.
 4. **Set the captive-portal AP password** (required — the build fails without it, see `Initial Configuration (Captive Portal)` below). PlatformIO reads the shell env var `PORTAL_AP_PASSWORD` directly — **no `HPW_` prefix** (that prefix is a `.env`/Docker-build-script-only convention).
 
    ```bash
-   export PORTAL_AP_PASSWORD=87654321
-   # or, if it's set as HPW_PORTAL_AP_PASSWORD in .env:
-   set -a && source ../../.env && set +a && export PORTAL_AP_PASSWORD="$HPW_PORTAL_AP_PASSWORD"
+   # Value lives only in the gitignored repo-root .env — never in docs or source.
+   export PORTAL_AP_PASSWORD="$(grep -m1 '^HPW_PORTAL_AP_PASSWORD=' ../../.env | cut -d= -f2-)"
    ```
 
    **Prefer building via Docker instead** (`../scripts/firmware-docker-build.sh esp32c6 <version>` from repo root) — it handles this translation for you and needs no local PlatformIO toolchain. See [Publishing a Firmware Release](../docs/admin-guide.md#publishing-a-firmware-release).
@@ -136,120 +135,48 @@ To register a device, obtain credentials, and configure `secrets.h`, follow the 
 
 ## Building and Uploading OTA Firmware Releases
 
-This section describes how to build and deploy a new firmware version for OTA distribution. Both ESP32-C3 and ESP32-C6 compile to a single binary per board — no per-hardware-variant rebuilds needed.
+The release procedure — build, upload to GCS, register the `FirmwareRelease` row, promote across channels — lives in one place: **[Admin Guide → Publishing a Firmware Release](../docs/admin-guide.md#publishing-a-firmware-release)**. This file deliberately does not repeat it.
 
-### Step 1: Bump the Version
+What is firmware-side:
 
-Edit the `config.h` in the board directory:
+### Bump the version
 
-```bash
-# For ESP32-C3
-nano firmware/esp32c3/src/config.h
-
-# For ESP32-C6
-nano firmware/esp32c6/src/config.h
-```
-
-Update the `FIRMWARE_VERSION` constant:
+Edit `FIRMWARE_VERSION` in the board's `src/config.h` (`firmware/esp32c3/src/config.h` or `firmware/esp32c6/src/config.h`):
 
 ```cpp
-#define FIRMWARE_VERSION "3.5.3"  // Change this to your new version
+#define FIRMWARE_VERSION "3.5.4-alpha.1"
 ```
 
-Use semantic versioning (e.g., `3.5.3`, `3.6.0-beta.1`). The version string is reported to the backend on every device heartbeat and is used by the OTA check endpoint to determine if an update is available.
+Use semantic versioning. This value is reported to the backend on every heartbeat and drives the OTA update comparison, so it must be valid semver — the backend silently drops a version it cannot parse, leaving the device's last known-good version on record.
 
-### Step 2: Make Firmware Changes
+`FIRMWARE_VERSION` is consumed only in `main.cpp`'s translation unit and passed into the shared library as `PowerStatusReport::firmwareVersion`. Do not read the macro from inside `libs/firmware-shared/` — that code never sees a board's `config.h`, so the macro would silently resolve to a stub.
 
-Edit `firmware/common/main.cpp` and any board-specific files in `libs/firmware-shared/` as needed. Since the shared sketch is identical for both boards, any logic change applies to both ESP32-C3 and ESP32-C6 automatically — no `#ifdef` board-specific code paths in the source (each board's `platformio.ini` includes `config.h` from its `src/` directory, which provides board-specific constants like GPIO pins).
+### Make firmware changes
 
-### Step 3: Build via Docker
+Edit `firmware/common/main.cpp` and the shared code in `libs/firmware-shared/`. The sketch is identical for both boards, so a logic change applies to ESP32-C3 and ESP32-C6 automatically — there are no `#ifdef` board branches in the source. Board-specific constants (GPIO pins, version) come from each board's `src/config.h`, on the include path via `-I src`.
 
-Use the Docker-based build pipeline for release builds (replaces manual local `pio run`):
+Run the native test suite before building:
 
 ```bash
-./scripts/firmware-docker-build.sh esp32c3 3.5.3
-./scripts/firmware-docker-build.sh esp32c6 3.5.3
+cd libs/firmware-shared && pio test -e native
 ```
 
-This builds both boards in isolated Docker containers with explicit PlatformIO configuration. Output binaries go to `tmp/firmware/<board>/<version>/firmware.bin`. The script prints a confirmation message with the exact upload command to use next.
-
-**Development alternative:** For day-to-day local builds and USB flashing (not release distribution), continue using local PlatformIO:
+### Build and flash locally (development)
 
 ```bash
-cd firmware/esp32c3
+cd firmware/esp32c6      # or esp32c3
 pio run -t upload
 pio device monitor
 ```
 
-### Step 4: Upload to GCS and Register Release
+No environment setup is required — `firmware/common/pio_load_env.py` supplies `PORTAL_AP_PASSWORD` from the repo-root `.env` as a pre-build step, so the IDE's Build / Upload / Upload and Monitor buttons work the same as the CLI.
 
-Upload the built binaries to GCS and register them as firmware releases via the CLI or admin web UI.
-
-**Option A: CLI (automated)**
-
-```bash
-npx nx run api:cli -- firmware:upload \
-  --file tmp/firmware/esp32c3/3.5.3/firmware.bin \
-  --version 3.5.3 \
-  --board esp32c3 \
-  --channel ALPHA
-```
-
-**Option B: Admin Web UI (browser-based)**
-
-Navigate to `/admin/firmware` (requires `ADMIN_UPLOAD_TOKEN` env var):
-
-1. Drag-drop the binary file
-2. Select version, board, and channel from dropdowns
-3. Click "Upload"
-
-Both methods upload the binary to GCS at path `firmware/esp32c3/3.5.3/firmware.bin` (where board and version are derived from the request) and register a `FirmwareRelease` record in the database with metadata including the checksum and download URL.
-
-### Step 5: Validate on ALPHA Channel
-
-Devices on the ALPHA channel pick up the new release automatically on their next OTA check (default interval: every 6 hours, or immediately if forced via admin CLI: `device:request-ota-check --mac <mac>`).
-
-Monitor the backend logs for `/api/ota/check` requests and device OTA download activity. Watch device serial output (if connected) for `[OTA]` log lines indicating download progress and validation status.
-
-**Validation criteria:**
-
-- Device receives the release and downloads it without errors
-- OTA validation passes: ≥3 successful heartbeats AND ≥5 minutes uptime since boot
-- Device marks the new firmware valid and persists across power cycles
-- No unexpected reboots or watchdog resets
-
-### Step 6: Promote to BETA and STABLE
-
-Once ALPHA validation passes, re-upload the same binary to BETA:
-
-```bash
-npx nx run api:cli -- firmware:upload \
-  --file tmp/firmware/esp32c3/3.5.3/firmware.bin \
-  --version 3.5.3 \
-  --board esp32c3 \
-  --channel BETA
-```
-
-The system creates a separate `FirmwareRelease` record per channel. A device on BETA will see both BETA and STABLE releases (in waterfall order); a device on ALPHA sees ALPHA, BETA, and STABLE.
-
-After similar validation on BETA, promote to STABLE:
-
-```bash
-npx nx run api:cli -- firmware:upload \
-  --file tmp/firmware/esp32c3/3.5.3/firmware.bin \
-  --version 3.5.3 \
-  --board esp32c3 \
-  --channel STABLE
-```
-
-All production devices will receive the new firmware on their next OTA check.
-
-### Key Points
+### Key points
 
 - **One binary per board per version** — no hardware-variant rebuilds. The UPS checkbox on the captive portal is a runtime NVS flag, not a compile-time choice.
-- **Device-to-release provisioning** is automatic via `Device.releaseChannel` (set per-device at provisioning time or via admin API). The device firmware never controls which channel it sees; the server enforces it.
 - **Per-device secret and UPS flag** are set during provisioning (captive portal) and are untouched by the OTA release process.
-- **Rollout is waterfall-based**: ALPHA devices see all releases; BETA devices see BETA and STABLE; STABLE devices see only STABLE.
+- **The device never chooses its channel** — the server resolves it from `Device.releaseChannel`.
+- **A device only installs a strictly newer version.** Prerelease identifiers of the same core version are ordered (`-alpha.2` > `-alpha.1`); builds older than `3.5.4-alpha.1` could not order them at all and refuse every same-core prerelease, so reaching those needs a core-version bump or a USB reflash.
 
 ## Troubleshooting
 

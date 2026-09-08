@@ -2,13 +2,19 @@
 #include <cctype>
 #include <cstring>
 
-// FIRMWARE_VERSION is defined in config.h of each board.
-// When running under UNIT_TEST, define it as a stub if not already defined.
-#ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION "test"
-#endif
-
 namespace HomePulse {
+
+// Sentinel for a report built without a version. Valid semver on purpose: the
+// backend drops any firmwareVersion failing its semver rule, so an invalid
+// placeholder would vanish silently instead of showing up as an obvious
+// "0.0.0-test" in the device list.
+static const char* const kUnknownFirmwareVersion = "0.0.0-test";
+
+static const char* versionOrSentinel(const PowerStatusReport& r) {
+  return (r.firmwareVersion && r.firmwareVersion[0] != '\0')
+             ? r.firmwareVersion
+             : kUnknownFirmwareVersion;
+}
 
 String buildSignatureInput(const PowerStatusReport& r) {
   char buf[128];
@@ -26,14 +32,14 @@ String buildPowerStatusPayload(const PowerStatusReport& r) {
              "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\",\"batteryVoltage\":%d}",
              static_cast<int>(r.status),
              r.adcValue,
-             FIRMWARE_VERSION,
+             versionOrSentinel(r),
              r.batteryAdcRaw);
   } else {
     snprintf(buf, sizeof(buf),
              "{\"status\":%d,\"voltage\":%d,\"firmwareVersion\":\"%s\"}",
              static_cast<int>(r.status),
              r.adcValue,
-             FIRMWARE_VERSION);
+             versionOrSentinel(r));
   }
   return String(buf);
 }

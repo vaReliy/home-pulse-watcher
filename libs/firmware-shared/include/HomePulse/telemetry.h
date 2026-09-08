@@ -15,6 +15,17 @@ struct PowerStatusReport {
   int32_t batteryAdcRaw;  ///< raw ADC from battery pin, -1 if no UPS
   bool hasUps;
   time_t timestamp;       ///< Unix seconds from NTP
+
+  /**
+   * Running firmware version, supplied by the caller.
+   *
+   * Deliberately a field rather than the FIRMWARE_VERSION macro: this library
+   * is compiled as its own translation unit and never sees each board's
+   * `src/config.h`, so reading the macro here silently resolved to a stub and
+   * every device reported a bogus version for months. main.cpp's TU does have
+   * config.h, so the value is passed in from there.
+   */
+  const char* firmwareVersion;
 };
 
 /**

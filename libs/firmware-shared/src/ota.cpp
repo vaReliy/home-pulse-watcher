@@ -113,14 +113,17 @@ bool shouldMarkAppValid(bool pendingValidation,
 
 // ─── Version comparison (always compiled — native-testable) ──────────────────
 
-// Parses the "MAJOR.MINOR.PATCH[-PRERELEASE]" prefix of a version string.
+// Parses the "MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]" prefix of a version string.
 // Missing/non-numeric segments parse as 0 — malformed input just compares as
 // low rather than crashing; the signature check upstream is the real trust
 // boundary, this is a best-effort defense-in-depth guard.
-static void parseSemverCore(const char* v, int& major, int& minor, int& patch, bool& hasPrerelease) {
+//
+// Returns a pointer to the first character of the prerelease part (past the
+// '-'), or nullptr when the version carries none. Build metadata ("+...") is
+// ignored for precedence, per semver.org §10.
+static const char* parseSemverCore(const char* v, int& major, int& minor, int& patch) {
     major = minor = patch = 0;
-    hasPrerelease = false;
-    if (!v) return;
+    if (!v) return nullptr;
 
     char* end = nullptr;
     const char* p = v;
@@ -133,20 +136,99 @@ static void parseSemverCore(const char* v, int& major, int& minor, int& patch, b
         p = end + 1;
         patch = (int)strtol(p, &end, 10);
     }
-    if (end && *end == '-') hasPrerelease = true;
+    return (end && *end == '-') ? end + 1 : nullptr;
+}
+
+/** True when [s, s+len) is a non-empty run of ASCII digits. */
+static bool isNumericIdentifier(const char* s, size_t len) {
+    if (len == 0) return false;
+    for (size_t i = 0; i < len; i++) {
+        if (s[i] < '0' || s[i] > '9') return false;
+    }
+    return true;
+}
+
+// Compares two numeric identifiers without converting to int — a prerelease
+// counter is untrusted input and could overflow a 32-bit parse. Longer digit
+// run wins once leading zeros are stripped.
+static int compareNumericIdentifier(const char* a, size_t la, const char* b, size_t lb) {
+    while (la > 1 && *a == '0') { a++; la--; }
+    while (lb > 1 && *b == '0') { b++; lb--; }
+    if (la != lb) return la < lb ? -1 : 1;
+    int c = strncmp(a, b, la);
+    return c < 0 ? -1 : (c > 0 ? 1 : 0);
+}
+
+/** Length of the identifier starting at p, terminated by '.', '+' or NUL. */
+static size_t identifierLength(const char* p) {
+    const char* e = p;
+    while (*e != '\0' && *e != '.' && *e != '+') e++;
+    return (size_t)(e - p);
+}
+
+/** True when p has reached the end of the prerelease part. */
+static bool prereleaseExhausted(const char* p) {
+    return *p == '\0' || *p == '+';
+}
+
+// Full semver §11 prerelease precedence: dot-separated identifiers compared
+// left to right; numeric identifiers compare numerically, numeric ranks below
+// alphanumeric, alphanumeric compares by ASCII, and a shorter identifier list
+// ranks below a longer one when all preceding identifiers are equal.
+static int comparePrerelease(const char* a, const char* b) {
+    for (;;) {
+        bool aEnd = prereleaseExhausted(a);
+        bool bEnd = prereleaseExhausted(b);
+        if (aEnd && bEnd) return 0;
+        if (aEnd) return -1;
+        if (bEnd) return 1;
+
+        size_t la = identifierLength(a);
+        size_t lb = identifierLength(b);
+        bool aNum = isNumericIdentifier(a, la);
+        bool bNum = isNumericIdentifier(b, lb);
+
+        int cmp;
+        if (aNum && bNum) {
+            cmp = compareNumericIdentifier(a, la, b, lb);
+        } else if (aNum) {
+            cmp = -1;  // numeric identifiers rank below alphanumeric ones
+        } else if (bNum) {
+            cmp = 1;
+        } else {
+            size_t shared = la < lb ? la : lb;
+            int c = strncmp(a, b, shared);
+            if (c != 0) {
+                cmp = c < 0 ? -1 : 1;
+            } else if (la != lb) {
+                cmp = la < lb ? -1 : 1;
+            } else {
+                cmp = 0;
+            }
+        }
+        if (cmp != 0) return cmp;
+
+        a += la;
+        b += lb;
+        if (*a == '.') a++;
+        if (*b == '.') b++;
+    }
 }
 
 int compareVersions(const char* a, const char* b) {
     int aMajor, aMinor, aPatch, bMajor, bMinor, bPatch;
-    bool aPrerelease, bPrerelease;
-    parseSemverCore(a, aMajor, aMinor, aPatch, aPrerelease);
-    parseSemverCore(b, bMajor, bMinor, bPatch, bPrerelease);
+    const char* aPre = parseSemverCore(a, aMajor, aMinor, aPatch);
+    const char* bPre = parseSemverCore(b, bMajor, bMinor, bPatch);
 
-    if (aMajor != bMajor) return aMajor - bMajor;
-    if (aMinor != bMinor) return aMinor - bMinor;
-    if (aPatch != bPatch) return aPatch - bPatch;
-    if (aPrerelease == bPrerelease) return 0;
-    return aPrerelease ? -1 : 1;  // same core version: release > prerelease
+    if (aMajor != bMajor) return aMajor < bMajor ? -1 : 1;
+    if (aMinor != bMinor) return aMinor < bMinor ? -1 : 1;
+    if (aPatch != bPatch) return aPatch < bPatch ? -1 : 1;
+
+    // Same core version: a release outranks any prerelease of it.
+    if (!aPre && !bPre) return 0;
+    if (!aPre) return 1;
+    if (!bPre) return -1;
+    return comparePrerelease(aPre, bPre);
 }
 
 // ─── Device-only implementation ───────────────────────────────────────────────

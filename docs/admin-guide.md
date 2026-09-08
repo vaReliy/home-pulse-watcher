@@ -431,6 +431,8 @@ Using the same bot token for local development and production can cause the prod
 
 Use the `firmware:upload` CLI command to publish a new firmware binary. It uploads the file to GCS and creates a `FirmwareRelease` DB record in one step. Devices discover the new release on their next OTA check (every 6 hours, or on boot).
 
+> **This section is the single source of truth for the release procedure.** [`firmware/README.md`](../firmware/README.md) covers firmware development and USB flashing only, and links here rather than repeating these steps.
+
 ### Prerequisites
 
 - GCS bucket configured (`GCS_BUCKET_NAME` env var).
@@ -445,14 +447,18 @@ Use the `firmware:upload` CLI command to publish a new firmware binary. It uploa
 
 Build the release binary via `scripts/firmware-docker-build.sh`. It builds inside a container (no local PlatformIO toolchain needed) and correctly threads `HPW_PORTAL_AP_PASSWORD` from `.env` into the build.
 
-1. Build:
+1. Bump `FIRMWARE_VERSION` in the board's `firmware/<board>/src/config.h`. Use semantic versioning; the value is reported on every heartbeat and drives the OTA comparison.
+
+   **Prereleases of the same core version are ordered by their identifiers** (`3.5.4-alpha.2` > `3.5.4-alpha.1`), so an alpha sequence updates over the air normally. Devices running firmware **older than 3.5.4-alpha.1** carry a comparator that treats every same-core prerelease as equal and refuses the update — to reach those, bump the core version (`3.5.3-alpha.2` → `3.5.4-alpha.1`) or reflash over USB.
+
+2. Build:
 
    ```bash
    ./scripts/firmware-docker-build.sh esp32c6 0.2.0   # or esp32c3
    # output: tmp/firmware/esp32c6/0.2.0/firmware.bin
    ```
 
-2. Upload and register — **use an absolute `--file` path.** The `firmware:upload` CLI runs via an Nx target whose working directory is `apps/api`, not the repo root, so a repo-root-relative path (e.g. `tmp/firmware/...`) will resolve incorrectly and fail with `File not found`:
+3. Upload and register — **use an absolute `--file` path.** The `firmware:upload` CLI runs via an Nx target whose working directory is `apps/api`, not the repo root, so a repo-root-relative path (e.g. `tmp/firmware/...`) will resolve incorrectly and fail with `File not found`:
 
    ```bash
    npx nx run api:cli -- firmware:upload \
@@ -462,22 +468,38 @@ Build the release binary via `scripts/firmware-docker-build.sh`. It builds insid
 
    Run this from the repo root so `$(pwd)` expands correctly. (A bare filename with no `/` — e.g. `--file firmware.bin` — is instead searched under `apps/api/tmp/firmware/`, which normally doesn't exist; always pass a full path.)
 
-3. Confirm output shows the GCS path (e.g. `firmware/esp32c6/0.2.0/firmware.bin`).
+4. Confirm output shows the GCS path (e.g. `firmware/esp32c6/0.2.0/firmware.bin`).
 
 Devices set to the same channel will download and apply the release on their next OTA check without any additional action.
 
 ### Workflow (local PlatformIO build — not preferred)
 
-Only use this if Docker isn't available. PlatformIO reads the AP password from the **`PORTAL_AP_PASSWORD`** shell env var (no `HPW_` prefix — that prefix is a `.env`/Docker-script-only convention, translated internally by `scripts/firmware-docker-build.sh`):
+Only use this if Docker isn't available. No environment setup is needed: `firmware/common/pio_load_env.py` runs as a PlatformIO pre-build hook and reads `HPW_PORTAL_AP_PASSWORD` from the repo-root `.env` itself.
 
 ```bash
 cd firmware/esp32c6   # or esp32c3
-set -a && source ../../.env && set +a
-PORTAL_AP_PASSWORD="$HPW_PORTAL_AP_PASSWORD" pio run -e esp32c6
+pio run -e esp32c6
 # output: .pio/build/esp32c6/firmware.bin
 ```
 
 Then copy the binary to `tmp/firmware/` and upload it with the same `firmware:upload` command as above (absolute `--file` path).
+
+### Channel promotion
+
+Each channel is a separate `FirmwareRelease` row for the same binary — re-run `firmware:upload` with a different `--channel` to promote. Devices see releases in waterfall order: ALPHA devices see ALPHA + BETA + STABLE, BETA devices see BETA + STABLE, STABLE devices see only STABLE. The channel comes from `Device.releaseChannel` in the DB, never from the device's request.
+
+Validate on ALPHA before promoting. To force an immediate check instead of waiting out the 6-hour interval:
+
+```bash
+npx nx run api:cli -- device:request-ota-check --mac <mac>
+```
+
+Promotion criteria — watch the device's `[OTA]` serial output and the backend's `/api/ota/check` logs:
+
+- Binary downloads and the checksum verifies (no `[OTA][ABORT]` lines)
+- OTA validation passes: ≥3 successful heartbeats **and** ≥5 minutes uptime since boot
+- The new version appears in the Telegram `devices` list — this confirms the device reported it back, not just that it booted
+- No unexpected reboots or watchdog resets across a power cycle
 
 ### Using Docker (admin profile)
 

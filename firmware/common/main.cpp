@@ -247,7 +247,8 @@ bool sendPowerStatus(int status, int adcValue) {
         adcValue,
         upsPresent ? lastBatteryAdcValue : -1,
         upsPresent,
-        timestamp
+        timestamp,
+        FIRMWARE_VERSION
     };
 
     String sigInput  = HomePulse::buildSignatureInput(report);
@@ -354,8 +355,8 @@ void setup() {
         }
     }
 
-    // Pins the shared GTS Root R1 CA when built with TLS (HPW_USE_TLS=1); no-op
-    // for the plaintext dev client.
+    // Pins the shared GTS root bundle (R1 + R4) when built with TLS
+    // (HPW_USE_TLS=1); no-op for the plaintext dev client.
     HomePulse::configureTransportClient(client);
 
     if (!initializeTime()) {

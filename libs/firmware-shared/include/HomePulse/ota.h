@@ -104,9 +104,13 @@ CheckResult checkForUpdate(TransportClient& client,
                            UpdateInfo& outInfo);
 
 /**
- * Downloads and flashes binary from outInfo.url via HTTPS (GTS Root R1 CA verified).
- * Verifies SHA-256 via esp_partition_get_sha256 post-flash.
- * Returns true only if flash OK AND checksum matches.
+ * Downloads and flashes binary from outInfo.url via HTTPS, verified against the
+ * pinned GTS root bundle (R1 for storage.googleapis.com, R4 for Cloud Run).
+ * Hashes the downloaded byte stream incrementally and compares that SHA-256 to
+ * info.checksum — the plain file hash the backend stores, not the appended
+ * image hash esp_partition_get_sha256() would return.
+ * Returns true only if flash OK AND checksum matches; on mismatch the boot
+ * partition is reverted to the running one so the bad build never boots.
  * Does NOT call ESP.restart() — caller decides.
  */
 bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed);

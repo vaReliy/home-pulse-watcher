@@ -169,9 +169,11 @@ On first boot the device starts a `HomePulse-Setup-XXXX` Wi-Fi AP. Connect to it
 
 #### OTA Requirements
 
-OTA updates require a dual-partition flash layout. Both ESP32-C3 and ESP32-C6 builds use the `min_spiffs` partition table (configured in `platformio.ini` via `board_build.partitions`), which provides two equal OTA partitions on a 4 MB flash chip.
+OTA updates require a dual-partition flash layout. Both ESP32-C3 and ESP32-C6 builds use the checked-in `partitions.csv` next to each board's `platformio.ini` (referenced via `board_build.partitions`), which provides two equal OTA app partitions.
 
-> **TLS note**: OTA binary downloads verify the server certificate against the **Google Trust Services Root R1** CA (`storage.googleapis.com` is issued under this root). The embedded CA cert expires 2036-06-22; see `docs/admin-guide.md` for the rotation procedure.
+> **TLS note**: the firmware pins a two-root Google Trust Services bundle (`libs/firmware-shared/include/HomePulse/gts_root_ca.h`): **Root R1** for `storage.googleapis.com` (OTA binary downloads) and **Root R4** for `*.run.app` (Cloud Run telemetry and OTA checks). Both are required — the two services chain to different roots. R1 expires 2036-06-22; see [`docs/admin-guide.md`](./docs/admin-guide.md#ota-tls-certificate) for the rotation procedure.
+
+> **Releasing firmware**: see [Admin Guide → Publishing a Firmware Release](./docs/admin-guide.md#publishing-a-firmware-release) for the build → upload → channel-promotion workflow.
 
 See [Admin Guide](./docs/admin-guide.md) for the complete setup workflow.
 

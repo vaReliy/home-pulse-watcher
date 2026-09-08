@@ -258,6 +258,55 @@ void test_compare_versions_release_newer_than_its_prerelease(void) {
     TEST_ASSERT_TRUE(compareVersions("3.5.3", "3.5.3-alpha.1") > 0);
 }
 
+// ─── Prerelease-vs-prerelease precedence (semver.org §11) ────────────────────
+//
+// The regression this locks down: the comparator used to record only a
+// "has prerelease" bool, so every same-core prerelease pair compared equal and
+// the downgrade guard in checkForUpdate() refused every alpha→alpha update.
+
+void test_compare_versions_higher_prerelease_counter_is_newer(void) {
+    TEST_ASSERT_TRUE(compareVersions("3.5.3-alpha.4", "3.5.3-alpha.2") > 0);
+}
+
+void test_compare_versions_lower_prerelease_counter_is_downgrade(void) {
+    TEST_ASSERT_TRUE(compareVersions("3.5.3-alpha.2", "3.5.3-alpha.4") < 0);
+}
+
+void test_compare_versions_identical_prereleases_are_equal(void) {
+    TEST_ASSERT_EQUAL_INT(0, compareVersions("3.5.3-alpha.2", "3.5.3-alpha.2"));
+}
+
+void test_compare_versions_prerelease_counter_compares_numerically(void) {
+    // String compare would rank "10" below "9" — semver compares numerically.
+    TEST_ASSERT_TRUE(compareVersions("3.5.3-alpha.10", "3.5.3-alpha.9") > 0);
+}
+
+void test_compare_versions_beta_outranks_alpha(void) {
+    TEST_ASSERT_TRUE(compareVersions("3.5.3-beta.1", "3.5.3-alpha.9") > 0);
+}
+
+void test_compare_versions_numeric_identifier_ranks_below_alphanumeric(void) {
+    TEST_ASSERT_TRUE(compareVersions("3.5.3-1", "3.5.3-alpha") < 0);
+}
+
+void test_compare_versions_fewer_identifiers_rank_lower(void) {
+    TEST_ASSERT_TRUE(compareVersions("3.5.3-alpha", "3.5.3-alpha.1") < 0);
+}
+
+void test_compare_versions_core_bump_outranks_any_prerelease(void) {
+    // The escape hatch for devices running a comparator that can't order
+    // prereleases: a patch bump is accepted even by the buggy build.
+    TEST_ASSERT_TRUE(compareVersions("3.5.4-alpha.1", "3.5.3-alpha.2") > 0);
+}
+
+void test_compare_versions_build_metadata_ignored(void) {
+    TEST_ASSERT_EQUAL_INT(0, compareVersions("3.5.3-alpha.2+abc", "3.5.3-alpha.2"));
+}
+
+void test_compare_versions_leading_zero_prerelease_counter(void) {
+    TEST_ASSERT_EQUAL_INT(0, compareVersions("3.5.3-alpha.02", "3.5.3-alpha.2"));
+}
+
 // ─── Canonical string format (integration with buildOtaSignatureInput) ────────
 
 void test_ota_canonical_string_format(void) {
@@ -312,6 +361,16 @@ int main(void) {
     RUN_TEST(test_compare_versions_older_patch_is_downgrade);
     RUN_TEST(test_compare_versions_prerelease_older_than_release);
     RUN_TEST(test_compare_versions_release_newer_than_its_prerelease);
+    RUN_TEST(test_compare_versions_higher_prerelease_counter_is_newer);
+    RUN_TEST(test_compare_versions_lower_prerelease_counter_is_downgrade);
+    RUN_TEST(test_compare_versions_identical_prereleases_are_equal);
+    RUN_TEST(test_compare_versions_prerelease_counter_compares_numerically);
+    RUN_TEST(test_compare_versions_beta_outranks_alpha);
+    RUN_TEST(test_compare_versions_numeric_identifier_ranks_below_alphanumeric);
+    RUN_TEST(test_compare_versions_fewer_identifiers_rank_lower);
+    RUN_TEST(test_compare_versions_core_bump_outranks_any_prerelease);
+    RUN_TEST(test_compare_versions_build_metadata_ignored);
+    RUN_TEST(test_compare_versions_leading_zero_prerelease_counter);
 
     return UNITY_END();
 }

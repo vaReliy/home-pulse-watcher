@@ -314,6 +314,8 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - **Battery voltage reporting**: Devices with the "Has UPS" flag enabled (set via captive-portal checkbox, stored as NVS `hasUps`) also report `batteryVoltage` in the JSON body
 - Backend stores it in `Device.firmwareVersion` (nullable `String?` in Prisma)
 - Older firmware without the field is handled gracefully (field remains `null`)
+- **`FIRMWARE_VERSION` is only readable from `main.cpp`'s translation unit.** `libs/firmware-shared/` is compiled as its own unit and never includes a board's `config.h`, so the version travels as `PowerStatusReport::firmwareVersion`, set by the caller. Reading the macro inside the shared library silently resolves to a stub — that regression (2026-04-25 → 2026-09-08) made every device report `"test"`, which `ProcessPowerStatusService.sanitizeFirmwareVersion()` then dropped as invalid semver, freezing `Device.firmwareVersion` at its last pre-regression value.
+- A version the backend cannot parse as semver is **dropped, not stored** — the previous value survives. A device showing an old version in Telegram therefore means "nothing valid has been reported since", not "the device is running that version".
 
 ### OTA Release Metadata (Phase 5.6)
 
@@ -392,10 +394,11 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 **Firmware OTA Client (Task 4, Complete + Hardened)**
 
 - `HomePulse::Ota::checkForUpdate()` — HMAC-signed POST to `/api/ota/check`, 5-field canonical (`MAC:TS:boardType:version:channel`); logs HTTP code, body preview, and `CheckResult` to serial
-- `HomePulse::Ota::applyUpdate()` — HTTPS download via `HTTPClient` + `Update` (direct stream, not `httpUpdate.h`); `client.setTimeout(60)`, `HTTPC_FORCE_FOLLOW_REDIRECTS`; SHA-256 post-flash verify via `esp_partition_get_sha256`
+- `HomePulse::Ota::applyUpdate()` — HTTPS download via `HTTPClient` + `Update` (direct stream, not `httpUpdate.h`); `client.setTimeout(60)`, `HTTPC_FORCE_FOLLOW_REDIRECTS`; SHA-256 verified by hashing the downloaded byte stream incrementally (`mbedtls_sha256_*`) against the plain file hash the backend stores — **not** `esp_partition_get_sha256`, which returns the appended image hash and can never match
 - **Rollback grace period**: `markCurrentAppValid()` fires only after **≥ 3 heartbeats AND ≥ 5 minutes uptime** (`OTA_VALIDATION_MIN_HEARTBEATS`, `OTA_VALIDATION_MIN_UPTIME_MS`). Controlled by pure predicate `shouldMarkAppValid()` (natively tested). Bootloader auto-reverts if validation never completes.
 - **Partial-flash abort**: `Update.abort()` on stream stall, short read, write error. SHA mismatch after `Update.end()` calls `esp_ota_set_boot_partition(running)` to revert next-boot selection. All abort events tagged `[OTA][ABORT]` in serial logs.
 - Boot-time check (after WiFi+NTP, before watchdog fires) + periodic check every 6 h in `loop()`; all `CheckResult` branches explicitly logged
+- **Device-side downgrade guard** (`compareVersions()`, natively tested): defense-in-depth on top of the HMAC-verified response — any offered version `<=` the running one is refused, even a signed one. Implements full semver §11 precedence: core numerically, release > prerelease, then dot-separated prerelease identifiers (numeric compared numerically and ranking below alphanumeric, shorter list ranking lower); build metadata ignored. **Builds before `3.5.4-alpha.1` compared only a "has prerelease" bool**, so every same-core prerelease pair tied at `0` and the guard refused all alpha→alpha updates. Reaching such a device requires a core-version bump (`3.5.3-alpha.2` → `3.5.4-alpha.1`, which compares on patch before the prerelease flag) or a USB reflash.
 - Shared source: both envs use `firmware/common/main.cpp` — OTA logic lives once
 - `BACKEND_URL` in NVS/`secrets.h` is the base origin only (`https://your-server.com`); firmware appends `/api/device/status` and `/api/ota/check` at call sites
 - OTA confirmed working end-to-end on real ESP32-C6 hardware (v3.5.2 auto-flashed)
@@ -412,9 +415,16 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 **Transport Security: TLS as a Build-Time Flag (2026-07-08)**
 
-- `HPW_USE_TLS` compile-time macro (`libs/firmware-shared/include/HomePulse/transport_client.h`) selects `WiFiClientSecure` (pinned GTS Root R1 CA, single-sourced) vs plaintext `WiFiClient` for both telemetry POSTs and OTA-check requests — previously plaintext by default (HMAC gives integrity, not confidentiality; MAC/power-status/battery-voltage were visible to any network observer). OTA binary download already used `WiFiClientSecure` independently and is unaffected.
+- `HPW_USE_TLS` compile-time macro (`libs/firmware-shared/include/HomePulse/transport_client.h`) selects `WiFiClientSecure` (pinned GTS root bundle — R1 for `storage.googleapis.com`, R4 for `*.run.app`; single-sourced) vs plaintext `WiFiClient` for both telemetry POSTs and OTA-check requests — previously plaintext by default (HMAC gives integrity, not confidentiality; MAC/power-status/battery-voltage were visible to any network observer). OTA binary download already used `WiFiClientSecure` independently and is unaffected.
 - Release envs (`esp32c3`/`esp32c6` in `platformio.ini`) hardcode `-DHPW_USE_TLS=1`. Plaintext is reachable only via explicit `_dev`-suffixed envs (`esp32c3_dev`/`esp32c6_dev`), never invoked by the Docker/CI build pipeline (`scripts/firmware-docker-build.sh` always builds the plain env name) — no runtime/NVS/remote toggle exists, so a release-flashed device cannot be downgraded to plaintext.
 - Single shared `TransportClient` instance reused sequentially across telemetry → OTA-check (never held concurrently) to conserve heap on the ESP32-C3's 400KB RAM; OTA binary download deliberately uses its own separate `WiFiClientSecure` instance rather than the shared one, so exactly one TLS session is ever open at a time.
+
+**Captive-portal AP password build injection (2026-09-08)**
+
+- `PORTAL_AP_PASSWORD` is defined by `firmware/common/pio_load_env.py`, a PlatformIO `pre:` hook wired via `extra_scripts` in both boards' `platformio.ini` — **not** a `${sysenv.…}` build flag any more. Resolution order: existing `PORTAL_AP_PASSWORD` env var (Docker `--build-arg` → `ENV`, CI, or a one-off shell override) first, then `HPW_PORTAL_AP_PASSWORD` from the gitignored repo-root `.env`.
+- Reason for the change: `${sysenv.X}` reads the environment of the `pio` process, which for the PlatformIO IDE's Build / Upload / Upload and Monitor buttons is whatever the editor inherited at launch — so GUI builds failed unless the editor itself was started from a shell with the export. The hook runs inside PlatformIO's own build, so CLI, GUI, and Docker all behave identically. `direnv` would not have fixed the GUI case for the same reason.
+- The script must stay in `firmware/common/` — one of the few directories `firmware/Dockerfile` copies into the image, so `../common/pio_load_env.py` resolves in both the local tree and `/build`.
+- `portal.h`'s `#ifndef` default + `static_assert(len >= 8)` remains the final guard: an unresolved password fails the build rather than shipping an open AP.
 
 **OTA Response Authentication (C-1 fix)**
 

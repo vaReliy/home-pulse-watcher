@@ -169,7 +169,7 @@ pio run -t upload
 
 No need to re-configure `secrets.h` unless credentials changed.
 
-**Note:** This is for local development. For release builds and OTA distribution, see [Building and Uploading OTA Firmware Releases](../README.md#building-and-uploading-ota-firmware-releases) in the main firmware README.
+**Note:** This is for local development. For release builds and OTA distribution, see [Admin Guide → Publishing a Firmware Release](../../docs/admin-guide.md#publishing-a-firmware-release) — the single source of truth for the release procedure.
 
 ## Hardware Variants (Standard vs. UPS)
 

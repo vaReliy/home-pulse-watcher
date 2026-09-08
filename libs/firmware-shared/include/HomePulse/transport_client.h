@@ -16,7 +16,7 @@
 // changing this header.
 //
 // The OTA *binary download* (Ota::applyUpdate) already always used
-// WiFiClientSecure + the pinned GTS Root R1 CA and is untouched here — see
+// WiFiClientSecure + the pinned GTS root bundle and is untouched here — see
 // gts_root_ca.h for the single-sourced CA constant reused below.
 
 #ifndef HPW_USE_TLS
@@ -50,8 +50,9 @@ using TransportClient = WiFiClient;
 #endif
 
 /**
- * Configure a transport client before first use. Pins the shared GTS Root R1
- * CA when built with TLS; no-op for the plaintext dev client.
+ * Configure a transport client before first use. Pins the shared GTS root
+ * bundle (R1 for storage.googleapis.com, R4 for Cloud Run) when built with
+ * TLS; no-op for the plaintext dev client.
  */
 inline void configureTransportClient(TransportClient& client) {
 #if HPW_USE_TLS
