@@ -61,11 +61,11 @@ COPY --chown=node:node --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
-# Install external dependencies (Prisma + pg from minimal package.json)
-RUN npm install --omit=dev
-
-# Install Prisma CLI for generate + runtime migrations (not in prod deps)
-RUN npm install --no-save prisma dotenv
+# Install production dependencies including Prisma CLI for migrations.
+# Add prisma/dotenv to package.json dependencies, then install all at once.
+# This avoids npm dependency resolution breaking in Alpine Linux when no lockfile exists.
+RUN npm pkg set dependencies.prisma="7.3.0" dependencies.dotenv="16.4.5" && \
+    npm install --legacy-peer-deps
 
 # Generate Prisma client in production node_modules
 RUN npx prisma generate

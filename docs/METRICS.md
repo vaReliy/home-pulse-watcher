@@ -39,3 +39,4 @@ Each completed task is one row in the table below.
 | 2026-07-09 | home-pulse-watcher | workflow-md-resume-agent-clarification            | T1   | 0      | 0/0/0/0           | 0       | no       | cheap    |
 | 2026-09-08 | home-pulse-watcher | webpack-build-warnings                            | T1   | 0      | 0/0/0/0           | 1       | no       | standard |
 | 2026-09-08 | home-pulse-watcher | webpack-nx-plugin-coupling-guard                  | T0   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-08 | home-pulse-watcher | fix-dockerfile-npm-install-cloud-run-deploy       | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
