@@ -33,11 +33,15 @@ ESP32-based power monitoring firmware for HomePulse Watcher.
    - Device MAC and secret (from `device:register` CLI command)
    - Backend URL
 
-4. **Set the captive-portal AP password** (required — the build fails without it, see `Initial Configuration (Captive Portal)` below)
+4. **Set the captive-portal AP password** (required — the build fails without it, see `Initial Configuration (Captive Portal)` below). PlatformIO reads the shell env var `PORTAL_AP_PASSWORD` directly — **no `HPW_` prefix** (that prefix is a `.env`/Docker-build-script-only convention).
 
    ```bash
-   export HPW_PORTAL_AP_PASSWORD=87654321   # or: set -a && source ../../.env && set +a
+   export PORTAL_AP_PASSWORD=87654321
+   # or, if it's set as HPW_PORTAL_AP_PASSWORD in .env:
+   set -a && source ../../.env && set +a && export PORTAL_AP_PASSWORD="$HPW_PORTAL_AP_PASSWORD"
    ```
+
+   **Prefer building via Docker instead** (`../scripts/firmware-docker-build.sh esp32c6 <version>` from repo root) — it handles this translation for you and needs no local PlatformIO toolchain. See [Publishing a Firmware Release](../docs/admin-guide.md#publishing-a-firmware-release).
 
 5. **Build and flash**
 

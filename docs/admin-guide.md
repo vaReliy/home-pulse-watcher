@@ -437,42 +437,45 @@ Use the `firmware:upload` CLI command to publish a new firmware binary. It uploa
   - `GCP_SERVICE_ACCOUNT_KEY` in `.env` (production service account JSON), or
   - Application Default Credentials via `gcloud auth application-default login` (local dev).
 - Database running and `DATABASE_URL` set.
-- Firmware binary built with PlatformIO (`pio run -d firmware/esp32c6`).
+- `HPW_PORTAL_AP_PASSWORD` set in `.env` (>= 8 chars — see [.env.example](../.env.example)). This is the captive-portal AP WPA2 password, required at firmware build time regardless of build method.
+- Docker installed and running.
 
-### Workflow
+### Workflow (Docker build — preferred)
 
-1. Build the firmware binary:
+Build the release binary via `scripts/firmware-docker-build.sh`. It builds inside a container (no local PlatformIO toolchain needed) and correctly threads `HPW_PORTAL_AP_PASSWORD` from `.env` into the build.
 
-   ```bash
-   cd firmware/esp32c6   # or esp32c3
-   pio run
-   # output: .pio/build/esp32c6/firmware.bin
-   ```
-
-2. Copy the binary to `./tmp/firmware/` and rename it with the version:
+1. Build:
 
    ```bash
-   mkdir -p tmp/firmware
-   cp firmware/esp32c6/.pio/build/esp32c6/firmware.bin \
-      tmp/firmware/esp32c6-v0.2.0.bin
+   ./scripts/firmware-docker-build.sh esp32c6 0.2.0   # or esp32c3
+   # output: tmp/firmware/esp32c6/0.2.0/firmware.bin
    ```
 
-3. Upload and register:
+2. Upload and register — **use an absolute `--file` path.** The `firmware:upload` CLI runs via an Nx target whose working directory is `apps/api`, not the repo root, so a repo-root-relative path (e.g. `tmp/firmware/...`) will resolve incorrectly and fail with `File not found`:
 
    ```bash
-   # Load environment
-   set -a && source .env && set +a
-
-   node apps/api/dist/cli.js firmware:upload \
-     --file esp32c6-v0.2.0.bin \
-     --version 0.2.0 \
-     --board esp32c6 \
-     --channel STABLE
+   npx nx run api:cli -- firmware:upload \
+     --file "$(pwd)/tmp/firmware/esp32c6/0.2.0/firmware.bin" \
+     --board esp32c6 --version 0.2.0 --channel STABLE
    ```
 
-4. Confirm output shows the GCS path (e.g. `firmware/esp32c6/0.2.0/esp32c6-v0.2.0.bin`).
+   Run this from the repo root so `$(pwd)` expands correctly. (A bare filename with no `/` — e.g. `--file firmware.bin` — is instead searched under `apps/api/tmp/firmware/`, which normally doesn't exist; always pass a full path.)
+
+3. Confirm output shows the GCS path (e.g. `firmware/esp32c6/0.2.0/firmware.bin`).
 
 Devices set to the same channel will download and apply the release on their next OTA check without any additional action.
+
+### Workflow (local PlatformIO build — not preferred)
+
+Only use this if Docker isn't available. PlatformIO reads the AP password from the **`PORTAL_AP_PASSWORD`** shell env var (no `HPW_` prefix — that prefix is a `.env`/Docker-script-only convention, translated internally by `scripts/firmware-docker-build.sh`):
+
+```bash
+cd firmware/esp32c6   # or esp32c3
+PORTAL_AP_PASSWORD="$HPW_PORTAL_AP_PASSWORD" pio run -e esp32c6
+# output: .pio/build/esp32c6/firmware.bin
+```
+
+Then copy the binary to `tmp/firmware/` and upload it with the same `firmware:upload` command as above (absolute `--file` path).
 
 ### Using Docker (admin profile)
 
