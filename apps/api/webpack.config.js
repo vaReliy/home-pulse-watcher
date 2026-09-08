@@ -73,6 +73,20 @@ class ExcludeNodeModulesFromSourceMapLoaderPlugin {
     );
     if (rule) {
       rule.exclude = /node_modules/;
+    } else {
+      compiler.hooks.done.tap(
+        'ExcludeNodeModulesFromSourceMapLoaderPlugin',
+        (stats) => {
+          stats.compilation.warnings.push(
+            new Error(
+              'ExcludeNodeModulesFromSourceMapLoaderPlugin: expected source-map-loader rule ' +
+                'not found in compiler.options.module.rules - node_modules source maps are ' +
+                'no longer being excluded. See the comment above this plugin in ' +
+                'apps/api/webpack.config.js for context.',
+            ),
+          );
+        },
+      );
     }
   }
 }
