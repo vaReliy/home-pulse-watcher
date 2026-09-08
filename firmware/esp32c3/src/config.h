@@ -9,7 +9,7 @@
  */
 
 // Firmware Version (reported to backend on every status ping)
-#define FIRMWARE_VERSION "3.5.4-beta.1"
+#define FIRMWARE_VERSION "3.5.4"
 
 // GPIO Configuration
 #define POWER_SENSE_PIN 2       // GPIO for power detection (connect to optocoupler output)
