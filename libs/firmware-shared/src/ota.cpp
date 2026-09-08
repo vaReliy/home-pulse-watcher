@@ -111,6 +111,17 @@ bool shouldMarkAppValid(bool pendingValidation,
     return true;
 }
 
+// ─── OTA check scheduling (always compiled — native-testable) ────────────────
+
+bool shouldCheckForOta(uint32_t nowMs,
+                       uint32_t lastCheckMs,
+                       bool requested,
+                       uint32_t intervalMs) {
+    if (requested) return true;
+    // Unsigned subtraction stays correct across millis() wraparound.
+    return (uint32_t)(nowMs - lastCheckMs) >= intervalMs;
+}
+
 // ─── Version comparison (always compiled — native-testable) ──────────────────
 
 // Parses the "MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]" prefix of a version string.

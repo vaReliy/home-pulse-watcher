@@ -86,6 +86,11 @@ static bool bootWasPendingValidation = false;
 static bool otaValidated = false;
 static uint32_t heartbeatsSinceBoot = 0;  // counts successful backend contacts for grace-period validation
 static unsigned long lastOtaCheckTime = 0;
+// Set when the backend asks for an immediate check; short-circuits the 6h timer.
+// A separate flag rather than back-dating lastOtaCheckTime — the previous
+// `lastOtaCheckTime = 0` sentinel meant "check now" only once uptime exceeded
+// the full interval, so a forced check silently did nothing after a reboot.
+static bool otaCheckRequested = false;
 
 // WS2812B RGB LED
 static Adafruit_NeoPixel led(LED_COUNT, STATUS_LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -284,8 +289,8 @@ bool sendPowerStatus(int status, int adcValue) {
         JsonDocument responseDoc;
         DeserializationError parseErr = deserializeJson(responseDoc, result.body);
         if (!parseErr && responseDoc["forceOtaCheck"].as<bool>()) {
-            Serial.println("[OTA] Force-check requested by backend, resetting OTA timer");
-            lastOtaCheckTime = 0;
+            Serial.println("[OTA] Force-check requested by backend, scheduling immediate check");
+            otaCheckRequested = true;
         }
     }
 
@@ -567,9 +572,12 @@ void loop() {
         }
     }
 
-    // Periodic OTA check (every 6 h)
-    if (millis() - lastOtaCheckTime >= OTA_CHECK_INTERVAL_MS) {
-        lastOtaCheckTime = millis();
+    // Periodic OTA check (every 6 h), or immediately when the backend asked.
+    if (HomePulse::Ota::shouldCheckForOta(millis(), lastOtaCheckTime,
+                                          otaCheckRequested, OTA_CHECK_INTERVAL_MS)) {
+        lastOtaCheckTime  = millis();
+        otaCheckRequested = false;
+        Serial.println("[OTA] Checking for update...");
         HomePulse::Ota::UpdateInfo otaInfo;
         auto otaResult = HomePulse::Ota::checkForUpdate(
             client, creds, deviceMac.c_str(), BOARD_TYPE, FIRMWARE_VERSION, otaInfo);

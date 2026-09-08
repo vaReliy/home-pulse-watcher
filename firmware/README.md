@@ -176,6 +176,7 @@ No environment setup is required — `firmware/common/pio_load_env.py` supplies 
 - **One binary per board per version** — no hardware-variant rebuilds. The UPS checkbox on the captive portal is a runtime NVS flag, not a compile-time choice.
 - **Per-device secret and UPS flag** are set during provisioning (captive portal) and are untouched by the OTA release process.
 - **The device never chooses its channel** — the server resolves it from `Device.releaseChannel`.
+- **Channel promotion is a rebuild, not a re-upload.** `FIRMWARE_VERSION` is compiled in and reported on every heartbeat, and `FirmwareRelease` is unique on `[version, boardType]`, `checksum` and `gcsPath` — so promoting means bumping the suffix (`3.5.4-alpha.N` → `3.5.4-beta.1` → `3.5.4`) and building again.
 - **A device only installs a strictly newer version.** Prerelease identifiers of the same core version are ordered (`-alpha.2` > `-alpha.1`); builds older than `3.5.4-alpha.1` could not order them at all and refuse every same-core prerelease, so reaching those needs a core-version bump or a USB reflash.
 
 ## Troubleshooting

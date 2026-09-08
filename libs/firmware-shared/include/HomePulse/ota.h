@@ -77,13 +77,39 @@ bool shouldMarkAppValid(bool pendingValidation,
  * authenticates the offer — this catches backend bugs/compromise offering
  * a version the device should refuse to flash).
  *
- * Prerelease suffixes are not compared beyond their presence: for equal
- * major.minor.patch, a release (no suffix) is considered newer than a
- * prerelease (has a "-" suffix), matching SemVer precedence rules.
+ * Implements SemVer §11 precedence in full: core numerically, then a release
+ * (no suffix) above any prerelease of the same core, then dot-separated
+ * prerelease identifiers left to right — numeric compared numerically and
+ * ranking below alphanumeric, a shorter identifier list ranking lower.
+ * Build metadata ("+...") is ignored. Numeric identifiers are compared as
+ * digit strings rather than parsed, so an untrusted counter cannot overflow.
  *
  * @return negative if a < b, 0 if equal, positive if a > b
  */
 int compareVersions(const char* a, const char* b);
+
+/**
+ * Decide whether an OTA check is due.
+ *
+ * Exposed as a pure predicate for unit testing — the inline expression it
+ * replaced (`millis() - lastCheckMs >= intervalMs`, with a "check now" request
+ * signalled by assigning lastCheckMs = 0) silently required the device to have
+ * been up for a full interval before a forced check could fire, making the
+ * backend's force-check flag a no-op on any recently-booted device.
+ *
+ * A pending request short-circuits the timer. Otherwise the elapsed comparison
+ * is done in unsigned arithmetic so it stays correct across millis() wraparound
+ * (~49 days).
+ *
+ * @param nowMs         current millis() value
+ * @param lastCheckMs   millis() at the last completed check
+ * @param requested     backend asked for an immediate check (sticky flag)
+ * @param intervalMs    normal interval between checks
+ */
+bool shouldCheckForOta(uint32_t nowMs,
+                       uint32_t lastCheckMs,
+                       bool requested,
+                       uint32_t intervalMs);
 
 #ifndef UNIT_TEST
 

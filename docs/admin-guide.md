@@ -99,13 +99,13 @@ See [CLI Reference](./cli-reference.md#deviceregister) for full options.
 
 3. Provision via captive portal:
 
-   On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). The AP is protected by a WPA2 password derived from the device MAC — look for it in the Serial monitor output:
+   On first boot the device broadcasts a `HomePulse-Setup-XXXX` Wi-Fi AP (last 4 hex digits of the MAC address). The AP is protected by the fixed WPA2 password compiled into the firmware from `HPW_PORTAL_AP_PASSWORD` in your `.env` — the same on every device you flash. It is echoed to the Serial monitor at startup:
 
    ```
-   [Portal] AP started: HomePulse-Setup-EEFF  password: CCDDEEFF
+   [Portal] AP started: HomePulse-Setup-EEFF  password: ********
    ```
 
-   The password is the **last 8 hex digits of the MAC address**, uppercased (e.g. MAC `AA:BB:CC:DD:EE:FF` → password `CCDDEEFF`). Connect to the AP using that password, then open `http://192.168.4.1`. Fill in:
+   Connect to the AP using that password, then open `http://192.168.4.1`. Fill in:
 
    | Field          | Value                                     |
    | -------------- | ----------------------------------------- |
@@ -118,7 +118,7 @@ See [CLI Reference](./cli-reference.md#deviceregister) for full options.
 
    > **Dev shortcut**: Copy `include/secrets.h.example` to `include/secrets.h`, fill in the values, and rebuild. If `secrets.h` exists at compile time, its values are written to NVS on the first boot (when NVS is empty) — the captive portal is skipped. Do **not** commit `secrets.h` to version control.
 
-   > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s. The LED flashes SOS, credentials are cleared, and the captive portal restarts with the same MAC-derived password.
+   > **Factory reset**: Hold the BOOT button (GPIO9) for 10 s. The LED flashes SOS, credentials are cleared, and the captive portal restarts. It uses the password compiled into the firmware that device is currently running — after a password rotation, devices not yet reflashed still expect the old one.
 
 See [Flashing Guide](../firmware/docs/FLASHING_GUIDE.md) for detailed PlatformIO setup, USB drivers, and troubleshooting upload issues.
 
@@ -486,9 +486,23 @@ Then copy the binary to `tmp/firmware/` and upload it with the same `firmware:up
 
 ### Channel promotion
 
-Each channel is a separate `FirmwareRelease` row for the same binary — re-run `firmware:upload` with a different `--channel` to promote. Devices see releases in waterfall order: ALPHA devices see ALPHA + BETA + STABLE, BETA devices see BETA + STABLE, STABLE devices see only STABLE. The channel comes from `Device.releaseChannel` in the DB, never from the device's request.
+Devices see releases in waterfall order: ALPHA devices see ALPHA + BETA + STABLE, BETA devices see BETA + STABLE, STABLE devices see only STABLE. The channel comes from `Device.releaseChannel` in the DB, never from the device's request.
 
-Validate on ALPHA before promoting. To force an immediate check instead of waiting out the 6-hour interval:
+**Promotion means rebuilding at a new version, not re-uploading the same binary to another channel.** Three constraints on `FirmwareRelease` make a re-upload impossible: `@@unique([version, boardType])`, `checksum @unique`, and `gcsPath @unique` (the path embeds board and version). More fundamentally, `FIRMWARE_VERSION` is compiled into the binary and is what the device reports on every heartbeat — an `-alpha` build parked on STABLE would keep calling itself an alpha.
+
+So bump the version suffix at each stage and rebuild:
+
+| Stage   | Version         | Channel |
+| ------- | --------------- | ------- |
+| iterate | `3.5.4-alpha.N` | ALPHA   |
+| soak    | `3.5.4-beta.1`  | BETA    |
+| ship    | `3.5.4`         | STABLE  |
+
+Each step is a strictly ascending semver (`alpha.2` < `beta.1` < `3.5.4`), which is what makes the waterfall resolve correctly. The version-string change also produces different bytes, so the unique `checksum` is satisfied automatically.
+
+Because the promoted binary is a **new build** rather than a relabelled one, re-run the validation below after each promotion — do not assume the BETA soak transfers to the STABLE artifact.
+
+To force an immediate check instead of waiting out the 6-hour interval:
 
 ```bash
 npx nx run api:cli -- device:request-ota-check --mac <mac>

@@ -258,6 +258,47 @@ void test_compare_versions_release_newer_than_its_prerelease(void) {
     TEST_ASSERT_TRUE(compareVersions("3.5.3", "3.5.3-alpha.1") > 0);
 }
 
+// ─── OTA check scheduling ────────────────────────────────────────────────────
+//
+// The regression this locks down: a forced check was signalled by assigning
+// lastCheckMs = 0, which left the gate as `millis() >= interval` — so the
+// backend's force-check flag did nothing until the device had already been up
+// a full interval, i.e. exactly when it would have checked anyway.
+
+static const uint32_t kSixHoursMs = 6UL * 60UL * 60UL * 1000UL;
+
+void test_ota_check_not_due_before_interval(void) {
+    TEST_ASSERT_FALSE(shouldCheckForOta(60000, 0, false, kSixHoursMs));
+}
+
+void test_ota_check_due_after_interval(void) {
+    TEST_ASSERT_TRUE(shouldCheckForOta(kSixHoursMs, 0, false, kSixHoursMs));
+}
+
+void test_ota_check_request_fires_on_freshly_booted_device(void) {
+    // 60s uptime, nowhere near the interval — the request must still win.
+    TEST_ASSERT_TRUE(shouldCheckForOta(60000, 0, true, kSixHoursMs));
+}
+
+void test_ota_check_request_fires_right_after_a_completed_check(void) {
+    TEST_ASSERT_TRUE(shouldCheckForOta(70000, 60000, true, kSixHoursMs));
+}
+
+void test_ota_check_not_due_just_before_interval_elapses(void) {
+    TEST_ASSERT_FALSE(shouldCheckForOta(kSixHoursMs - 1, 0, false, kSixHoursMs));
+}
+
+void test_ota_check_due_exactly_at_interval_boundary(void) {
+    TEST_ASSERT_TRUE(shouldCheckForOta(kSixHoursMs + 1000, 1000, false, kSixHoursMs));
+}
+
+void test_ota_check_survives_millis_wraparound(void) {
+    // Last check just before the 32-bit millis() rollover, now just after.
+    const uint32_t lastCheck = 0xFFFFFFFFUL - 1000UL;
+    TEST_ASSERT_TRUE(shouldCheckForOta(kSixHoursMs, lastCheck, false, kSixHoursMs));
+    TEST_ASSERT_FALSE(shouldCheckForOta(2000, lastCheck, false, kSixHoursMs));
+}
+
 // ─── Prerelease-vs-prerelease precedence (semver.org §11) ────────────────────
 //
 // The regression this locks down: the comparator used to record only a
@@ -361,6 +402,13 @@ int main(void) {
     RUN_TEST(test_compare_versions_older_patch_is_downgrade);
     RUN_TEST(test_compare_versions_prerelease_older_than_release);
     RUN_TEST(test_compare_versions_release_newer_than_its_prerelease);
+    RUN_TEST(test_ota_check_not_due_before_interval);
+    RUN_TEST(test_ota_check_due_after_interval);
+    RUN_TEST(test_ota_check_request_fires_on_freshly_booted_device);
+    RUN_TEST(test_ota_check_request_fires_right_after_a_completed_check);
+    RUN_TEST(test_ota_check_not_due_just_before_interval_elapses);
+    RUN_TEST(test_ota_check_due_exactly_at_interval_boundary);
+    RUN_TEST(test_ota_check_survives_millis_wraparound);
     RUN_TEST(test_compare_versions_higher_prerelease_counter_is_newer);
     RUN_TEST(test_compare_versions_lower_prerelease_counter_is_downgrade);
     RUN_TEST(test_compare_versions_identical_prereleases_are_equal);
