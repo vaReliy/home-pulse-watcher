@@ -17,6 +17,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 #include <esp_ota_ops.h>
+#include <mbedtls/sha256.h>
 #include <time.h>
 #endif
 
@@ -321,6 +322,15 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
     uint8_t buf[4096];
     size_t downloaded = 0;
 
+    // Hash the exact byte stream as downloaded, not esp_partition_get_sha256() post-write —
+    // that call returns the *appended* SHA-256 embedded in the image (ESP-IDF's
+    // hash_appended format hashes the image content excluding its own trailing 32-byte
+    // hash field), which can never equal a plain sha256 of the raw uploaded file computed
+    // server-side. Hashing the stream directly guarantees both sides hash identical bytes.
+    mbedtls_sha256_context shaCtx;
+    mbedtls_sha256_init(&shaCtx);
+    mbedtls_sha256_starts(&shaCtx, 0);
+
     while (remaining > 0) {
         // Block until data arrives or 30s stall timeout
         uint32_t t0 = millis();
@@ -348,8 +358,10 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
             Serial.printf("[OTA][ABORT] Flash write failed at offset %u\n", downloaded);
             Update.abort();
             http.end();
+            mbedtls_sha256_free(&shaCtx);
             return false;
         }
+        mbedtls_sha256_update(&shaCtx, buf, (size_t)n);
         downloaded += (size_t)n;
         remaining  -= (size_t)n;
 
@@ -368,20 +380,19 @@ bool applyUpdate(const UpdateInfo& info, Adafruit_NeoPixel& statusLed) {
         Serial.printf("[OTA][ABORT] Incomplete download: %u / %d bytes\n",
                       downloaded, contentLength);
         Update.abort();
+        mbedtls_sha256_free(&shaCtx);
         return false;
     }
 
     if (!Update.end()) {
         Serial.printf("[OTA] Update.end failed: %s\n", Update.errorString());
+        mbedtls_sha256_free(&shaCtx);
         return false;
     }
 
-    const esp_partition_t* updated = esp_ota_get_next_update_partition(nullptr);
-    if (!updated) return false;
-
     uint8_t sha256[32];
-    tickFastWhiteLed(statusLed);  // tick before blocking SHA-256 partition read
-    if (esp_partition_get_sha256(updated, sha256) != ESP_OK) return false;
+    mbedtls_sha256_finish(&shaCtx, sha256);
+    mbedtls_sha256_free(&shaCtx);
 
     char hexBuf[65];
     for (int i = 0; i < 32; i++) {
