@@ -93,7 +93,8 @@ See [CLI Reference](./cli-reference.md#deviceregister) for full options.
 2. Build and flash (no secrets file needed):
 
    ```bash
-   pio run -t upload
+   pio run -e esp32c6 -t upload   # or esp32c3
+   # optionally append `-t monitor` to the same command to watch serial output after flashing
    ```
 
 3. Provision via captive portal:
@@ -471,6 +472,7 @@ Only use this if Docker isn't available. PlatformIO reads the AP password from t
 
 ```bash
 cd firmware/esp32c6   # or esp32c3
+set -a && source ../../.env && set +a
 PORTAL_AP_PASSWORD="$HPW_PORTAL_AP_PASSWORD" pio run -e esp32c6
 # output: .pio/build/esp32c6/firmware.bin
 ```
@@ -488,21 +490,20 @@ See the Docker admin profile docs (task 05) for running `firmware:upload` inside
 
 ## OTA TLS Certificate
 
-OTA binary downloads verify the server certificate against the **Google Trust Services Root R1** CA. The PEM is embedded in `libs/firmware-shared/include/HomePulse/gts_root_ca.h`.
+Telemetry, OTA-check, and OTA binary downloads verify the server certificate against a two-root CA bundle embedded in `libs/firmware-shared/include/HomePulse/gts_root_ca.h` (one `setCACert()` string, both PEMs concatenated).
 
-| Field   | Value                                   |
-| ------- | --------------------------------------- |
-| Subject | GTS Root R1 (Google Trust Services LLC) |
-| Source  | https://pki.goog/roots.pem              |
-| Expires | **2036-06-22**                          |
+| Root        | Subject                                 | Used for                                        | Source                                | Expires        |
+| ----------- | --------------------------------------- | ----------------------------------------------- | ------------------------------------- | -------------- |
+| GTS Root R1 | GTS Root R1 (Google Trust Services LLC) | `storage.googleapis.com` (OTA binary downloads) | https://pki.goog/roots.pem            | **2036-06-22** |
+| GTS Root R4 | GTS Root R4 (Google Trust Services LLC) | `*.run.app` (Cloud Run telemetry + OTA-check)   | https://pki.goog/repo/certs/gtsr4.pem | **2036-06-22** |
 
 ### Rotation procedure
 
-If TLS handshake fails after expiry (or if Google rotates the root early):
+If TLS handshake fails after expiry (or if Google rotates a root early):
 
 1. Download the replacement PEM from https://pki.goog/repository/.
-2. Replace the cert string in `libs/firmware-shared/include/HomePulse/gts_root_ca.h`.
-3. Update the `Expires` line in this table.
+2. Replace the matching cert block in `libs/firmware-shared/include/HomePulse/gts_root_ca.h` (keep the other root's block intact — it's a concatenated bundle).
+3. Update the `Expires` column in this table.
 4. Build and release new firmware via the standard `firmware:upload` pipeline.
 
 ## OTA Rollback Flow

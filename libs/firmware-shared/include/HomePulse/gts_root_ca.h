@@ -5,11 +5,21 @@
 #define PROGMEM
 #endif
 
-// Google Trust Services Root R1 — CA for storage.googleapis.com (GCS signed URLs).
-// Source: https://pki.goog/roots.pem
-// Expires: 2036-06-22
-// Rotation: if TLS handshake fails after this date, update to the replacement CA
-//           from https://pki.goog/repository/ and reflash firmware.
+// Bundle of two Google Trust Services roots, concatenated — mbedTLS/WiFiClientSecure
+// accepts multiple PEM certificates in one setCACert() string and matches whichever
+// one signs the presented chain.
+//
+// 1) GTS Root R1 (RSA) — CA for storage.googleapis.com (GCS signed URLs, OTA binary
+//    download). Source: https://pki.goog/roots.pem. Expires: 2036-06-22.
+// 2) GTS Root R4 (ECC) — CA for *.run.app (Cloud Run, telemetry + OTA-check). Its
+//    live chain is leaf -> WE2 -> GlobalSign ECC Root CA - R4, cross-signed by this
+//    self-signed root. Source: https://pki.goog/repo/certs/gtsr4.pem.
+//    SHA-256 fingerprint: 34:9D:FA:40:58:C5:E2:63:12:3B:39:8A:E7:95:57:3C:4E:13:13:C8:3F:E6:8F:93:55:6C:D5:E8:03:1B:3C:7D
+//    Expires: 2036-06-22.
+//
+// Rotation: if TLS handshake fails after either expiry date, fetch the replacement
+//           CA from https://pki.goog/repository/, verify its fingerprint out of band,
+//           and reflash firmware.
 const char GTS_ROOT_CA[] PROGMEM =
     "-----BEGIN CERTIFICATE-----\n"
     "MIIFVzCCAz+gAwIBAgINAgPlk28xsBNJiGuiFzANBgkqhkiG9w0BAQwFADBHMQsw\n"
@@ -41,4 +51,17 @@ const char GTS_ROOT_CA[] PROGMEM =
     "0E6yove+7u7Y/9waLd64NnHi/Hm3lCXRSHNboTXns5lndcEZOitHTtNCjv0xyBZm\n"
     "2tIMPNuzjsmhDYAPexZ3FL//2wmUspO8IFgV6dtxQ/PeEMMA3KgqlbbC1j+Qa3bb\n"
     "bP6MvPJwNQzcmRk13NfIRmPVNnGuV/u3gm3c\n"
+    "-----END CERTIFICATE-----\n"
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIICCTCCAY6gAwIBAgINAgPlwGjvYxqccpBQUjAKBggqhkjOPQQDAzBHMQswCQYD\n"
+    "VQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2VzIExMQzEUMBIG\n"
+    "A1UEAxMLR1RTIFJvb3QgUjQwHhcNMTYwNjIyMDAwMDAwWhcNMzYwNjIyMDAwMDAw\n"
+    "WjBHMQswCQYDVQQGEwJVUzEiMCAGA1UEChMZR29vZ2xlIFRydXN0IFNlcnZpY2Vz\n"
+    "IExMQzEUMBIGA1UEAxMLR1RTIFJvb3QgUjQwdjAQBgcqhkjOPQIBBgUrgQQAIgNi\n"
+    "AATzdHOnaItgrkO4NcWBMHtLSZ37wWHO5t5GvWvVYRg1rkDdc/eJkTBa6zzuhXyi\n"
+    "QHY7qca4R9gq55KRanPpsXI5nymfopjTX15YhmUPoYRlBtHci8nHc8iMai/lxKvR\n"
+    "HYqjQjBAMA4GA1UdDwEB/wQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQW\n"
+    "BBSATNbrdP9JNqPV2Py1PsVq8JQdjDAKBggqhkjOPQQDAwNpADBmAjEA6ED/g94D\n"
+    "9J+uHXqnLrmvT/aDHQ4thQEd0dlq7A/Cr8deVl5c1RxYIigL9zC2L7F8AjEA8GE8\n"
+    "p/SgguMh1YQdc4acLa/KNJvxn7kjNuK8YAOdgLOaVsjh4rsUecrNIdSUtUlD\n"
     "-----END CERTIFICATE-----\n";

@@ -46,12 +46,8 @@ ESP32-based power monitoring firmware for HomePulse Watcher.
 5. **Build and flash**
 
    ```bash
-   pio run -t upload
-   ```
-
-6. **Monitor serial output**
-   ```bash
-   pio device monitor
+   pio run -e esp32c6 -t upload   # or esp32c3
+   # optionally append `-t monitor` to the same command to watch serial output after flashing
    ```
 
 ## Project Structure
@@ -110,7 +106,7 @@ See `secrets.h.example` for the full template.
 
 ### HPW_USE_TLS (Transport security)
 
-Telemetry POSTs and OTA-check requests use `WiFiClientSecure` with the pinned GTS Root R1 CA (`libs/firmware-shared/include/HomePulse/gts_root_ca.h`) when built with `HPW_USE_TLS=1` — this is the default for the release envs (`esp32c3` / `esp32c6`) used by `scripts/firmware-docker-build.sh` and the `pio run -t upload` build in this guide. HMAC signs the payload but does not encrypt it — without TLS, the MAC address, power status, and battery voltage are visible to any network observer, and OTA-check responses can be blocked or replayed by an active MITM.
+Telemetry POSTs and OTA-check requests use `WiFiClientSecure` with a pinned CA bundle (`libs/firmware-shared/include/HomePulse/gts_root_ca.h`) when built with `HPW_USE_TLS=1` — this is the default for the release envs (`esp32c3` / `esp32c6`) used by `scripts/firmware-docker-build.sh` and the `pio run -e esp32c6 -t upload` build in this guide. The bundle pins two roots: GTS Root R1 (RSA, for `storage.googleapis.com` — OTA binary downloads) and GTS Root R4 (ECC, for `*.run.app` — Cloud Run telemetry/OTA-check; the live chain is leaf → WE2 → GlobalSign ECC Root CA - R4, cross-signed by this root). HMAC signs the payload but does not encrypt it — without TLS, the MAC address, power status, and battery voltage are visible to any network observer, and OTA-check responses can be blocked or replayed by an active MITM.
 
 For local development against a plaintext HTTP backend (e.g. `nx serve api` on your LAN), use the `_dev` env variant instead, which flips the flag to `0` (plain `WiFiClient`, no TLS):
 

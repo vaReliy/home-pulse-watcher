@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- **TLS handshake failure (`-9984` X509 verification failed) on telemetry/OTA-check against Cloud Run**: `libs/firmware-shared/include/HomePulse/gts_root_ca.h` pinned only GTS Root R1, which is correct for `storage.googleapis.com` (OTA binary downloads) but not for `*.run.app` — Cloud Run's actual chain is leaf → WE2 → GlobalSign ECC Root CA - R4 (verified live via `openssl s_client`), a different root entirely. Fixed by turning `GTS_ROOT_CA` into a two-cert bundle (R1 + R4 concatenated PEMs, `setCACert()` accepts multiple certs in one string) so both `storage.googleapis.com` and `*.run.app` validate. Confirmed fixed: reflashed device connected and sent telemetry/OTA-check successfully.
+
 ### Docs
 
 - **Fixed firmware build/upload docs to match actual behavior**: `docs/admin-guide.md`'s "Publishing a Firmware Release" section and `firmware/README.md` told readers to `export HPW_PORTAL_AP_PASSWORD=...` for a local PlatformIO build, but PlatformIO reads `${sysenv.PORTAL_AP_PASSWORD}` (no `HPW_` prefix — that prefix is a `.env`/Docker-script-only convention translated via `--build-arg`). Also fixed the `firmware:upload` CLI examples, which used repo-root-relative `--file` paths that fail because the `api:cli` Nx target's `cwd` is `apps/api` (`apps/api/package.json`), not the repo root — examples now use an absolute `$(pwd)/tmp/firmware/...` path. `scripts/firmware-docker-build.sh`'s printed "Next step" hint updated to print the already-absolute `$OUTPUT_DIR` path instead of a relative one. Docs now recommend the Docker build script as the primary path (handles the var translation and needs no local PlatformIO toolchain), with local `pio run` documented as a fallback.
