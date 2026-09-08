@@ -63,35 +63,72 @@ echo "Version:   $VERSION"
 echo "Output:    $OUTPUT_DIR"
 echo ""
 
+# Fail fast on a full disk. A PlatformIO toolchain fetch needs several GB and
+# dies mid-install with a bare "[Errno 28] No space left on device" three
+# minutes in, leaving a half-populated toolchain that then fails much later
+# with a confusing "riscv32-esp-elf-g++: not found".
+MIN_FREE_MB=8000
+DOCKER_ROOT="$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)"
+FREE_MB="$(df -Pm "$DOCKER_ROOT" 2>/dev/null | awk 'NR==2 {print $4}')"
+if [ -n "$FREE_MB" ] && [ "$FREE_MB" -lt "$MIN_FREE_MB" ]; then
+  echo -e "${RED}Error: only ${FREE_MB}MB free on ${DOCKER_ROOT} (need ~${MIN_FREE_MB}MB)${NC}"
+  echo "Reclaim space without touching named volumes (they hold project databases):"
+  echo "  docker builder prune -f       # unused build cache"
+  echo "  docker image prune -f         # dangling images"
+  echo "NEVER run 'docker volume prune' or 'docker system prune --volumes' here."
+  exit 1
+fi
+
+# Remember the current image so we can drop it after a successful rebuild —
+# 'docker build -t name:latest' retags, orphaning the old image as a dangling
+# <none> that nothing reclaims. Targeted removal of exactly the image this
+# script orphaned, never a global 'docker image prune' that would also hit
+# other projects' dangling images.
+PREV_IMAGE_ID="$(docker images -q "${DOCKER_IMAGE}:${DOCKER_TAG}" 2>/dev/null || true)"
+
 # Build Docker image (or use cached one)
 echo -e "${YELLOW}[1/3]${NC} Building Docker image..."
-docker build \
+if ! docker build \
   --build-arg BOARD="$BOARD" \
   --build-arg PORTAL_AP_PASSWORD="$HPW_PORTAL_AP_PASSWORD" \
   -f "${PROJECT_ROOT}/firmware/Dockerfile" \
   -t "${DOCKER_IMAGE}:${DOCKER_TAG}" \
-  "${PROJECT_ROOT}"
-
-if [ $? -ne 0 ]; then
+  "${PROJECT_ROOT}"; then
   echo -e "${RED}Error: Docker build failed${NC}"
   exit 1
+fi
+
+NEW_IMAGE_ID="$(docker images -q "${DOCKER_IMAGE}:${DOCKER_TAG}" 2>/dev/null || true)"
+if [ -n "$PREV_IMAGE_ID" ] && [ "$PREV_IMAGE_ID" != "$NEW_IMAGE_ID" ]; then
+  echo "Removing superseded image ${PREV_IMAGE_ID}"
+  docker rmi "$PREV_IMAGE_ID" >/dev/null 2>&1 || true
 fi
 
 # Run container to build firmware
 echo ""
 echo -e "${YELLOW}[2/3]${NC} Compiling firmware in container..."
-CONTAINER_NAME="home-pulse-firmware-build-${BOARD}"
+# Unique per invocation ($$ = PID). A fixed name raced with `docker run --rm`:
+# the daemon removes an exited container asynchronously and keeps the name
+# registered for a moment afterwards, so a rerun collided with "container name
+# is already in use" pointing at a container that no longer existed. The old
+# `docker rm -f` guard could not fix that — on a name mid-release it reports
+# "no such container", indistinguishable from success once stderr is silenced.
+# The name stays explicit (repo convention) so a hung build is identifiable.
+CONTAINER_NAME="home-pulse-firmware-build-${BOARD}-$$"
 
-# Clean up any leftover container from previous run
-docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+# Reap containers left by older script versions (fixed name) or crashed runs.
+LEFTOVERS="$(docker ps -aq --filter "name=^/home-pulse-firmware-build-${BOARD}" 2>/dev/null || true)"
+if [ -n "$LEFTOVERS" ]; then
+  echo "Removing leftover build container(s): $LEFTOVERS"
+  # shellcheck disable=SC2086
+  docker rm -f $LEFTOVERS >/dev/null 2>&1 || true
+fi
 
-docker run --rm \
+if ! docker run --rm \
   --name "$CONTAINER_NAME" \
   --env BOARD="$BOARD" \
   -v "${BUILD_OUTPUT}:/output" \
-  "${DOCKER_IMAGE}:${DOCKER_TAG}"
-
-if [ $? -ne 0 ]; then
+  "${DOCKER_IMAGE}:${DOCKER_TAG}"; then
   echo -e "${RED}Error: PlatformIO build failed${NC}"
   exit 1
 fi

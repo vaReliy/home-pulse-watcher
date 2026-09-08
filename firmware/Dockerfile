@@ -1,5 +1,5 @@
+# syntax=docker/dockerfile:1
 # Firmware build for ESP32-C3/C6 using PlatformIO
-# Multi-stage build for reproducible firmware compilation
 #
 # Usage:
 #   docker build --build-arg BOARD=esp32c3 -f firmware/Dockerfile -t home-pulse-watcher-firmware:esp32c3 .
@@ -57,8 +57,21 @@ ENV PIO_CACHE_DIR=/tmp/pio-cache \
     PLATFORMIO_CORE_DIR=/tmp/platformio \
     PLATFORMIO_GLOBALLIB_DIR=/tmp/pio-globallib
 
-# Build the firmware
-RUN set -e && \
+# Build the firmware.
+#
+# The PlatformIO toolchain (~7.8GB: arduino-esp32 libs, riscv32 GCC, esptool)
+# is mounted as a BuildKit cache rather than written into an image layer.
+# Without these mounts every build baked the whole toolchain into the image —
+# and because the COPY steps above run first, any source edit invalidated this
+# layer, so each build re-downloaded ~7.8GB and orphaned the previous 8GB image
+# as a dangling <none>. Three builds filled a 96GB disk. With the mounts the
+# toolchain is stored once, shared across builds, and the image stays ~250MB.
+#
+# The compiled artifact still lands in a normal layer (/build/$BOARD/.pio), so
+# the CMD below can copy it out. Nothing at runtime needs the toolchain.
+RUN --mount=type=cache,target=/tmp/platformio,sharing=locked \
+    --mount=type=cache,target=/tmp/pio-cache,sharing=locked \
+    set -e && \
     if [ -z "$BOARD" ]; then \
       echo "Error: BOARD must be specified as build argument (esp32c3 or esp32c6)" >&2; \
       exit 1; \
