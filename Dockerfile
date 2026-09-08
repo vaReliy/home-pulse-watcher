@@ -50,7 +50,6 @@ RUN apk add --no-cache tini
 WORKDIR /app
 
 # Copy bundled application from build stage
-# Includes main.js, cli.js, and minimal package.json (only Prisma externals)
 COPY --chown=node:node --from=build /app/apps/api/dist ./
 
 # Copy Prisma schema, migrations, and config for runtime migration
@@ -61,11 +60,17 @@ COPY --chown=node:node --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=node:node docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
-# Install production dependencies including Prisma CLI for migrations.
-# Add prisma/dotenv to package.json dependencies, then install all at once.
-# This avoids npm dependency resolution breaking in Alpine Linux when no lockfile exists.
-RUN npm pkg set dependencies.prisma="7.3.0" dependencies.dotenv="16.4.5" && \
-    npm install --legacy-peer-deps
+# Install production dependencies: copy package.json files + lockfile from build,
+# then run npm ci to ensure proper dependency resolution with transitive deps.
+# Skip postinstall (prisma generate) — Prisma schema not yet available.
+# After install, remove devDependencies to keep image size small.
+COPY --chown=node:node --from=build /app/package.json /app/package-lock.json ./
+COPY --chown=node:node --from=build /app/apps/api/package.json ./apps/api/
+COPY --chown=node:node --from=build /app/libs/core/package.json ./libs/core/
+COPY --chown=node:node --from=build /app/libs/shared/package.json ./libs/shared/
+COPY --chown=node:node --from=build /app/libs/application/package.json ./libs/application/
+COPY --chown=node:node --from=build /app/libs/infrastructure/package.json ./libs/infrastructure/
+RUN npm ci --ignore-scripts && npm prune --production
 
 # Generate Prisma client in production node_modules
 RUN npx prisma generate
