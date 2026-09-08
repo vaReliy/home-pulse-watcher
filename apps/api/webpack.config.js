@@ -50,6 +50,33 @@ function resolveExternals({ request }, callback) {
   callback();
 }
 
+/**
+ * NxAppWebpackPlugin unconditionally injects a bare `source-map-loader` rule
+ * (test: /\.js$/, no exclude) when `sourceMap: true`. It follows every dependency's
+ * `//# sourceMappingURL` comment into node_modules looking for original .ts files
+ * that most published packages don't ship (e.g. nest-commander) - ~65 harmless
+ * "Failed to parse source map" warnings. There is no plugin option to configure this
+ * rule, so it's patched in place here, after NxAppWebpackPlugin has run (webpack calls
+ * each plugin's synchronous `apply(compiler)` in array order, so this plugin must be
+ * listed after it below). App-code (apps/api/src) source maps are untouched - only
+ * node_modules is excluded.
+ */
+class ExcludeNodeModulesFromSourceMapLoaderPlugin {
+  apply(compiler) {
+    const rule = compiler.options.module.rules.find(
+      (r) =>
+        r &&
+        typeof r === 'object' &&
+        r.enforce === 'pre' &&
+        typeof r.loader === 'string' &&
+        r.loader.includes('source-map-loader'),
+    );
+    if (rule) {
+      rule.exclude = /node_modules/;
+    }
+  }
+}
+
 module.exports = {
   output: {
     path: join(__dirname, 'dist'),
@@ -77,6 +104,9 @@ module.exports = {
       externalDependencies: 'none',
       mergeExternals: true,
     }),
+    // Must come after NxAppWebpackPlugin above - it depends on that plugin having
+    // already pushed the source-map-loader rule into compiler.options.module.rules.
+    new ExcludeNodeModulesFromSourceMapLoaderPlugin(),
     new IgnorePlugin({
       checkResource(resource) {
         if (!NESTJS_LAZY_IMPORTS.includes(resource)) return false;
@@ -87,6 +117,25 @@ module.exports = {
           return true;
         }
       },
+    }),
+    /**
+     * `@nestjs/common`'s `FileTypeValidator` pipe (pulled in as part of the
+     * `@nestjs/common/pipes` barrel) imports the `file-type` package, whose `exports`
+     * field is ESM-only and unreachable under webpack's CJS resolution conditions -
+     * "Module not found: '.' is not exported ... from file-type". Nothing in apps/ or
+     * libs/ uses `FileTypeValidator` / `ParseFilePipe` / `MaxFileSizeValidator` today
+     * (verified via grep), so the import is dead code and this is safe to suppress.
+     *
+     * DO NOT blanket-suppress this again if it starts failing differently: if a future
+     * change introduces `ParseFilePipe`/`FileTypeValidator` (e.g. firmware admin file
+     * upload validation), this must be fixed for real (upgrade `file-type`'s consumer,
+     * swap to a CJS-compatible file-type check, or add an explicit resolve.alias) -
+     * not re-suppressed, since it would then be a genuine runtime `Cannot find module`
+     * on first request.
+     */
+    new IgnorePlugin({
+      resourceRegExp: /^file-type$/,
+      contextRegExp: /@nestjs\/common\/pipes\/file/,
     }),
   ],
 };
