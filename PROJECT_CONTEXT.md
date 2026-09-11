@@ -8,13 +8,13 @@
 
 **HomePulse Watcher** is a DIY, high-reliability IoT system that monitors household mains power and delivers instant Telegram alerts to users.
 
-| Field             | Value                                                |
-| ----------------- | ---------------------------------------------------- |
-| Current phase     | **Phase 5 — Production Hardening** (5.7 in progress) |
-| Active devices    | 2 (real users, live data)                            |
-| Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)            |
-| Codebase maturity | MVP — no legacy concerns; DB can be recreated        |
-| Stack type        | Nx monorepo, NestJS, Prisma, ESP32 firmware          |
+| Field             | Value                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| Current phase     | **Phase 5 — Production Hardening** (5.6 complete, 5.7 in progress) |
+| Active devices    | 2 (real users, live data)                                          |
+| Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)                          |
+| Codebase maturity | MVP — no legacy concerns; DB can be recreated                      |
+| Stack type        | Nx monorepo, NestJS, Prisma, ESP32 firmware                        |
 
 ---
 
@@ -482,4 +482,4 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 **Still pending:**
 
 - Device → Release linking for tracking upgrade status per-device (deferred to 5.7)
-- `firmware:promote` (canary/staged rollout automation) — deferred pending adoption of gradual rollout strategy
+- `firmware:promote` (canary/staged rollout automation) — deferred to 5.8 / backlog pending adoption of gradual rollout strategy

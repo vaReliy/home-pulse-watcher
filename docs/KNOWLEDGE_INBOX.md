@@ -237,3 +237,17 @@ Why: `libs/shared/src/lib/validation/custom-rules/mac-address.rule.ts`'s regex `
 ## 2026-09-12 — `PrismaPowerEventRepository.buildWhereClause` correctly guards against the falsy-`0`-status filter bug
 
 Why: `status: PowerStatus.OFF` is `0`, so a filter-builder using `if (options.status)` would silently drop it from the Prisma `where` clause (matching all statuses instead of just OFF). Confirmed via reading `power-event.repository.ts` that the actual check is `options.status !== undefined`, and added an explicit regression test (`power-event.repository.spec.ts`) pinning this — this is the same falsy-filter bug class as the already-documented `hasAtLeastRole`/enumeration entries above, just in a query-builder instead of an authz check. Belongs in (guess): rules/cts/testing.md (add "falsy-but-valid enum/status values need an explicit filter-builder regression test" as a general repo-spec pattern).
+
+## Deferred / sub-floor
+
+## 2026-09-12 — telegram.controller.ts:77-79 debug log prints message text — PII if debug ever enabled in prod
+
+Why: `apps/api/src/modules/telegram/telegram.controller.ts` lines 77-79 log the incoming message text via `logger.debug()`. Telegram messages can contain sensitive user data (locations, contact info, device secrets). If debug logging is ever enabled in production (via env var or runtime config), this becomes a PII leak to stdout/Cloud Logging. Belongs in: backlog task for "audit all debug/verbose logs for PII" pass.
+
+## 2026-09-12 — service-context.type.ts:30 AppConfig channel unused; CheckOtaUpdateService takes raw ctor arg
+
+Why: `libs/core/src/lib/types/service-context.type.ts:30` defines `channel: ReleaseChannel` in the `AppConfig` interface, but `CheckOtaUpdateService` (the only consumer of AppConfig) doesn't read it — instead, the constructor receives `device: Device` and reads `device.releaseChannel` directly. The AppConfig field is orphaned, neither read nor removed. Cleanup: either (a) remove the unused field, or (b) if it was intended as a fallback default, use it and document the fallback strategy. Belongs in: backlog task for "remove dead interface fields" audit.
+
+## 2026-09-12 — firmware config.h HMAC_PAYLOAD_BUFFER / JSON_BODY_BUFFER constants stale vs telemetry.cpp actual sizes
+
+Why: `firmware/esp32c3/src/config.h` and `firmware/esp32c6/src/config.h` define `HMAC_PAYLOAD_BUFFER` and `JSON_BODY_BUFFER` (upper bound for request serialization), but no recent audit confirms these constants match the actual struct sizes emitted by `firmware/common/telemetry.cpp`'s `PowerStatusReport::toJson()`. A buffer too small risks stack overflow; too large wastes stack. Belongs in: backlog task for "firmware buffer constant audit" (compare config.h values against a sampling of real JSON payloads from live devices + struct serialization path).

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Docs
+
+- **Synced documentation to match current implementation reality (Batch G, docs-only).** Roadmap phase header updated: Phase 5.6 marked complete, 5.7 in progress (was ambiguous). README.md 5.7 checklist now reflects shipped fleet-autonomy partial progress: `device:request-ota-check` CLI + `forceOtaCheck` response field, `/devices` firmware version display, `firmware:list` / `UploadFirmwareService` / `/admin/firmware` browser route, and `Device.deviceType` tracking. Reorganized 5.7 roadmap to split RBAC enforcement into completed role enforcement + incomplete link/unlink bot wiring. Assigned `firmware:promote` canary automation to 5.8/backlog (was orphaned). **Divergence found but not fixed**: `rules/cts/architecture.md` (template-inherited, locked) still documents `UseCase/Handler` naming (code uses `Service`), lists nonexistent Vue/React/Angular frontend frameworks, references Bull Board `/admin/queues` + PM2 cluster mode (never deployed), and marks Redis/BullMQ as operational (they are planned, not present). Divergence logged here; CTS-synced file cannot be edited by consumer projects. Appended 3 sub-floor entries to `docs/KNOWLEDGE_INBOX.md`: (a) telegram debug log PII risk, (b) orphaned `AppConfig.channel` field, (c) firmware buffer constant audit. Zero production code changed.
+
 ### Tests
 
 - **Closed zero-coverage gap on the HMAC-authenticated device-status path (roadmap 5.7 soft gate, Batch D subset).** Added `device-status.controller.spec.ts` (guard integration, DTO defaulting, `forceOtaCheck` inclusion/omission, response shape) and `hmac-canonical.decorator.spec.ts` (canonical-string construction for both `DeviceStatusController` and `OtaController`, read live off the controller prototype via `Reflector` — the same lookup `HmacAuthGuard` uses at request time — instead of duplicating the closures). Lands ahead of wiring reboot/OTA triggers into the Telegram admin bot, which will ride this same path.
