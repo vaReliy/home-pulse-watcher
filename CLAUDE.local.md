@@ -12,7 +12,7 @@ Pattern: `[thing] [action] [reason]. [next step].`
 
 ## Overrides CLAUDE.md § "Knowledge Capture (Mandatory)"
 
-After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to auto-memory (`project` type). Subagent-reported `## Learnings` are transcribed to `docs/KNOWLEDGE_INBOX.md` immediately upon receipt (before the next dispatch).
+After every task: update `CHANGELOG.md` (always, one entry). Update `PROJECT_CONTEXT.md` if architecture/domain/infra changed. Save non-obvious gotchas to `docs/KNOWLEDGE_INBOX.md` — never to auto-memory (`project` type), which is private to one machine and invisible to the team/other AI tools working on this repo. Auto-memory stays reserved for `feedback` type only (how to collaborate with this user specifically). Subagent-reported `## Learnings` are transcribed to `docs/KNOWLEDGE_INBOX.md` immediately upon receipt (before the next dispatch).
 
 ## Extends CLAUDE.md — Project Facts
 
