@@ -235,6 +235,19 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - Denied actions throw `DomainError(FORBIDDEN_ROLE)` → HTTP 403, surfaced to Telegram users via the generic `ERROR_FORBIDDEN_ROLE` i18n string (uk/en) — never leaks which role was required.
 - **Telegram bot is the first real caller**: Roadmap 5.7 Phase B wires device-management actions into the bot (rename, delete, rotate-secret, request-OTA-check); every mutation now calls the Application service with `caller: { id: user.id }` (never `{ system: true }` from bot handlers — that bypass is CLI-only). Prior to this, only the CLI used these services with the `{ system: true }` bypass.
 
+#### Residual Asymmetry — Accepted Risk
+
+Device-mutation services (rotate-secret, update-device, delete-device, request-ota-force-check, link-device, unlink-device) use identical `NotFoundError` response for "device doesn't exist" vs "caller has zero membership". However a timing asymmetry persists:
+
+- Nonexistent device: 1 DB query (service's `findById`/`findByMacAddress` returns null immediately)
+- Zero membership: 2 DB queries for the five mutation services (rotate-device-secret, update-device, delete-device, request-ota-force-check, unlink-device-from-user) — `findById` succeeds, then `assertCallerHasRole` calls `userDeviceRepository.findByUserAndDevice()`; exception: `link-device-to-user` runs 3 queries (resolveDevice, then unconditional `findByDeviceId` for isFirstLink check, then `assertCallerHasRole`'s `findByUserAndDevice` on the non-first-link path)
+
+**Status (2026-09-11): Accepted, no code change.** Reasoning: Four of six services are now exposed to real Telegram users (commit `370f02a` — `update-device`, `delete-device`, `rotate-device-secret`, `request-ota-force-check` wired in task 2026-09-11-03-telegram-bot-device-actions.md, done). Only `link-device-to-user` and `unlink-device-from-user` remain CLI-only (hardening tracked separately in done tasks 2026-09-11-03-cap-first-link-role-to-viewer.md and 2026-09-11-04-unlink-device-not-linked-macaddress-leak.md; note: task numbering collision with the Telegram-wiring task despite different purposes). Despite live exposure, the risk is judged acceptable: statistical timing side-channels require many samples to distinguish over real network jitter, so this remains a low-severity residual signal despite being reachable now. Equalizing query counts would require touching 6 call sites with real complications — MAC-based lookups don't know `device.id` until `findByMacAddress` resolves (can't parallelize); `{ system: true }` trusted callers skip membership query entirely (would need special-casing); unconfirmed if `findByUserAndDevice` is safe to call with non-existent deviceId. Cost judged to exceed benefit.
+
+**Revisit trigger:** Revisit if (a) the query-count timing difference is ever shown to be practically distinguishable over real network conditions (not just theoretically exploitable in a lab), or (b) when `link-device-to-user` or `unlink-device-from-user` are wired to an untrusted-caller surface (currently CLI-only, the 2 remaining genuinely unexposed services).
+
+**Util location:** `libs/application/src/lib/services/device/assert-caller-has-role.util.ts`
+
 ---
 
 ## Technical Standards
