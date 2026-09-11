@@ -213,6 +213,26 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - All user-facing strings go through `TranslationService` — no hardcoded display text
 - Bot is optional: app degrades gracefully if `TELEGRAM_BOT_TOKEN` is absent
 
+### Role-Based Access Control (RBAC)
+
+`UserDevice.role` (`VIEWER < EDITOR < OWNER`, `UserDevice.hasAtLeastRole()`) is enforced in the Application layer via `assertCallerHasRole()` (`libs/application/src/lib/services/device/assert-caller-has-role.util.ts`), called from each service after resolving the target device.
+
+| Action                   | Minimum Role | Service                                      |
+| ------------------------ | ------------ | -------------------------------------------- |
+| View status / history    | VIEWER\*     | `GetDeviceService`, `GetPowerHistoryService` |
+| Rename / update settings | EDITOR       | `UpdateDeviceService`                        |
+| Unlink device from user  | OWNER        | `UnlinkDeviceFromUserService`                |
+| Delete device            | OWNER        | `DeleteDeviceService`                        |
+| Rotate device secret     | OWNER        | `RotateDeviceSecretService`                  |
+| Force OTA check          | OWNER        | `RequestOtaForceCheckService`                |
+
+\*Not yet enforced via `assertCallerHasRole()`. Both services take no `caller` parameter and implicitly rely on userId-scoped queries in the REST controller to prevent cross-user data access — deliberately deferred, will be enforced in roadmap 5.7.
+
+- **Caller identity is required as a discriminated union (`{ id: string } | { system: true }`)** — omitting it is a TypeScript compile error. `{ system: true }` is an explicit bypass marker for trusted server-side callers (CLI commands only); `{ id: string }` triggers membership lookup via `IUserDeviceRepository.findByUserAndDevice()` + `UserDevice.hasAtLeastRole()` check. This design replaces an earlier optional-field pattern after security review flagged it as fail-open.
+- **`LinkDeviceToUserService` already defaults every link to `VIEWER`** (`role: 'OWNER' | 'EDITOR' | 'VIEWER'` input defaults to `VIEWER`) and rejects a second link via `DEVICE_ALREADY_LINKED` before any role could be escalated — confirmed safe, no changes needed.
+- Denied actions throw `DomainError(FORBIDDEN_ROLE)` → HTTP 403, surfaced to Telegram users via the generic `ERROR_FORBIDDEN_ROLE` i18n string (uk/en) — never leaks which role was required.
+- No bot-handler wiring calls these mutation services with a caller identity yet — that lands with roadmap 5.7 (Telegram Admin UI & Role Management).
+
 ---
 
 ## Technical Standards

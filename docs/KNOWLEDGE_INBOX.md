@@ -169,3 +169,27 @@ Why: root `Dockerfile`'s production stage ran `npm install --omit=dev` then a se
 ## 2026-09-08 — `NxAppWebpackPlugin.apply()` mutates webpack rules synchronously, not via a deferred hook
 
 Why: `@nx/webpack@22.4.0`'s `NxAppWebpackPlugin.apply(compiler)` writes `compiler.options.module.rules` directly inside `apply()` (via `applyBaseConfig`), not deferred through a compiler hook (e.g. `beforeRun`/`compile`). This is why a later plugin in the same `plugins:` array can safely read/patch those rules in its own synchronous `apply()` — ordering in the array is load-bearing, not racy, only because both are synchronous. Confirmed by reading the installed package source while reviewing `apps/api/webpack.config.js`'s `ExcludeNodeModulesFromSourceMapLoaderPlugin`. Anyone reordering plugins in this file later needs to know this invariant holds only as long as `@nx/webpack` keeps this synchronous. Belongs in (guess): rules/cts/workflow.md or a build-tooling note near the webpack config itself.
+
+## 2026-09-11 — `libs/application/.../device/*.spec.ts` mocks for repo interfaces must implement every method exactly
+
+Why: `IUserDeviceRepository`/`IPowerEventRepository` mocks are typed `jest.Mocked<Interface>`, so a hand-rolled partial mock under-mocks silently until a call site hits the missing method at runtime. `IPowerEventRepository` alone has `findById/findMany/findLatestByDeviceId/create/update/delete/deleteByDeviceId/count`. Copy the mock factory from a sibling spec in the same folder rather than guessing the shape from usage. Found while adding RBAC role-boundary specs (task `2026-07-07-05-rbac-enforcement`). Belongs in (guess): rules/cts/testing.md or vitest/jest-testing skill note.
+
+## 2026-09-11 — entity mocks needing prototype methods must be real instances, not object casts
+
+Why: `UserDevice.hasAtLeastRole()` is a real prototype method. A test double built as `{...} as UserDevice` type-checks fine but throws "not a function" at runtime when the service under test calls `.hasAtLeastRole(...)` — TS casts don't add missing methods. Fix: construct with `new UserDevice({...})` in specs, not object-literal casts, whenever the entity under mock has behavior methods (not just data). Found while adding RBAC role-boundary specs. Belongs in (guess): rules/cts/testing.md.
+
+## 2026-09-11 — `apps/api/node_modules/rxjs` nested duplicate breaks `tsc` structural typing in `bigint-serializer.interceptor.ts`
+
+Why: A stray nested `rxjs` copy under `apps/api/node_modules` causes `Observable`/`Subscriber` cross-module identity mismatches, producing a `tsc` type error in `bigint-serializer.interceptor.ts` unrelated to any app code change — confirmed pre-existing via `git stash` during RBAC-enforcement work. Needs a devops/dependencies dedupe pass (check for nested `rxjs` under any `apps/*/node_modules` and remove/dedupe via lockfile). Belongs in (guess): rules/cts/dependencies.md.
+
+## 2026-09-11 — LIVR's `required` rule alone passes non-scalar values through `validate()` unchanged
+
+Why: Confirmed by reading `node_modules/livr/lib/rules/common/required.js` and `Validator.js` — when a field's only rule is `required` (no other transform rule), LIVR performs presence-checking only and does not coerce or reject based on type, so an object/discriminated-union value survives validation as-is. This is the correct way to let a non-scalar field (e.g. a `{ id: string } | { system: true }` caller-context union, added during RBAC enforcement) pass through a LIVR schema without writing a custom `nested_object` rule, when TS types are relied on for shape enforcement rather than runtime validation. Belongs in (guess): rules/cts/validation-authorization.md.
+
+## 2026-09-11 — this repo's Jest runs via `@swc/jest` (no type-checking transform) — `@ts-expect-error` tests are dead code at runtime
+
+Why: `@swc/jest` strips types without checking them, so a `.spec.ts` file's `@ts-expect-error` lines have zero effect when run under `nx test` — they're only enforced by the `typecheck` Nx target (which also builds `tsconfig.spec.json`). Writing a "this must be a compile error" regression test (e.g. proving a required field can't be omitted) requires wrapping the offending call in a never-invoked inner function so Jest doesn't crash on it at runtime, and the real verification step is `nx run <project>:typecheck`, not `nx test` — a green Jest run alone does not prove the `@ts-expect-error` is load-bearing. Belongs in (guess): rules/cts/testing.md.
+
+## 2026-09-11 — `@ts-expect-error` only suppresses an error on the immediately next source line
+
+Why: A multi-line function call split across lines can put the actual erroring argument on a line other than the one right after the `@ts-expect-error` comment, silently failing to suppress it (and, if no error occurs on that exact next line, `tsc` reports `TS2578: Unused '@ts-expect-error' directive'` instead). Collapse the call to one line, or place the directive immediately above the specific line that errors, when writing compile-error regression tests this way. Belongs in (guess): rules/cts/testing.md.

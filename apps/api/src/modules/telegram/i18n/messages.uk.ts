@@ -121,4 +121,5 @@ export const messagesUk: Messages = {
   ERROR_USER_ALREADY_EXISTS:
     'Ви вже зареєстровані\\! Використовуйте меню нижче для навігації\\.',
   ERROR_UNAUTHORIZED: 'У вас немає прав для виконання цієї дії\\.',
+  ERROR_FORBIDDEN_ROLE: 'У вас немає прав для виконання цієї дії\\.',
 };

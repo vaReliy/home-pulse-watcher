@@ -336,7 +336,7 @@ This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 
     - [x] Admin Tools: `firmware:upload` CLI command
   - [ ] 5.7: Telegram Admin UI & Role Management
     - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
-    - [ ] Access Control: Implementation of Owner and Editor roles (RBAC)
+    - [x] Access Control: Owner/Editor/Viewer roles enforced in the Application layer (`assertCallerHasRole()`); bot UI wiring to call mutation services with caller identity still pending
     - [ ] Remote Control: Commands for remote reboot, OTA triggers, and device settings via bot
     - [ ] Status Reporting: Enhanced status templates with firmware versioning and system health
 

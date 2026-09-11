@@ -47,6 +47,7 @@ export class UnlinkDeviceFromUserCommand extends CommandRunner {
         userId: options.userId,
         mac: options.mac,
         deviceId: options.deviceId,
+        caller: { system: true },
       });
 
       const { user, device } = result.data;

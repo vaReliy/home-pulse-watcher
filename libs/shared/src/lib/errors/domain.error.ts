@@ -12,6 +12,7 @@ export const DomainErrorCode = {
   DEVICE_ALREADY_LINKED: 'DEVICE_ALREADY_LINKED',
   DEVICE_NOT_LINKED: 'DEVICE_NOT_LINKED',
   UNAUTHORIZED_ACTION: 'UNAUTHORIZED_ACTION',
+  FORBIDDEN_ROLE: 'FORBIDDEN_ROLE',
   BOARD_MISMATCH: 'BOARD_MISMATCH',
   INVALID_DEVICE_STATE: 'INVALID_DEVICE_STATE',
   FIRMWARE_RELEASE_ALREADY_EXISTS: 'FIRMWARE_RELEASE_ALREADY_EXISTS',
@@ -50,6 +51,7 @@ export class DomainError extends BaseError {
     const forbiddenCodes: DomainErrorCodeType[] = [
       DomainErrorCode.UNAUTHORIZED_ACTION,
       DomainErrorCode.DEVICE_NOT_OWNED,
+      DomainErrorCode.FORBIDDEN_ROLE,
     ];
 
     /** Data-integrity violations that indicate a server-side bug, not a client error. */

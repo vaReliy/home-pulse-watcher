@@ -5,6 +5,7 @@ import type {
   Device,
   User,
 } from '@home-pulse-watcher/core';
+import { DeviceRole, UserDevice } from '@home-pulse-watcher/core';
 import {
   DomainError,
   DomainErrorCode,
@@ -91,6 +92,7 @@ describe('UnlinkDeviceFromUserService', () => {
       const result = await service.run({
         telegramId: '123456789',
         mac: 'AA:BB:CC:DD:EE:FF',
+        caller: { system: true },
       });
 
       expect(result.data.user).toEqual(mockUser);
@@ -107,6 +109,7 @@ describe('UnlinkDeviceFromUserService', () => {
       const result = await service.run({
         userId: 'user-1',
         deviceId: 'device-1',
+        caller: { system: true },
       });
 
       expect(result.data.user).toEqual(mockUser);
@@ -123,6 +126,7 @@ describe('UnlinkDeviceFromUserService', () => {
       await service.run({
         telegramId: '123456789',
         mac: 'aa:bb:cc:dd:ee:ff',
+        caller: { system: true },
       });
 
       expect(deviceRepo.findByMacAddress).toHaveBeenCalledWith(
@@ -139,6 +143,7 @@ describe('UnlinkDeviceFromUserService', () => {
       await service.run({
         telegramId: '123456789',
         mac: 'AA:BB:CC:DD:EE:FF',
+        caller: { system: true },
       });
 
       expect(userDeviceRepo.exists).toHaveBeenCalledWith('user-1', 'device-1');
@@ -150,18 +155,24 @@ describe('UnlinkDeviceFromUserService', () => {
     it('should throw ValidationError when neither telegramId nor userId provided', async () => {
       const { service } = createService();
 
-      await expect(service.run({ mac: 'AA:BB:CC:DD:EE:FF' })).rejects.toThrow(
-        ValidationError,
-      );
+      await expect(
+        service.run({
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { system: true },
+        }),
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should throw ValidationError when neither mac nor deviceId provided', async () => {
       const { service, userRepo } = createService();
       userRepo.findByTelegramId.mockResolvedValue(mockUser);
 
-      await expect(service.run({ telegramId: '123456789' })).rejects.toThrow(
-        ValidationError,
-      );
+      await expect(
+        service.run({
+          telegramId: '123456789',
+          caller: { system: true },
+        }),
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should throw NotFoundError when user not found by telegramId', async () => {
@@ -172,6 +183,7 @@ describe('UnlinkDeviceFromUserService', () => {
         service.run({
           telegramId: '999999999',
           mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { system: true },
         }),
       ).rejects.toThrow(NotFoundError);
     });
@@ -184,6 +196,7 @@ describe('UnlinkDeviceFromUserService', () => {
         service.run({
           userId: 'nonexistent-user',
           mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { system: true },
         }),
       ).rejects.toThrow(NotFoundError);
     });
@@ -197,6 +210,7 @@ describe('UnlinkDeviceFromUserService', () => {
         service.run({
           telegramId: '123456789',
           mac: 'FF:FF:FF:FF:FF:FF',
+          caller: { system: true },
         }),
       ).rejects.toThrow(NotFoundError);
     });
@@ -210,6 +224,7 @@ describe('UnlinkDeviceFromUserService', () => {
         service.run({
           telegramId: '123456789',
           deviceId: 'nonexistent-device',
+          caller: { system: true },
         }),
       ).rejects.toThrow(NotFoundError);
     });
@@ -224,6 +239,7 @@ describe('UnlinkDeviceFromUserService', () => {
         service.run({
           telegramId: '123456789',
           mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { system: true },
         }),
       ).rejects.toThrow(DomainError);
 
@@ -231,6 +247,7 @@ describe('UnlinkDeviceFromUserService', () => {
         service.run({
           telegramId: '123456789',
           mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { system: true },
         }),
       ).rejects.toMatchObject({
         code: DomainErrorCode.DEVICE_NOT_LINKED,
@@ -247,9 +264,92 @@ describe('UnlinkDeviceFromUserService', () => {
         service.run({
           telegramId: '123456789',
           mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { system: true },
         }),
       ).rejects.toThrow();
 
+      expect(userDeviceRepo.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('role enforcement', () => {
+    it('should allow the caller when role is OWNER', async () => {
+      const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
+      userRepo.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepo.exists.mockResolvedValue(true);
+      userDeviceRepo.findByUserAndDevice.mockResolvedValue(
+        new UserDevice({
+          userId: 'caller-1',
+          deviceId: 'device-1',
+          customName: null,
+          role: DeviceRole.OWNER,
+        }),
+      );
+
+      await service.run({
+        telegramId: '123456789',
+        mac: 'AA:BB:CC:DD:EE:FF',
+        caller: { id: 'caller-1' },
+      });
+
+      expect(userDeviceRepo.delete).toHaveBeenCalledWith('user-1', 'device-1');
+    });
+
+    it('should deny the caller when role is EDITOR (below OWNER)', async () => {
+      const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
+      userRepo.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepo.exists.mockResolvedValue(true);
+      userDeviceRepo.findByUserAndDevice.mockResolvedValue(
+        new UserDevice({
+          userId: 'caller-1',
+          deviceId: 'device-1',
+          customName: null,
+          role: DeviceRole.EDITOR,
+        }),
+      );
+
+      await expect(
+        service.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { id: 'caller-1' },
+        }),
+      ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
+      expect(userDeviceRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('should skip the role check when caller is { system: true } (CLI bypass)', async () => {
+      const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
+      userRepo.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepo.exists.mockResolvedValue(true);
+
+      await service.run({
+        telegramId: '123456789',
+        mac: 'AA:BB:CC:DD:EE:FF',
+        caller: { system: true },
+      });
+
+      expect(userDeviceRepo.findByUserAndDevice).not.toHaveBeenCalled();
+      expect(userDeviceRepo.delete).toHaveBeenCalledWith('user-1', 'device-1');
+    });
+
+    it('should deny the caller when no membership exists', async () => {
+      const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
+      userRepo.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepo.exists.mockResolvedValue(true);
+      userDeviceRepo.findByUserAndDevice.mockResolvedValue(null);
+
+      await expect(
+        service.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { id: 'caller-1' },
+        }),
+      ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
       expect(userDeviceRepo.delete).not.toHaveBeenCalled();
     });
   });

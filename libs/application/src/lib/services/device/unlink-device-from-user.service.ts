@@ -5,6 +5,7 @@ import type {
   IUserRepository,
   User,
 } from '@home-pulse-watcher/core';
+import { DeviceRole } from '@home-pulse-watcher/core';
 import {
   DomainError,
   DomainErrorCode,
@@ -14,12 +15,17 @@ import {
   type ServiceContext,
 } from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
+import {
+  assertCallerHasRole,
+  type Caller,
+} from './assert-caller-has-role.util.js';
 
 export interface UnlinkDeviceFromUserInput {
   telegramId?: string;
   userId?: string;
   mac?: string;
   deviceId?: string;
+  caller: Caller;
 }
 
 export interface UnlinkDeviceFromUserOutput {
@@ -46,6 +52,7 @@ export class UnlinkDeviceFromUserService extends BaseService<
       userId: ['string'],
       mac: ['string'],
       deviceId: ['string'],
+      caller: 'required',
     };
   }
 
@@ -75,6 +82,13 @@ export class UnlinkDeviceFromUserService extends BaseService<
         `Device ${device.macAddress} is not linked to user ${user.id}`,
       );
     }
+
+    await assertCallerHasRole(
+      this.userDeviceRepository,
+      params.caller,
+      device.id,
+      DeviceRole.OWNER,
+    );
 
     await this.userDeviceRepository.delete(user.id, device.id);
 

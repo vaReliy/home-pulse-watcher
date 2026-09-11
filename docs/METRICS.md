@@ -40,3 +40,4 @@ Each completed task is one row in the table below.
 | 2026-09-08 | home-pulse-watcher | webpack-build-warnings                            | T1   | 0      | 0/0/0/0           | 1       | no       | standard |
 | 2026-09-08 | home-pulse-watcher | webpack-nx-plugin-coupling-guard                  | T0   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-09-08 | home-pulse-watcher | fix-dockerfile-npm-install-cloud-run-deploy       | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | rbac-enforcement (roadmap gate, Batch I)          | T2   | 0      | 0/1/0/0           | 2       | no       | standard |

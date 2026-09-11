@@ -120,4 +120,5 @@ Time: ${time}`,
   ERROR_USER_ALREADY_EXISTS:
     'You are already registered\\! Use the menu below to navigate\\.',
   ERROR_UNAUTHORIZED: 'You are not authorized to perform this action\\.',
+  ERROR_FORBIDDEN_ROLE: 'You are not authorized to perform this action\\.',
 };

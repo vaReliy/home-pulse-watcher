@@ -90,4 +90,5 @@ export interface Messages {
   ERROR_DEVICE_NOT_OWNED: string;
   ERROR_USER_ALREADY_EXISTS: string;
   ERROR_UNAUTHORIZED: string;
+  ERROR_FORBIDDEN_ROLE: string;
 }

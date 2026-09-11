@@ -1,5 +1,10 @@
 import * as crypto from 'node:crypto';
-import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
+import type {
+  IDeviceRepository,
+  IUserDeviceRepository,
+  Device,
+} from '@home-pulse-watcher/core';
+import { DeviceRole } from '@home-pulse-watcher/core';
 import {
   NotFoundError,
   ValidationError,
@@ -8,10 +13,15 @@ import {
   type ServiceContext,
 } from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
+import {
+  assertCallerHasRole,
+  type Caller,
+} from './assert-caller-has-role.util.js';
 
 export interface RotateDeviceSecretInput {
   id?: string;
   macAddress?: string;
+  caller: Caller;
 }
 
 export interface RotateDeviceSecretOutput {
@@ -24,7 +34,10 @@ export class RotateDeviceSecretService extends BaseService<
   RotateDeviceSecretInput,
   RotateDeviceSecretOutput
 > {
-  constructor(private readonly deviceRepository: IDeviceRepository) {
+  constructor(
+    private readonly deviceRepository: IDeviceRepository,
+    private readonly userDeviceRepository: IUserDeviceRepository,
+  ) {
     super();
   }
 
@@ -32,6 +45,7 @@ export class RotateDeviceSecretService extends BaseService<
     return {
       id: 'string',
       macAddress: 'macAddress',
+      caller: 'required',
     };
   }
 
@@ -59,6 +73,13 @@ export class RotateDeviceSecretService extends BaseService<
       const identifier = params.id ?? params.macAddress ?? 'unknown';
       throw new NotFoundError('Device', identifier);
     }
+
+    await assertCallerHasRole(
+      this.userDeviceRepository,
+      params.caller,
+      device.id,
+      DeviceRole.OWNER,
+    );
 
     const secret = crypto.randomBytes(32).toString('hex');
 
