@@ -4,7 +4,9 @@
 
 ### Tests
 
-- **Closed zero-coverage gap on the HMAC-authenticated device-status path (roadmap 5.7 soft gate, Batch D subset).** Added `device-status.controller.spec.ts` (guard integration, DTO defaulting, `forceOtaCheck` inclusion/omission, response shape) and `hmac-canonical.decorator.spec.ts` (canonical-string construction for both `DeviceStatusController` and `OtaController`, read live off the controller prototype via `Reflector` — the same lookup `HmacAuthGuard` uses at request time — instead of duplicating the closures). Lands ahead of wiring reboot/OTA triggers into the Telegram admin bot, which will ride this same path. LIVR rule specs and repo specs from the parent task remain open.
+- **Closed zero-coverage gap on the HMAC-authenticated device-status path (roadmap 5.7 soft gate, Batch D subset).** Added `device-status.controller.spec.ts` (guard integration, DTO defaulting, `forceOtaCheck` inclusion/omission, response shape) and `hmac-canonical.decorator.spec.ts` (canonical-string construction for both `DeviceStatusController` and `OtaController`, read live off the controller prototype via `Reflector` — the same lookup `HmacAuthGuard` uses at request time — instead of duplicating the closures). Lands ahead of wiring reboot/OTA triggers into the Telegram admin bot, which will ride this same path.
+
+- **Closed the remaining Batch D coverage gaps: LIVR rule specs and repository specs.** Added `hmac-format.rule.spec.ts`, `mac-address.rule.spec.ts`, `power-status.rule.spec.ts`, `telegram-id.rule.spec.ts` (valid/invalid/boundary cases, MarkdownV2-sensitive strings for HMAC/telegram-id) and `firmware-release.repository.spec.ts`, `power-event.repository.spec.ts`, `user-device.repository.spec.ts` (custom query methods, including `power-event.repository`'s falsy-`PowerStatus.OFF`-safe filter/date-range builder and `user-device.repository`'s partial-field update builder). Closes `test-gaps-critical-paths` — all five originally-audited coverage areas are now done. 317 tests total, 0 skipped. Test-only diff; no production code changed. One cosmetic reviewer finding (a test title contradicting its own assertion) fixed inline.
 
 ### Security
 
