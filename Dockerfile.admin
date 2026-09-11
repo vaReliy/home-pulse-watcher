@@ -5,11 +5,8 @@
 #
 # Prerequisites: npx nx build api  (populates apps/api/dist/)
 # Auth: gcloud auth application-default login  (on host, one-time)
-#
-# NOTE: pin google/cloud-sdk to a specific version before sharing this image.
-# Check latest at: https://hub.docker.com/r/google/cloud-sdk/tags?name=alpine
 
-FROM google/cloud-sdk:alpine AS gcloud
+FROM google/cloud-sdk:445-alpine AS gcloud
 
 FROM node:22-alpine
 

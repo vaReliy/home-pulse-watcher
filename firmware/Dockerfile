@@ -13,7 +13,7 @@ WORKDIR /build
 
 # Install PlatformIO CLI and system dependencies (git required by pioarduino platform)
 RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/* && \
-    pip install --no-cache-dir platformio && pio --version
+    pip install --no-cache-dir platformio==6.1.14 && pio --version
 
 # Build argument for target board (esp32c3 or esp32c6)
 ARG BOARD=esp32c3

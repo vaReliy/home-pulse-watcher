@@ -266,6 +266,60 @@ else
   ok "Backup bucket permissions granted to OTA service account (bucket-scoped)"
 fi
 
+# --------------- Step 8a: Set up OTA/firmware releases bucket & lifecycle rule ---------------
+info "Setting up OTA/firmware releases infrastructure..."
+
+OTA_BUCKET="${PROJECT_ID}-ota"
+
+# Create bucket (idempotent: errors if exists, which is fine)
+if gsutil ls "gs://${OTA_BUCKET}" &>/dev/null; then
+  warn "OTA bucket 'gs://${OTA_BUCKET}' already exists"
+else
+  gsutil mb -l "$REGION" "gs://${OTA_BUCKET}"
+  ok "OTA bucket created: gs://${OTA_BUCKET}"
+fi
+
+# Create lifecycle rule (keep 180 days)
+# Rationale: 180 days is ~6 months, well beyond typical firmware release cadence.
+# This ensures we never delete firmware objects that are still referenced by
+# an active FirmwareRelease DB row. GCS lifecycle cannot query the database,
+# so age-based retention with a generous buffer is the practical approach.
+# Devices may hold a firmware version for 6+ months; this threshold accommodates
+# old releases without re-querying the DB.
+cat > /tmp/ota-lifecycle.json << 'EOF'
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {
+          "type": "Delete"
+        },
+        "condition": {
+          "age": 180
+        }
+      }
+    ]
+  }
+}
+EOF
+
+gsutil lifecycle set /tmp/ota-lifecycle.json "gs://${OTA_BUCKET}"
+ok "OTA lifecycle rule set (keep 180 days)"
+
+# Harden OTA bucket
+gcloud storage buckets update "gs://${OTA_BUCKET}" \
+  --uniform-bucket-level-access \
+  --public-access-prevention
+ok "OTA bucket hardened (uniform access, public access blocked)"
+
+# Grant runtime SA access to OTA bucket (scoped, not project-level)
+OTA_SA_ROLE="roles/storage.objectViewer"
+gcloud storage buckets add-iam-policy-binding "gs://${OTA_BUCKET}" \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="$OTA_SA_ROLE" \
+  --quiet
+ok "OTA bucket read access granted to runtime SA (bucket-scoped)"
+
 # --------------- Step 8b: Grant Cloud Run invoke permissions to runtime SA ---------------
 # This must be done before or after the Cloud Run service is deployed.
 # The keep-warm scheduler job (Step 9) will use RUNTIME_SA to authenticate via OIDC.
@@ -370,6 +424,15 @@ echo ""
 echo "  Job: $KEEP_WARM_JOB_NAME"
 echo "  Schedule: Every 10 minutes"
 echo "  Target: /api/health/ready (keeps Cloud Run warm + Neon compute awake)"
+echo ""
+echo "  ============================================"
+echo "  OTA Storage (Firmware Updates)"
+echo "  ============================================"
+echo ""
+echo "  Bucket: gs://${OTA_BUCKET}/"
+echo ""
+echo "  To enable firmware OTA updates, set this env var / secret for the deployed service:"
+echo "    GCS_BUCKET_NAME=${OTA_BUCKET}"
 echo ""
 echo "  ============================================"
 echo "  First deploy"
