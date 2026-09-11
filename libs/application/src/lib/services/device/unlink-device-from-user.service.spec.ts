@@ -176,7 +176,8 @@ describe('UnlinkDeviceFromUserService', () => {
     });
 
     it('should throw NotFoundError when user not found by telegramId', async () => {
-      const { service, userRepo } = createService();
+      const { service, userRepo, deviceRepo } = createService();
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
       userRepo.findByTelegramId.mockResolvedValue(null);
 
       await expect(
@@ -189,7 +190,8 @@ describe('UnlinkDeviceFromUserService', () => {
     });
 
     it('should throw NotFoundError when user not found by userId', async () => {
-      const { service, userRepo } = createService();
+      const { service, userRepo, deviceRepo } = createService();
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
       userRepo.findById.mockResolvedValue(null);
 
       await expect(
@@ -415,6 +417,106 @@ describe('UnlinkDeviceFromUserService', () => {
       expect((noMembershipError as NotFoundError).message).toBe(
         (nonexistentError as NotFoundError).message,
       );
+    });
+
+    it('should produce the same NotFoundError for a zero-membership caller whether the target telegramId is real or nonexistent (target-user enumeration resistance)', async () => {
+      const {
+        service: serviceA,
+        deviceRepo: deviceRepoA,
+        userDeviceRepo: userDeviceRepoA,
+        userRepo: userRepoA,
+      } = createService();
+      deviceRepoA.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepoA.findByUserAndDevice.mockResolvedValue(null);
+      userRepoA.findByTelegramId.mockResolvedValue(null);
+      let nonexistentUserError: unknown;
+      try {
+        await serviceA.run({
+          telegramId: '999999999',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { id: 'caller-1' },
+        });
+      } catch (error) {
+        nonexistentUserError = error;
+      }
+
+      const {
+        service: serviceB,
+        deviceRepo: deviceRepoB,
+        userDeviceRepo: userDeviceRepoB,
+        userRepo: userRepoB,
+      } = createService();
+      deviceRepoB.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepoB.findByUserAndDevice.mockResolvedValue(null);
+      userRepoB.findByTelegramId.mockResolvedValue(mockUser);
+      let realUserError: unknown;
+      try {
+        await serviceB.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { id: 'caller-1' },
+        });
+      } catch (error) {
+        realUserError = error;
+      }
+
+      expect(nonexistentUserError).toBeInstanceOf(NotFoundError);
+      expect(realUserError).toBeInstanceOf(NotFoundError);
+      expect((nonexistentUserError as NotFoundError).message).toBe(
+        (realUserError as NotFoundError).message,
+      );
+      // Target-user lookup must not even have happened pre-authz.
+      expect(userRepoB.findByTelegramId).not.toHaveBeenCalled();
+    });
+
+    it('should produce the same NotFoundError for a zero-membership caller whether the target userId is real or nonexistent (target-user enumeration resistance via userId)', async () => {
+      const {
+        service: serviceA,
+        deviceRepo: deviceRepoA,
+        userDeviceRepo: userDeviceRepoA,
+        userRepo: userRepoA,
+      } = createService();
+      deviceRepoA.findById.mockResolvedValue(mockDevice);
+      userDeviceRepoA.findByUserAndDevice.mockResolvedValue(null);
+      userRepoA.findById.mockResolvedValue(null);
+      let nonexistentUserError: unknown;
+      try {
+        await serviceA.run({
+          userId: 'nonexistent-user',
+          deviceId: 'device-1',
+          caller: { id: 'caller-1' },
+        });
+      } catch (error) {
+        nonexistentUserError = error;
+      }
+
+      const {
+        service: serviceB,
+        deviceRepo: deviceRepoB,
+        userDeviceRepo: userDeviceRepoB,
+        userRepo: userRepoB,
+      } = createService();
+      deviceRepoB.findById.mockResolvedValue(mockDevice);
+      userDeviceRepoB.findByUserAndDevice.mockResolvedValue(null);
+      userRepoB.findById.mockResolvedValue(mockUser);
+      let realUserError: unknown;
+      try {
+        await serviceB.run({
+          userId: 'user-1',
+          deviceId: 'device-1',
+          caller: { id: 'caller-1' },
+        });
+      } catch (error) {
+        realUserError = error;
+      }
+
+      expect(nonexistentUserError).toBeInstanceOf(NotFoundError);
+      expect(realUserError).toBeInstanceOf(NotFoundError);
+      expect((nonexistentUserError as NotFoundError).message).toBe(
+        (realUserError as NotFoundError).message,
+      );
+      // Target-user lookup must not even have happened pre-authz.
+      expect(userRepoB.findById).not.toHaveBeenCalled();
     });
   });
 });

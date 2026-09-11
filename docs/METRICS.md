@@ -48,3 +48,4 @@ Each completed task is one row in the table below.
 | 2026-09-11 | home-pulse-watcher | rbac-link-device-role-escalation                                  | T2   | 1      | 0/1/0/0           | 1       | no       | standard |
 | 2026-09-11 | home-pulse-watcher | cap-first-link-role-to-viewer                                     | T1   | 1      | 0/0/1/0           | 1       | no       | standard |
 | 2026-09-11 | home-pulse-watcher | dedupe-rxjs-nested-duplicate                                      | T1   | 0      | 0/0/0/0           | 1       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | unlink-device-user-enumeration                                    | T1   | 1      | 0/0/0/0           | 1       | no       | standard |

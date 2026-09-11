@@ -72,7 +72,6 @@ export class UnlinkDeviceFromUserService extends BaseService<
       });
     }
 
-    const user = await this.resolveUser(params);
     const device = await this.resolveDevice(params);
 
     const deviceIdentifier = params.mac
@@ -86,6 +85,8 @@ export class UnlinkDeviceFromUserService extends BaseService<
       DeviceRole.OWNER,
       deviceIdentifier,
     );
+
+    const user = await this.resolveUser(params);
 
     const linked = await this.userDeviceRepository.exists(user.id, device.id);
     if (!linked) {
