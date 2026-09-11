@@ -23,9 +23,9 @@
     ]
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.19.0",
+    "@google-cloud/storage": "7.19.0",
     "@home-pulse-watcher/core": "*",
-    "@prisma/client": "^7.3.0",
-    "tslib": "^2.3.0"
+    "@prisma/client": "7.3.0",
+    "tslib": "2.8.1"
   }
 }
