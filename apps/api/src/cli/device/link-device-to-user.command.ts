@@ -49,6 +49,7 @@ export class LinkDeviceToUserCommand extends CommandRunner {
         mac: options.mac,
         deviceId: options.deviceId,
         role: options.role,
+        caller: { system: true },
       });
 
       const { userDevice, user, device } = result.data;

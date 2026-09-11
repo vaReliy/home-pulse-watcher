@@ -225,11 +225,13 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 | Delete device            | OWNER        | `DeleteDeviceService`                        |
 | Rotate device secret     | OWNER        | `RotateDeviceSecretService`                  |
 | Force OTA check          | OWNER        | `RequestOtaForceCheckService`                |
+| Link device to user      | OWNER\*\*    | `LinkDeviceToUserService`                    |
 
 \*Not yet enforced via `assertCallerHasRole()`. Both services take no `caller` parameter and implicitly rely on userId-scoped queries in the REST controller to prevent cross-user data access — deliberately deferred, will be enforced in roadmap 5.7.
 
+\*\*`LinkDeviceToUserService`'s gate is membership-existence-based, not the uniform "OWNER required" row it looks like at a glance: the **first** link to a device (zero existing `UserDevice` rows) skips the caller check entirely and defaults to `VIEWER` — this is self-registration, unchanged from pre-RBAC behavior. Every **subsequent** link requires the caller to hold OWNER on that device, for **any** requested role including `VIEWER` — deliberately stricter than "only block OWNER/EDITOR escalation," because gating VIEWER more weakly than OWNER/EDITOR on the same mutation would let a caller distinguish device/membership state by varying the requested role and observing which error comes back (an enumeration side-channel). `{ system: true }` (CLI) bypasses this on both first and non-first links.
+
 - **Caller identity is required as a discriminated union (`{ id: string } | { system: true }`)** — omitting it is a TypeScript compile error. `{ system: true }` is an explicit bypass marker for trusted server-side callers (CLI commands only); `{ id: string }` triggers membership lookup via `IUserDeviceRepository.findByUserAndDevice()` + `UserDevice.hasAtLeastRole()` check. This design replaces an earlier optional-field pattern after security review flagged it as fail-open.
-- **`LinkDeviceToUserService` already defaults every link to `VIEWER`** (`role: 'OWNER' | 'EDITOR' | 'VIEWER'` input defaults to `VIEWER`) and rejects a second link via `DEVICE_ALREADY_LINKED` before any role could be escalated — confirmed safe, no changes needed.
 - Denied actions throw `DomainError(FORBIDDEN_ROLE)` → HTTP 403, surfaced to Telegram users via the generic `ERROR_FORBIDDEN_ROLE` i18n string (uk/en) — never leaks which role was required.
 - **Telegram bot is the first real caller**: Roadmap 5.7 Phase B wires device-management actions into the bot (rename, delete, rotate-secret, request-OTA-check); every mutation now calls the Application service with `caller: { id: user.id }` (never `{ system: true }` from bot handlers — that bypass is CLI-only). Prior to this, only the CLI used these services with the `{ system: true }` bypass.
 

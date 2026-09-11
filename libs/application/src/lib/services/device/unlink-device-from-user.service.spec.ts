@@ -353,6 +353,23 @@ describe('UnlinkDeviceFromUserService', () => {
       expect(userDeviceRepo.delete).not.toHaveBeenCalled();
     });
 
+    it('should throw NotFoundError (not DomainError/DEVICE_NOT_LINKED) when caller has zero membership and target user is also not linked', async () => {
+      const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
+      userRepo.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepo.exists.mockResolvedValue(false);
+      userDeviceRepo.findByUserAndDevice.mockResolvedValue(null);
+
+      await expect(
+        service.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { id: 'caller-1' },
+        }),
+      ).rejects.toThrow(NotFoundError);
+      expect(userDeviceRepo.delete).not.toHaveBeenCalled();
+    });
+
     it('should produce the same NotFoundError for a real device with zero caller membership as for a nonexistent device (enumeration resistance)', async () => {
       const {
         service: serviceA,

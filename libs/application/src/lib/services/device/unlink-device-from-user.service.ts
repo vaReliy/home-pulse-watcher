@@ -75,14 +75,6 @@ export class UnlinkDeviceFromUserService extends BaseService<
     const user = await this.resolveUser(params);
     const device = await this.resolveDevice(params);
 
-    const linked = await this.userDeviceRepository.exists(user.id, device.id);
-    if (!linked) {
-      throw new DomainError(
-        DomainErrorCode.DEVICE_NOT_LINKED,
-        `Device ${device.macAddress} is not linked to user ${user.id}`,
-      );
-    }
-
     const deviceIdentifier = params.mac
       ? `mac=${params.mac.toUpperCase()}`
       : (params.deviceId as string);
@@ -94,6 +86,14 @@ export class UnlinkDeviceFromUserService extends BaseService<
       DeviceRole.OWNER,
       deviceIdentifier,
     );
+
+    const linked = await this.userDeviceRepository.exists(user.id, device.id);
+    if (!linked) {
+      throw new DomainError(
+        DomainErrorCode.DEVICE_NOT_LINKED,
+        `Device ${device.macAddress} is not linked to user ${user.id}`,
+      );
+    }
 
     await this.userDeviceRepository.delete(user.id, device.id);
 

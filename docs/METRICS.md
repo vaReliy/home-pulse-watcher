@@ -24,23 +24,25 @@ Each completed task is one row in the table below.
 
 <!-- Append one row per completed task to the table below. -->
 
-| Date       | Repo               | Task                                                          | Tier | Cycles | Fix Now (t/r/s/q) | Emitted | Hardstop | Model    |
-| ---------- | ------------------ | ------------------------------------------------------------- | ---- | ------ | ----------------- | ------- | -------- | -------- |
-| 2026-07-07 | home-pulse-watcher | distill-gcs-rename-into-project-context                       | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
-| 2026-09-07 | home-pulse-watcher | dead-write-path-deny-rules-cts-extract                        | T0   | 0      | 0/0/0/0           | 0       | no       | standard |
-| 2026-07-07 | home-pulse-watcher | distill-livr-field-stripping-into-validation-rule             | T2   | 0      | 0/0/0/0           | 0       | no       | standard |
-| 2026-07-08 | home-pulse-watcher | firmware-tls-build-flag                                       | T2   | 0      | 0/0/0/0           | 1       | no       | standard |
-| 2026-07-08 | home-pulse-watcher | captive-portal-password-hardening                             | T1   | 0      | 0/1/1/0           | 0       | no       | standard |
-| 2026-07-08 | home-pulse-watcher | firmware-ota-parser-hardening                                 | T1   | 0      | 0/1/0/0           | 1       | no       | standard |
-| 2026-07-08 | home-pulse-watcher | repo-findbyids-query-services                                 | T2   | 0      | 0/0/0/0           | 0       | no       | standard |
-| 2026-07-08 | home-pulse-watcher | telegram-handlers-use-services                                | T2   | 1      | 1/0/0/0           | 2       | no       | standard |
-| 2026-07-09 | home-pulse-watcher | batch-c-ops-safety-net                                        | T2   | 3      | 0/7/7/0           | 2       | no       | standard |
-| 2026-07-09 | home-pulse-watcher | workflow-md-task-leak-clarification                           | T1   | 0      | 0/0/0/0           | 0       | no       | cheap    |
-| 2026-07-09 | home-pulse-watcher | workflow-md-resume-agent-clarification                        | T1   | 0      | 0/0/0/0           | 0       | no       | cheap    |
-| 2026-09-08 | home-pulse-watcher | webpack-build-warnings                                        | T1   | 0      | 0/0/0/0           | 1       | no       | standard |
-| 2026-09-08 | home-pulse-watcher | webpack-nx-plugin-coupling-guard                              | T0   | 0      | 0/0/0/0           | 0       | no       | standard |
-| 2026-09-08 | home-pulse-watcher | fix-dockerfile-npm-install-cloud-run-deploy                   | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
-| 2026-09-11 | home-pulse-watcher | rbac-enforcement (roadmap gate, Batch I)                      | T2   | 0      | 0/1/0/0           | 2       | no       | standard |
-| 2026-09-11 | home-pulse-watcher | test-gaps-critical-paths (Batch D, HMAC/device-status subset) | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
-| 2026-09-11 | home-pulse-watcher | rbac-notfound-vs-forbidden-enumeration (5.7 Phase A)          | T1   | 0      | 0/0/0/0           | 2       | no       | standard |
-| 2026-09-11 | home-pulse-watcher | telegram-bot-device-actions (5.7 Phase B)                     | T2   | 1      | 0/2/0/0           | 1       | no       | standard |
+| Date       | Repo               | Task                                                              | Tier | Cycles | Fix Now (t/r/s/q) | Emitted | Hardstop | Model    |
+| ---------- | ------------------ | ----------------------------------------------------------------- | ---- | ------ | ----------------- | ------- | -------- | -------- |
+| 2026-07-07 | home-pulse-watcher | distill-gcs-rename-into-project-context                           | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-07 | home-pulse-watcher | dead-write-path-deny-rules-cts-extract                            | T0   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-07-07 | home-pulse-watcher | distill-livr-field-stripping-into-validation-rule                 | T2   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-07-08 | home-pulse-watcher | firmware-tls-build-flag                                           | T2   | 0      | 0/0/0/0           | 1       | no       | standard |
+| 2026-07-08 | home-pulse-watcher | captive-portal-password-hardening                                 | T1   | 0      | 0/1/1/0           | 0       | no       | standard |
+| 2026-07-08 | home-pulse-watcher | firmware-ota-parser-hardening                                     | T1   | 0      | 0/1/0/0           | 1       | no       | standard |
+| 2026-07-08 | home-pulse-watcher | repo-findbyids-query-services                                     | T2   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-07-08 | home-pulse-watcher | telegram-handlers-use-services                                    | T2   | 1      | 1/0/0/0           | 2       | no       | standard |
+| 2026-07-09 | home-pulse-watcher | batch-c-ops-safety-net                                            | T2   | 3      | 0/7/7/0           | 2       | no       | standard |
+| 2026-07-09 | home-pulse-watcher | workflow-md-task-leak-clarification                               | T1   | 0      | 0/0/0/0           | 0       | no       | cheap    |
+| 2026-07-09 | home-pulse-watcher | workflow-md-resume-agent-clarification                            | T1   | 0      | 0/0/0/0           | 0       | no       | cheap    |
+| 2026-09-08 | home-pulse-watcher | webpack-build-warnings                                            | T1   | 0      | 0/0/0/0           | 1       | no       | standard |
+| 2026-09-08 | home-pulse-watcher | webpack-nx-plugin-coupling-guard                                  | T0   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-08 | home-pulse-watcher | fix-dockerfile-npm-install-cloud-run-deploy                       | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | rbac-enforcement (roadmap gate, Batch I)                          | T2   | 0      | 0/1/0/0           | 2       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | test-gaps-critical-paths (Batch D, HMAC/device-status subset)     | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | rbac-notfound-vs-forbidden-enumeration (5.7 Phase A)              | T1   | 0      | 0/0/0/0           | 2       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | telegram-bot-device-actions (5.7 Phase B)                         | T2   | 1      | 0/2/0/0           | 1       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | rbac-notfound-vs-forbidden-enumeration (5.7 Phase A, gate re-run) | T1   | 1      | 0/1/0/0           | 1       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | rbac-link-device-role-escalation                                  | T2   | 1      | 0/1/0/0           | 1       | no       | standard |
