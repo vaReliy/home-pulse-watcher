@@ -1,6 +1,6 @@
 import type { IUserDeviceRepository } from '@home-pulse-watcher/core';
 import { DeviceRole, UserDevice } from '@home-pulse-watcher/core';
-import { DomainErrorCode } from '@home-pulse-watcher/shared';
+import { DomainErrorCode, NotFoundError } from '@home-pulse-watcher/shared';
 import { assertCallerHasRole } from './assert-caller-has-role.util.js';
 
 describe('assertCallerHasRole', () => {
@@ -25,6 +25,7 @@ describe('assertCallerHasRole', () => {
         { system: true },
         'device-1',
         DeviceRole.OWNER,
+        'device-1',
       ),
     ).resolves.toBeUndefined();
     expect(userDeviceRepo.findByUserAndDevice).not.toHaveBeenCalled();
@@ -47,11 +48,12 @@ describe('assertCallerHasRole', () => {
         { id: 'caller-1' },
         'device-1',
         DeviceRole.EDITOR,
+        'device-1',
       ),
     ).resolves.toBeUndefined();
   });
 
-  it('throws FORBIDDEN_ROLE DomainError when caller role is below required', async () => {
+  it('throws FORBIDDEN_ROLE DomainError when caller has membership but role is below required', async () => {
     const userDeviceRepo = createMockUserDeviceRepository();
     userDeviceRepo.findByUserAndDevice.mockResolvedValue(
       new UserDevice({
@@ -68,11 +70,12 @@ describe('assertCallerHasRole', () => {
         { id: 'caller-1' },
         'device-1',
         DeviceRole.EDITOR,
+        'device-1',
       ),
     ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
   });
 
-  it('throws FORBIDDEN_ROLE DomainError when no membership exists', async () => {
+  it('throws NotFoundError (not FORBIDDEN_ROLE) when caller has zero membership rows on the device', async () => {
     const userDeviceRepo = createMockUserDeviceRepository();
     userDeviceRepo.findByUserAndDevice.mockResolvedValue(null);
 
@@ -82,8 +85,32 @@ describe('assertCallerHasRole', () => {
         { id: 'caller-1' },
         'device-1',
         DeviceRole.VIEWER,
+        'device-1',
       ),
-    ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('produces a byte-identical NotFoundError to the "device does not exist" case, given the same identifier — this is the enumeration-resistance guarantee', async () => {
+    const userDeviceRepo = createMockUserDeviceRepository();
+    userDeviceRepo.findByUserAndDevice.mockResolvedValue(null);
+
+    const nonexistentDeviceError = new NotFoundError('Device', 'device-99');
+
+    await expect(
+      assertCallerHasRole(
+        userDeviceRepo,
+        { id: 'caller-1' },
+        'device-99',
+        DeviceRole.VIEWER,
+        'device-99',
+      ),
+    ).rejects.toMatchObject({
+      code: nonexistentDeviceError.code,
+      httpStatus: nonexistentDeviceError.httpStatus,
+      message: nonexistentDeviceError.message,
+      resourceType: nonexistentDeviceError.resourceType,
+      identifier: nonexistentDeviceError.identifier,
+    });
   });
 
   // Type-only checks: this function body is never invoked at runtime (SWC
@@ -102,6 +129,7 @@ describe('assertCallerHasRole', () => {
         undefined,
         'device-1',
         DeviceRole.VIEWER,
+        'device-1',
       );
 
       // @ts-expect-error caller must be { id: string } | { system: true }
@@ -110,6 +138,7 @@ describe('assertCallerHasRole', () => {
         {},
         'device-1',
         DeviceRole.VIEWER,
+        'device-1',
       );
     }
     void neverRuns;

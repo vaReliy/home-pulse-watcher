@@ -70,8 +70,9 @@ export class DeleteDeviceService extends BaseService<
       );
     }
 
+    const identifier = params.id ?? params.macAddress ?? 'unknown';
+
     if (!device) {
-      const identifier = params.id ?? params.macAddress ?? 'unknown';
       throw new NotFoundError('Device', identifier);
     }
 
@@ -80,6 +81,7 @@ export class DeleteDeviceService extends BaseService<
       params.caller,
       device.id,
       DeviceRole.OWNER,
+      identifier,
     );
 
     // Remove user-device links

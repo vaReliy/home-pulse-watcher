@@ -186,7 +186,7 @@ describe('RequestOtaForceCheckService', () => {
       expect(mockRepo.requestOtaForceCheck).toHaveBeenCalledWith('device-123');
     });
 
-    it('should deny the caller when no membership exists', async () => {
+    it('should deny the caller with NotFoundError (not FORBIDDEN_ROLE) when no membership exists', async () => {
       const mockRepo = createMockRepository();
       const mockUserDeviceRepo = createMockUserDeviceRepository();
       mockRepo.findById.mockResolvedValue(mockDevice);
@@ -199,8 +199,45 @@ describe('RequestOtaForceCheckService', () => {
 
       await expect(
         service.run({ id: 'device-123', caller: { id: 'user-1' } }, {}),
-      ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
+      ).rejects.toThrow(NotFoundError);
       expect(mockRepo.requestOtaForceCheck).not.toHaveBeenCalled();
+    });
+
+    it('should produce the same NotFoundError for a real device with zero membership as for a nonexistent device (enumeration resistance)', async () => {
+      const mockRepoA = createMockRepository();
+      const mockUserDeviceRepoA = createMockUserDeviceRepository();
+      mockRepoA.findById.mockResolvedValue(null);
+      const serviceA = new RequestOtaForceCheckService(
+        mockRepoA,
+        mockUserDeviceRepoA,
+      );
+      let nonexistentError: unknown;
+      try {
+        await serviceA.run({ id: 'device-123', caller: { system: true } }, {});
+      } catch (error) {
+        nonexistentError = error;
+      }
+
+      const mockRepoB = createMockRepository();
+      const mockUserDeviceRepoB = createMockUserDeviceRepository();
+      mockRepoB.findById.mockResolvedValue(mockDevice);
+      mockUserDeviceRepoB.findByUserAndDevice.mockResolvedValue(null);
+      const serviceB = new RequestOtaForceCheckService(
+        mockRepoB,
+        mockUserDeviceRepoB,
+      );
+      let noMembershipError: unknown;
+      try {
+        await serviceB.run({ id: 'device-123', caller: { id: 'user-1' } }, {});
+      } catch (error) {
+        noMembershipError = error;
+      }
+
+      expect(noMembershipError).toBeInstanceOf(NotFoundError);
+      expect(nonexistentError).toBeInstanceOf(NotFoundError);
+      expect((noMembershipError as NotFoundError).message).toBe(
+        (nonexistentError as NotFoundError).message,
+      );
     });
   });
 });

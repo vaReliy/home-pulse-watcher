@@ -34,6 +34,15 @@ Use the menu buttons at the bottom of the screen:
   BUTTON_CHECK_STATUS: '📊 Check Status',
   BUTTON_VIEW_HISTORY: '📋 View History',
 
+  // Device management buttons
+  BUTTON_MANAGE_DEVICE: (label) => `⚙️ ${label}`,
+  BUTTON_RENAME: '✏️ Rename',
+  BUTTON_DELETE: '🗑 Delete',
+  BUTTON_ROTATE_SECRET: '🔑 Rotate Secret',
+  BUTTON_REQUEST_OTA_CHECK: '🔄 Check OTA',
+  BUTTON_CONFIRM_DELETE: '✅ Yes, delete',
+  BUTTON_CANCEL: '❌ Cancel',
+
   // Settings
   SETTINGS_HEADER: '*Settings*',
   SETTINGS_LANGUAGE: '🌐 Language',
@@ -63,6 +72,20 @@ Contact your administrator to link a device to your account\\.`,
   ROLE_LABEL: 'Role:',
   FIRMWARE_LABEL: 'Firmware:',
   FIRMWARE_VERSION_UNKNOWN: 'n/a',
+  RELEASE_CHANNEL_LABEL: 'Channel:',
+
+  // Device management actions
+  DEVICE_MENU_HEADER: (label) => `*${label}* — choose an action:`,
+  DEVICE_RENAME_PROMPT: (label) => `Send the new name for *${label}*\\.`,
+  DEVICE_RENAMED: (newLabel) => `Device renamed to *${newLabel}*\\.`,
+  DEVICE_DELETE_CONFIRM: (label) =>
+    `⚠️ Delete *${label}*\\? This removes the device, all user access, and its power event history\\. This cannot be undone\\.`,
+  DEVICE_DELETED: (label) => `Device *${label}* deleted\\.`,
+  DEVICE_DELETE_CANCELLED: 'Delete cancelled\\.',
+  DEVICE_SECRET_ROTATED: (secret) =>
+    `New device secret generated:\n\n${secret}\n\nThis will NOT be shown again\\. Update the device firmware with this secret\\.`,
+  DEVICE_OTA_CHECK_REQUESTED: (label) =>
+    `OTA check requested for *${label}*\\. The device will check for updates on its next status report\\.`,
 
   // Notifications
   POWER_LOST: (label, time) =>
@@ -121,4 +144,6 @@ Time: ${time}`,
     'You are already registered\\! Use the menu below to navigate\\.',
   ERROR_UNAUTHORIZED: 'You are not authorized to perform this action\\.',
   ERROR_FORBIDDEN_ROLE: 'You are not authorized to perform this action\\.',
+  ERROR_DEVICE_NOT_FOUND: 'Device not found\\.',
+  ERROR_INVALID_LABEL: 'Invalid device name\\. Use up to 100 characters\\.',
 };

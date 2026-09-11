@@ -336,7 +336,7 @@ describe('UnlinkDeviceFromUserService', () => {
       expect(userDeviceRepo.delete).toHaveBeenCalledWith('user-1', 'device-1');
     });
 
-    it('should deny the caller when no membership exists', async () => {
+    it('should deny the caller with NotFoundError (not FORBIDDEN_ROLE) when no membership exists', async () => {
       const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
       userRepo.findByTelegramId.mockResolvedValue(mockUser);
       deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
@@ -349,8 +349,55 @@ describe('UnlinkDeviceFromUserService', () => {
           mac: 'AA:BB:CC:DD:EE:FF',
           caller: { id: 'caller-1' },
         }),
-      ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
+      ).rejects.toThrow(NotFoundError);
       expect(userDeviceRepo.delete).not.toHaveBeenCalled();
+    });
+
+    it('should produce the same NotFoundError for a real device with zero caller membership as for a nonexistent device (enumeration resistance)', async () => {
+      const {
+        service: serviceA,
+        userRepo: userRepoA,
+        deviceRepo: deviceRepoA,
+      } = createService();
+      userRepoA.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepoA.findByMacAddress.mockResolvedValue(null);
+      let nonexistentError: unknown;
+      try {
+        await serviceA.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { system: true },
+        });
+      } catch (error) {
+        nonexistentError = error;
+      }
+
+      const {
+        service: serviceB,
+        userRepo: userRepoB,
+        deviceRepo: deviceRepoB,
+        userDeviceRepo: userDeviceRepoB,
+      } = createService();
+      userRepoB.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepoB.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepoB.exists.mockResolvedValue(true);
+      userDeviceRepoB.findByUserAndDevice.mockResolvedValue(null);
+      let noMembershipError: unknown;
+      try {
+        await serviceB.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          caller: { id: 'caller-1' },
+        });
+      } catch (error) {
+        noMembershipError = error;
+      }
+
+      expect(noMembershipError).toBeInstanceOf(NotFoundError);
+      expect(nonexistentError).toBeInstanceOf(NotFoundError);
+      expect((noMembershipError as NotFoundError).message).toBe(
+        (nonexistentError as NotFoundError).message,
+      );
     });
   });
 });

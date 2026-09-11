@@ -68,8 +68,9 @@ export class UpdateDeviceService extends BaseService<
       );
     }
 
+    const identifier = params.id ?? params.macAddress ?? 'unknown';
+
     if (!device) {
-      const identifier = params.id ?? params.macAddress ?? 'unknown';
       throw new NotFoundError('Device', identifier);
     }
 
@@ -78,6 +79,7 @@ export class UpdateDeviceService extends BaseService<
       params.caller,
       device.id,
       DeviceRole.EDITOR,
+      identifier,
     );
 
     const updated = await this.deviceRepository.update(device.id, {

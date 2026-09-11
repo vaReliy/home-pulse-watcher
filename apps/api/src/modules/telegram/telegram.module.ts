@@ -13,6 +13,7 @@ import { TranslationService } from './i18n/index.js';
 import { StartHandler } from './handlers/start.handler.js';
 import { StatusHandler } from './handlers/status.handler.js';
 import { DevicesHandler } from './handlers/devices.handler.js';
+import { DeviceActionsHandler } from './handlers/device-actions.handler.js';
 import { HelpHandler } from './handlers/help.handler.js';
 import { HistoryHandler } from './handlers/history.handler.js';
 import { SettingsHandler } from './handlers/settings.handler.js';
@@ -57,6 +58,7 @@ import type { TelegramContext } from './types/telegram-context.type.js';
     StartHandler,
     StatusHandler,
     DevicesHandler,
+    DeviceActionsHandler,
     HelpHandler,
     HistoryHandler,
     SettingsHandler,

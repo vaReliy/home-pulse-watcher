@@ -34,6 +34,15 @@ export const messagesUk: Messages = {
   BUTTON_CHECK_STATUS: '📊 Перевірити статус',
   BUTTON_VIEW_HISTORY: '📋 Переглянути історію',
 
+  // Device management buttons
+  BUTTON_MANAGE_DEVICE: (label) => `⚙️ ${label}`,
+  BUTTON_RENAME: '✏️ Перейменувати',
+  BUTTON_DELETE: '🗑 Видалити',
+  BUTTON_ROTATE_SECRET: '🔑 Змінити секрет',
+  BUTTON_REQUEST_OTA_CHECK: '🔄 Перевірити оновлення',
+  BUTTON_CONFIRM_DELETE: '✅ Так, видалити',
+  BUTTON_CANCEL: '❌ Скасувати',
+
   // Settings
   SETTINGS_HEADER: '*Налаштування*',
   SETTINGS_LANGUAGE: '🌐 Мова',
@@ -64,6 +73,20 @@ export const messagesUk: Messages = {
   ROLE_LABEL: 'Роль:',
   FIRMWARE_LABEL: 'Прошивка:',
   FIRMWARE_VERSION_UNKNOWN: 'н/д',
+  RELEASE_CHANNEL_LABEL: 'Канал:',
+
+  // Device management actions
+  DEVICE_MENU_HEADER: (label) => `*${label}* — оберіть дію:`,
+  DEVICE_RENAME_PROMPT: (label) => `Надішліть нову назву для *${label}*\\.`,
+  DEVICE_RENAMED: (newLabel) => `Пристрій перейменовано на *${newLabel}*\\.`,
+  DEVICE_DELETE_CONFIRM: (label) =>
+    `⚠️ Видалити *${label}*\\? Це видалить пристрій, доступ усіх користувачів та історію подій живлення\\. Дію неможливо скасувати\\.`,
+  DEVICE_DELETED: (label) => `Пристрій *${label}* видалено\\.`,
+  DEVICE_DELETE_CANCELLED: 'Видалення скасовано\\.',
+  DEVICE_SECRET_ROTATED: (secret) =>
+    `Згенеровано новий секрет пристрою:\n\n${secret}\n\nВін НЕ буде показаний повторно\\. Оновіть прошивку пристрою цим секретом\\.`,
+  DEVICE_OTA_CHECK_REQUESTED: (label) =>
+    `Запит на перевірку оновлень для *${label}* надіслано\\. Пристрій перевірить оновлення під час наступного звіту статусу\\.`,
 
   // Notifications
   POWER_LOST: (label, time) =>
@@ -122,4 +145,7 @@ export const messagesUk: Messages = {
     'Ви вже зареєстровані\\! Використовуйте меню нижче для навігації\\.',
   ERROR_UNAUTHORIZED: 'У вас немає прав для виконання цієї дії\\.',
   ERROR_FORBIDDEN_ROLE: 'У вас немає прав для виконання цієї дії\\.',
+  ERROR_DEVICE_NOT_FOUND: 'Пристрій не знайдено\\.',
+  ERROR_INVALID_LABEL:
+    'Некоректна назва пристрою\\. Використовуйте до 100 символів\\.',
 };

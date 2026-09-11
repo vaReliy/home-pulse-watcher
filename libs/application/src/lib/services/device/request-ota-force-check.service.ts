@@ -69,8 +69,9 @@ export class RequestOtaForceCheckService extends BaseService<
       );
     }
 
+    const identifier = params.id ?? params.macAddress ?? 'unknown';
+
     if (!device) {
-      const identifier = params.id ?? params.macAddress ?? 'unknown';
       throw new NotFoundError('Device', identifier);
     }
 
@@ -79,6 +80,7 @@ export class RequestOtaForceCheckService extends BaseService<
       params.caller,
       device.id,
       DeviceRole.OWNER,
+      identifier,
     );
 
     await this.deviceRepository.requestOtaForceCheck(device.id);

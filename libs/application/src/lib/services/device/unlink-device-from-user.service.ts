@@ -83,11 +83,16 @@ export class UnlinkDeviceFromUserService extends BaseService<
       );
     }
 
+    const deviceIdentifier = params.mac
+      ? `mac=${params.mac.toUpperCase()}`
+      : (params.deviceId as string);
+
     await assertCallerHasRole(
       this.userDeviceRepository,
       params.caller,
       device.id,
       DeviceRole.OWNER,
+      deviceIdentifier,
     );
 
     await this.userDeviceRepository.delete(user.id, device.id);

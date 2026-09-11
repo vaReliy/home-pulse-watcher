@@ -42,3 +42,5 @@ Each completed task is one row in the table below.
 | 2026-09-08 | home-pulse-watcher | fix-dockerfile-npm-install-cloud-run-deploy                   | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-09-11 | home-pulse-watcher | rbac-enforcement (roadmap gate, Batch I)                      | T2   | 0      | 0/1/0/0           | 2       | no       | standard |
 | 2026-09-11 | home-pulse-watcher | test-gaps-critical-paths (Batch D, HMAC/device-status subset) | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | rbac-notfound-vs-forbidden-enumeration (5.7 Phase A)          | T1   | 0      | 0/0/0/0           | 2       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | telegram-bot-device-actions (5.7 Phase B)                     | T2   | 1      | 0/2/0/0           | 1       | no       | standard |

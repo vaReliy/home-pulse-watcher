@@ -10,7 +10,7 @@
 
 | Field             | Value                                                |
 | ----------------- | ---------------------------------------------------- |
-| Current phase     | **Phase 5 — Production Hardening** (5.6 in progress) |
+| Current phase     | **Phase 5 — Production Hardening** (5.7 in progress) |
 | Active devices    | 2 (real users, live data)                            |
 | Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)            |
 | Codebase maturity | MVP — no legacy concerns; DB can be recreated        |
@@ -231,7 +231,7 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - **Caller identity is required as a discriminated union (`{ id: string } | { system: true }`)** — omitting it is a TypeScript compile error. `{ system: true }` is an explicit bypass marker for trusted server-side callers (CLI commands only); `{ id: string }` triggers membership lookup via `IUserDeviceRepository.findByUserAndDevice()` + `UserDevice.hasAtLeastRole()` check. This design replaces an earlier optional-field pattern after security review flagged it as fail-open.
 - **`LinkDeviceToUserService` already defaults every link to `VIEWER`** (`role: 'OWNER' | 'EDITOR' | 'VIEWER'` input defaults to `VIEWER`) and rejects a second link via `DEVICE_ALREADY_LINKED` before any role could be escalated — confirmed safe, no changes needed.
 - Denied actions throw `DomainError(FORBIDDEN_ROLE)` → HTTP 403, surfaced to Telegram users via the generic `ERROR_FORBIDDEN_ROLE` i18n string (uk/en) — never leaks which role was required.
-- No bot-handler wiring calls these mutation services with a caller identity yet — that lands with roadmap 5.7 (Telegram Admin UI & Role Management).
+- **Telegram bot is the first real caller**: Roadmap 5.7 Phase B wires device-management actions into the bot (rename, delete, rotate-secret, request-OTA-check); every mutation now calls the Application service with `caller: { id: user.id }` (never `{ system: true }` from bot handlers — that bypass is CLI-only). Prior to this, only the CLI used these services with the `{ system: true }` bypass.
 
 ---
 

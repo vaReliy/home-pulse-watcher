@@ -69,8 +69,9 @@ export class RotateDeviceSecretService extends BaseService<
       );
     }
 
+    const identifier = params.id ?? params.macAddress ?? 'unknown';
+
     if (!device) {
-      const identifier = params.id ?? params.macAddress ?? 'unknown';
       throw new NotFoundError('Device', identifier);
     }
 
@@ -79,6 +80,7 @@ export class RotateDeviceSecretService extends BaseService<
       params.caller,
       device.id,
       DeviceRole.OWNER,
+      identifier,
     );
 
     const secret = crypto.randomBytes(32).toString('hex');

@@ -21,6 +21,15 @@ export interface Messages {
   BUTTON_CHECK_STATUS: string;
   BUTTON_VIEW_HISTORY: string;
 
+  // Device management buttons
+  BUTTON_MANAGE_DEVICE: (label: string) => string;
+  BUTTON_RENAME: string;
+  BUTTON_DELETE: string;
+  BUTTON_ROTATE_SECRET: string;
+  BUTTON_REQUEST_OTA_CHECK: string;
+  BUTTON_CONFIRM_DELETE: string;
+  BUTTON_CANCEL: string;
+
   // Settings
   SETTINGS_HEADER: string;
   SETTINGS_LANGUAGE: string;
@@ -50,6 +59,17 @@ export interface Messages {
   ROLE_LABEL: string;
   FIRMWARE_LABEL: string;
   FIRMWARE_VERSION_UNKNOWN: string;
+  RELEASE_CHANNEL_LABEL: string;
+
+  // Device management actions
+  DEVICE_MENU_HEADER: (label: string) => string;
+  DEVICE_RENAME_PROMPT: (label: string) => string;
+  DEVICE_RENAMED: (newLabel: string) => string;
+  DEVICE_DELETE_CONFIRM: (label: string) => string;
+  DEVICE_DELETED: (label: string) => string;
+  DEVICE_DELETE_CANCELLED: string;
+  DEVICE_SECRET_ROTATED: (secret: string) => string;
+  DEVICE_OTA_CHECK_REQUESTED: (label: string) => string;
 
   // Notifications
   POWER_LOST: (label: string, time: string) => string;
@@ -91,4 +111,6 @@ export interface Messages {
   ERROR_USER_ALREADY_EXISTS: string;
   ERROR_UNAUTHORIZED: string;
   ERROR_FORBIDDEN_ROLE: string;
+  ERROR_DEVICE_NOT_FOUND: string;
+  ERROR_INVALID_LABEL: string;
 }

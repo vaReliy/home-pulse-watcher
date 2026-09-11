@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { GetUserDevicesOverviewService } from '@home-pulse-watcher/application';
+import { DeviceRole } from '@home-pulse-watcher/core';
 import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { TranslationService } from '../i18n/index.js';
 import {
@@ -7,7 +8,10 @@ import {
   boldMd,
   codeMd,
 } from '../formatters/escape-markdown.js';
-import { buildMainMenuKeyboard } from '../keyboards/index.js';
+import {
+  buildMainMenuKeyboard,
+  buildDeviceManageKeyboard,
+} from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
 /**
@@ -52,6 +56,7 @@ export class DevicesHandler {
 
       // Build device list message
       const lines = [`${boldMd(escapeMarkdownV2(msgs.YOUR_DEVICES_HEADER))}\n`];
+      const manageableDevices: { id: string; label: string }[] = [];
 
       for (const { device, customName, role } of data.devices) {
         const rawLabel = customName ?? device.label ?? device.macAddress;
@@ -63,14 +68,26 @@ export class DevicesHandler {
         const firmwareVersion =
           device.firmwareVersion ?? msgs.FIRMWARE_VERSION_UNKNOWN;
         lines.push(
-          `   ${msgs.FIRMWARE_LABEL} ${escapeMarkdownV2(firmwareVersion)}\n`,
+          `   ${msgs.FIRMWARE_LABEL} ${escapeMarkdownV2(firmwareVersion)}`,
         );
+        lines.push(
+          `   ${msgs.RELEASE_CHANNEL_LABEL} ${escapeMarkdownV2(device.releaseChannel)}\n`,
+        );
+
+        if (role === DeviceRole.EDITOR || role === DeviceRole.OWNER) {
+          manageableDevices.push({ id: device.id, label: rawLabel });
+        }
       }
 
-      await ctx.reply(lines.join('\n'), {
-        parse_mode: 'MarkdownV2',
-        ...buildMainMenuKeyboard(msgs),
-      });
+      await ctx.reply(
+        lines.join('\n'),
+        manageableDevices.length > 0
+          ? {
+              parse_mode: 'MarkdownV2',
+              ...buildDeviceManageKeyboard(msgs, manageableDevices),
+            }
+          : { parse_mode: 'MarkdownV2', ...buildMainMenuKeyboard(msgs) },
+      );
     } catch (error) {
       this.logger.error(
         'Failed to list devices',

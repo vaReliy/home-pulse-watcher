@@ -143,15 +143,52 @@ describe('RotateDeviceSecretService', () => {
       expect(deviceRepo.update).toHaveBeenCalled();
     });
 
-    it('should deny the caller when no membership exists', async () => {
+    it('should deny the caller with NotFoundError (not FORBIDDEN_ROLE) when no membership exists', async () => {
       const { service, deviceRepo, userDeviceRepo } = createService();
       deviceRepo.findById.mockResolvedValue(mockDevice);
       userDeviceRepo.findByUserAndDevice.mockResolvedValue(null);
 
       await expect(
         service.run({ id: 'device-1', caller: { id: 'caller-1' } }, context),
-      ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
+      ).rejects.toThrow(NotFoundError);
       expect(deviceRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('should produce the same NotFoundError for a real device with zero membership as for a nonexistent device (enumeration resistance)', async () => {
+      const { service: serviceA, deviceRepo: deviceRepoA } = createService();
+      deviceRepoA.findById.mockResolvedValue(null);
+      let nonexistentError: unknown;
+      try {
+        await serviceA.run(
+          { id: 'device-1', caller: { system: true } },
+          context,
+        );
+      } catch (error) {
+        nonexistentError = error;
+      }
+
+      const {
+        service: serviceB,
+        deviceRepo: deviceRepoB,
+        userDeviceRepo,
+      } = createService();
+      deviceRepoB.findById.mockResolvedValue(mockDevice);
+      userDeviceRepo.findByUserAndDevice.mockResolvedValue(null);
+      let noMembershipError: unknown;
+      try {
+        await serviceB.run(
+          { id: 'device-1', caller: { id: 'caller-1' } },
+          context,
+        );
+      } catch (error) {
+        noMembershipError = error;
+      }
+
+      expect(noMembershipError).toBeInstanceOf(NotFoundError);
+      expect(nonexistentError).toBeInstanceOf(NotFoundError);
+      expect((noMembershipError as NotFoundError).message).toBe(
+        (nonexistentError as NotFoundError).message,
+      );
     });
   });
 });
