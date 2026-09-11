@@ -83,9 +83,23 @@ export class LinkDeviceToUserService extends BaseService<
       device.id,
     );
     const isFirstLink = existingMemberships.length === 0;
-    const role = (params.role as DeviceRole) ?? DeviceRole.VIEWER;
+    let role: DeviceRole;
 
-    if (!isFirstLink) {
+    if (isFirstLink) {
+      // First link is self-registration: force VIEWER for non-system callers,
+      // regardless of any requested role param. Defense-in-depth — the
+      // caller-role check below is deliberately skipped on this path, so a
+      // future untrusted caller (bot/REST) must not be able to self-grant
+      // OWNER via a forwarded role param. The trusted CLI (`caller: {
+      // system: true }`) bypasses this and honors an explicit `--role`,
+      // matching its trusted-bypass treatment elsewhere in this file.
+      role =
+        'system' in params.caller
+          ? ((params.role as DeviceRole) ?? DeviceRole.VIEWER)
+          : DeviceRole.VIEWER;
+    } else {
+      role = (params.role as DeviceRole) ?? DeviceRole.VIEWER;
+
       const deviceIdentifier = params.mac
         ? `mac=${params.mac.toUpperCase()}`
         : (params.deviceId as string);

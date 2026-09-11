@@ -46,3 +46,4 @@ Each completed task is one row in the table below.
 | 2026-09-11 | home-pulse-watcher | telegram-bot-device-actions (5.7 Phase B)                         | T2   | 1      | 0/2/0/0           | 1       | no       | standard |
 | 2026-09-11 | home-pulse-watcher | rbac-notfound-vs-forbidden-enumeration (5.7 Phase A, gate re-run) | T1   | 1      | 0/1/0/0           | 1       | no       | standard |
 | 2026-09-11 | home-pulse-watcher | rbac-link-device-role-escalation                                  | T2   | 1      | 0/1/0/0           | 1       | no       | standard |
+| 2026-09-11 | home-pulse-watcher | cap-first-link-role-to-viewer                                     | T1   | 1      | 0/0/1/0           | 1       | no       | standard |

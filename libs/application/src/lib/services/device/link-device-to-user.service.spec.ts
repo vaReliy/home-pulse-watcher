@@ -146,27 +146,78 @@ describe('LinkDeviceToUserService', () => {
       expect(userDeviceRepo.findByUserAndDevice).not.toHaveBeenCalled();
     });
 
-    it('should allow explicit OWNER role on first link unchecked (gate is membership-existence-based, not role-based)', async () => {
-      const ownerUserDevice = { ...mockUserDevice, role: DeviceRole.OWNER };
+    it('should default to VIEWER on first link for a non-system caller when role is omitted', async () => {
       const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
       userRepo.findByTelegramId.mockResolvedValue(mockUser);
       deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
       userDeviceRepo.exists.mockResolvedValue(false);
-      userDeviceRepo.create.mockResolvedValue(ownerUserDevice as UserDevice);
+      userDeviceRepo.create.mockResolvedValue(mockUserDevice);
 
       const result = await service.run({
         telegramId: '123456789',
         mac: 'AA:BB:CC:DD:EE:FF',
-        role: 'OWNER',
-        caller: { system: true },
+        caller: { id: 'caller-1' },
       });
 
       expect(userDeviceRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ role: DeviceRole.OWNER }),
+        expect.objectContaining({ role: DeviceRole.VIEWER }),
       );
-      expect(result.data.userDevice.role).toBe(DeviceRole.OWNER);
+      expect(result.data.userDevice.role).toBe(DeviceRole.VIEWER);
       expect(userDeviceRepo.findByUserAndDevice).not.toHaveBeenCalled();
     });
+
+    it.each([DeviceRole.OWNER, DeviceRole.EDITOR])(
+      'should silently downgrade an explicit %s role to VIEWER on first link for a non-system caller (role param is ignored entirely, not just defaulted, since the caller-role check is skipped on this path)',
+      async (requestedRole) => {
+        const { service, userRepo, deviceRepo, userDeviceRepo } =
+          createService();
+        userRepo.findByTelegramId.mockResolvedValue(mockUser);
+        deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+        userDeviceRepo.exists.mockResolvedValue(false);
+        userDeviceRepo.create.mockResolvedValue(mockUserDevice);
+
+        const result = await service.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          role: requestedRole,
+          caller: { id: 'caller-1' },
+        });
+
+        expect(userDeviceRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ role: DeviceRole.VIEWER }),
+        );
+        expect(result.data.userDevice.role).toBe(DeviceRole.VIEWER);
+        expect(userDeviceRepo.findByUserAndDevice).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([DeviceRole.OWNER, DeviceRole.EDITOR])(
+      'should honor an explicit %s role on first link when caller is { system: true } (trusted CLI bootstrap, not downgraded)',
+      async (requestedRole) => {
+        const { service, userRepo, deviceRepo, userDeviceRepo } =
+          createService();
+        userRepo.findByTelegramId.mockResolvedValue(mockUser);
+        deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+        userDeviceRepo.exists.mockResolvedValue(false);
+        userDeviceRepo.create.mockResolvedValue({
+          ...mockUserDevice,
+          role: requestedRole,
+        } as UserDevice);
+
+        const result = await service.run({
+          telegramId: '123456789',
+          mac: 'AA:BB:CC:DD:EE:FF',
+          role: requestedRole,
+          caller: { system: true },
+        });
+
+        expect(userDeviceRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ role: requestedRole }),
+        );
+        expect(result.data.userDevice.role).toBe(requestedRole);
+        expect(userDeviceRepo.findByUserAndDevice).not.toHaveBeenCalled();
+      },
+    );
 
     it('should normalize MAC address to uppercase', async () => {
       const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
@@ -544,6 +595,38 @@ describe('LinkDeviceToUserService', () => {
       );
       expect(userDeviceRepo.exists).toHaveBeenCalledWith('user-1', 'device-1');
       expect(userDeviceRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('should default to VIEWER when role param is omitted on a non-first link, while still enforcing the OWNER caller check', async () => {
+      const { service, userRepo, deviceRepo, userDeviceRepo } = createService();
+      userRepo.findByTelegramId.mockResolvedValue(mockUser);
+      deviceRepo.findByMacAddress.mockResolvedValue(mockDevice);
+      userDeviceRepo.exists.mockResolvedValue(false);
+      userDeviceRepo.findByDeviceId.mockResolvedValue([otherMembership]);
+      userDeviceRepo.findByUserAndDevice.mockResolvedValue(
+        new UserDevice({
+          userId: 'caller-1',
+          deviceId: 'device-1',
+          customName: null,
+          role: DeviceRole.OWNER,
+        }),
+      );
+      userDeviceRepo.create.mockResolvedValue(mockUserDevice);
+
+      const result = await service.run({
+        telegramId: '123456789',
+        mac: 'AA:BB:CC:DD:EE:FF',
+        caller: { id: 'caller-1' },
+      });
+
+      expect(userDeviceRepo.findByUserAndDevice).toHaveBeenCalledWith(
+        'caller-1',
+        'device-1',
+      );
+      expect(userDeviceRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ role: DeviceRole.VIEWER }),
+      );
+      expect(result.data.userDevice.role).toBe(DeviceRole.VIEWER);
     });
 
     it('should bypass the caller check entirely when caller is { system: true } (CLI bypass)', async () => {
