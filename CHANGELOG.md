@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Tests
+
+- **Closed zero-coverage gap on the HMAC-authenticated device-status path (roadmap 5.7 soft gate, Batch D subset).** Added `device-status.controller.spec.ts` (guard integration, DTO defaulting, `forceOtaCheck` inclusion/omission, response shape) and `hmac-canonical.decorator.spec.ts` (canonical-string construction for both `DeviceStatusController` and `OtaController`, read live off the controller prototype via `Reflector` — the same lookup `HmacAuthGuard` uses at request time — instead of duplicating the closures). Lands ahead of wiring reboot/OTA triggers into the Telegram admin bot, which will ride this same path. LIVR rule specs and repo specs from the parent task remain open.
+
 ### Security
 
 - **Enforced the OWNER/EDITOR/VIEWER role model on device mutation services (roadmap 5.7 gate).** `UserDevice.hasAtLeastRole` existed but had zero call sites in `libs/application` — role was stored and displayed but never checked. `UpdateDeviceService`, `DeleteDeviceService`, `UnlinkDeviceFromUserService`, `RotateDeviceSecretService`, and `RequestOtaForceCheckService` now require a `caller: { id: string } | { system: true }` field: `{ id: string }` triggers a real membership lookup + role check via a new shared `assertCallerHasRole` helper, and `{ system: true }` is an explicit bypass used only by the admin CLI (a trusted single-operator tool). An earlier design used an optional `callerId?: string` that silently bypassed the check when omitted — a security review caught this as fail-open before it shipped; the field is now required, so omitting it is a compile error. Added `DomainErrorCode.FORBIDDEN_ROLE` (→ HTTP 403) and a generic, non-leaking `ERROR_FORBIDDEN_ROLE` i18n message. Bot/REST wiring to actually call these services with a real caller identity is still open work under roadmap 5.7. Two pre-existing gaps unmasked (not introduced) by this pass were logged as follow-up tasks: a NotFound-vs-Forbidden distinction that could let a future untrusted caller enumerate device IDs, and `LinkDeviceToUserService` accepting a caller-controlled `role` param with no check on who may assign OWNER/EDITOR.
