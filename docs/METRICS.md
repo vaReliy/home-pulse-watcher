@@ -51,3 +51,4 @@ Each completed task is one row in the table below.
 | 2026-09-11 | home-pulse-watcher | unlink-device-user-enumeration                                    | T1   | 1      | 0/0/0/0           | 1       | no       | standard |
 | 2026-09-12 | home-pulse-watcher | root-package-json-range-deps-audit                                | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-09-12 | home-pulse-watcher | test-gaps-critical-paths (Batch D, remaining: LIVR + repo specs)  | T1   | 0      | 0/1/0/0           | 0       | no       | standard |
+| 2026-09-12 | home-pulse-watcher | tls-flag-native-test-coverage-gaps (Batch E)                      | T1   | 0      | 0/0/0/0           | 1       | no       | standard |

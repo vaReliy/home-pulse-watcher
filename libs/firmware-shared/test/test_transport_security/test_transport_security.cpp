@@ -73,6 +73,13 @@ void setUp(void) {}
 void tearDown(void) {}
 
 // ─── Pure macro-derived constant (native-testable, no Arduino deps) ──────────
+//
+// Genuinely exercises both branches: [env:native] compiles this with
+// HPW_USE_TLS undefined (=0 via transport_client.h's fallback), and
+// [env:native_tls] (libs/firmware-shared/platformio.ini) compiles the same
+// file with -DHPW_USE_TLS=1. `pio test -e native` alone only proves the =0
+// branch; run `pio test -e native_tls` too (or `pio test` with no -e, which
+// runs every env) to cover both.
 
 void test_kTransportUsesTls_matches_HPW_USE_TLS_macro(void) {
 #if HPW_USE_TLS
@@ -134,6 +141,40 @@ void test_ota_h_declares_transport_client_param(void) {
         "ota.h must declare checkForUpdate's first parameter as TransportClient& client");
 }
 
+// ─── main.cpp — configureTransportClient() must run before first use ───────
+
+void test_main_cpp_configures_transport_client_before_first_use(void) {
+    std::string src = readFirstExisting(kMainCppCandidates);
+    TEST_ASSERT_TRUE_MESSAGE(!src.empty(), "could not locate firmware/common/main.cpp");
+
+    size_t configurePos = src.find("HomePulse::configureTransportClient(");
+    TEST_ASSERT_TRUE_MESSAGE(
+        configurePos != std::string::npos,
+        "main.cpp must call HomePulse::configureTransportClient(...) to pin the CA bundle "
+        "before the shared TransportClient is used");
+
+    // "sendPowerStatus(" alone would also match its own definition (which
+    // precedes setup()/configureTransportClient() in the file); match the
+    // literal call-site text instead so this only finds where it's invoked.
+    size_t firstSendPos = src.find("sendPowerStatus(lastPowerStatus, lastAdcValue)");
+    TEST_ASSERT_TRUE_MESSAGE(
+        firstSendPos != std::string::npos,
+        "could not locate a sendPowerStatus(lastPowerStatus, lastAdcValue) call site in main.cpp");
+    TEST_ASSERT_TRUE_MESSAGE(
+        configurePos < firstSendPos,
+        "configureTransportClient() must run before the first sendPowerStatus() call, or the "
+        "TLS client would send its first request unconfigured (no CA pinned)");
+
+    size_t firstCheckForUpdatePos = src.find("HomePulse::Ota::checkForUpdate(");
+    TEST_ASSERT_TRUE_MESSAGE(
+        firstCheckForUpdatePos != std::string::npos,
+        "could not locate a HomePulse::Ota::checkForUpdate(...) call site in main.cpp");
+    TEST_ASSERT_TRUE_MESSAGE(
+        configurePos < firstCheckForUpdatePos,
+        "configureTransportClient() must run before the first checkForUpdate() call, or the "
+        "OTA-check client would send its first request unconfigured (no CA pinned)");
+}
+
 // ─── platformio.ini — release envs are wired to HPW_USE_TLS=1 ──────────────
 
 void test_esp32c3_release_env_enables_tls(void) {
@@ -152,6 +193,32 @@ void test_esp32c6_release_env_enables_tls(void) {
         "esp32c6 release env must build with -DHPW_USE_TLS=1");
 }
 
+// ─── platformio.ini — _dev envs override back to plaintext (HPW_USE_TLS=0) ──
+
+void test_esp32c3_dev_env_disables_tls(void) {
+    std::string ini = readFirstExisting(kEsp32c3IniCandidates);
+    TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c3/platformio.ini");
+    TEST_ASSERT_TRUE_MESSAGE(
+        contains(ini, "[env:esp32c3_dev]"),
+        "esp32c3 platformio.ini must declare an esp32c3_dev local-dev override env");
+    TEST_ASSERT_TRUE_MESSAGE(
+        contains(ini, "-DHPW_USE_TLS=0"),
+        "esp32c3_dev env must override back to -DHPW_USE_TLS=0 (plaintext WiFiClient) for "
+        "local development against a non-HTTPS backend");
+}
+
+void test_esp32c6_dev_env_disables_tls(void) {
+    std::string ini = readFirstExisting(kEsp32c6IniCandidates);
+    TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c6/platformio.ini");
+    TEST_ASSERT_TRUE_MESSAGE(
+        contains(ini, "[env:esp32c6_dev]"),
+        "esp32c6 platformio.ini must declare an esp32c6_dev local-dev override env");
+    TEST_ASSERT_TRUE_MESSAGE(
+        contains(ini, "-DHPW_USE_TLS=0"),
+        "esp32c6_dev env must override back to -DHPW_USE_TLS=0 (plaintext WiFiClient) for "
+        "local development against a non-HTTPS backend");
+}
+
 // ─── Unity wiring ────────────────────────────────────────────────────────────
 
 int main(void) {
@@ -159,10 +226,13 @@ int main(void) {
 
     RUN_TEST(test_kTransportUsesTls_matches_HPW_USE_TLS_macro);
     RUN_TEST(test_main_cpp_uses_shared_transport_client);
+    RUN_TEST(test_main_cpp_configures_transport_client_before_first_use);
     RUN_TEST(test_ota_cpp_check_for_update_uses_shared_transport_client);
     RUN_TEST(test_ota_h_declares_transport_client_param);
     RUN_TEST(test_esp32c3_release_env_enables_tls);
     RUN_TEST(test_esp32c6_release_env_enables_tls);
+    RUN_TEST(test_esp32c3_dev_env_disables_tls);
+    RUN_TEST(test_esp32c6_dev_env_disables_tls);
 
     return UNITY_END();
 }
