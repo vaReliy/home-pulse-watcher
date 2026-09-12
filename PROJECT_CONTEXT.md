@@ -331,6 +331,8 @@ Cloud Run deployments use three distinct Compute Engine service accounts to impl
 
 **Scheduled workflow verification:** `.github/workflows/backup.yml` originally fetched `DATABASE_URL` via `gcloud secrets versions access latest --secret=database-url`, but the setup only granted backup-bucket IAM — the secret access binding was missing, causing `PERMISSION_DENIED` on every scheduled run since setup, unnoticed until checked in GH Actions. Fixed by reading `DATABASE_URL` from a GitHub Actions repo secret instead (manual step: add repo secret `DATABASE_URL` via Settings → Secrets and variables → Actions). Lesson: verify scheduled workflows by actual run status, not IAM-grant intent — a cron job's first real failure can go unnoticed for weeks.
 
+**Operator ordering for SA migration:** Bootstrap script (Batch J, Step 5) guards the IAM revoke against live production services. Correct order: **(1) Run bootstrap to create new SAs** → **(2) Push to main / run deploy workflow to switch service account** → **(3) Re-run bootstrap to execute revokes**. If bootstrap is re-run against a live service before step 2, all revokes are skipped (with loud warnings), preventing the outage that would result from revoking the old SA's Secret Manager access while the service still runs as that account. The `.github/workflows/deploy.yml` now passes `--service-account=api-runtime-sa@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com` to `gcloud run deploy` automatically; ensure `GCP_PROJECT_ID` and `API_RUNTIME_SA_EMAIL` (or substitute vars) are set in GitHub Actions secrets/variables before first deploy.
+
 ---
 
 ## Documentation Map

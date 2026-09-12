@@ -140,6 +140,9 @@ gcloud secrets add-iam-policy-binding "database-url" \
   --quiet
 ok "Database URL secret access granted"
 
+# Cloud Run service name (used for SA migration guard in Step 5 and invoker config in Step 8b)
+CLOUD_RUN_SERVICE_NAME="home-pulse-watcher"
+
 # --------------- Step 5: Create dedicated least-privilege service accounts ---------------
 info "Creating dedicated service accounts with minimal roles..."
 
@@ -212,24 +215,62 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 ok "run.builder role granted to Compute Engine SA"
 
 # Revoke old RUNTIME_SA bindings that were replaced by dedicated SAs (idempotent)
+# Guard: only revoke if Cloud Run service doesn't exist yet OR is already running as api-runtime-sa.
+# If service exists and still runs as the old RUNTIME_SA, warn and skip — redeploy with new SA first.
 info "Revoking old RUNTIME_SA role grants (migrated to dedicated SAs)..."
 
-# Revoke project-level secretAccessor (now on api-runtime-sa only)
-gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:$RUNTIME_SA" \
-  --role="roles/secretmanager.secretAccessor" \
-  --quiet 2>/dev/null || warn "secretmanager.secretAccessor not found on Compute Engine SA (already revoked or never granted)"
+# Separate existence check from SA fetch to avoid conflating "service doesn't exist"
+# with "describe failed for other reasons" (auth expired, API not enabled, network blip, etc.)
+if gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" --platform=managed --region="$REGION" &>/dev/null; then
+  CURRENT_SA=$(gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" --platform=managed --region="$REGION" --format='value(spec.template.spec.serviceAccountName)')
+  # If the field is empty, the service is using the default Compute Engine SA (old way)
+  if [[ -z "$CURRENT_SA" ]]; then
+    CURRENT_SA="$RUNTIME_SA"
+  fi
+else
+  CURRENT_SA=""
+fi
 
-# Revoke auto-granted Editor role (GCP default at project creation)
-# The compute default SA only needs roles/run.builder for Cloud Build CI/CD.
-# Editor role (if present from project creation) is overpermissioned and must be revoked
-# to maintain least-privilege posture. This is safe & idempotent even if never granted.
-gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:$RUNTIME_SA" \
-  --role="roles/editor" \
-  --quiet 2>/dev/null || warn "roles/editor not found on Compute Engine SA (already revoked, never granted, or auto-grant disabled)"
+if [[ -z "$CURRENT_SA" ]]; then
+  # Service doesn't exist yet (first deploy); safe to revoke
+  SHOULD_REVOKE_SECRETS=true
+elif [[ "$CURRENT_SA" == "$API_RUNTIME_SA_EMAIL" ]]; then
+  # Service already runs as the new SA; safe to revoke
+  SHOULD_REVOKE_SECRETS=true
+else
+  # Service exists but still runs as old $RUNTIME_SA or a different SA
+  warn "Cloud Run service '$CLOUD_RUN_SERVICE_NAME' exists and runs as '$CURRENT_SA' (not '$API_RUNTIME_SA_EMAIL')"
+  warn "This is likely the production service still using the old identity. Revoke skipped to prevent outage."
+  warn "To complete the migration:"
+  warn "  1. Deploy Cloud Run with: gcloud run deploy $CLOUD_RUN_SERVICE_NAME --service-account=$API_RUNTIME_SA_EMAIL [other flags...]"
+  warn "  2. Or use GitHub Actions with vars.API_RUNTIME_SA_EMAIL set (CI now passes --service-account to deploy)"
+  warn "  3. After deploy completes and revisions are stable, re-run this script to revoke old grants"
+  SHOULD_REVOKE_SECRETS=false
+fi
 
-ok "Revoked old RUNTIME_SA project-level role grants"
+if [[ "$SHOULD_REVOKE_SECRETS" == true ]]; then
+  # Revoke project-level secretAccessor (now on api-runtime-sa only)
+  gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="roles/secretmanager.secretAccessor" \
+    --quiet 2>/dev/null || warn "secretmanager.secretAccessor not found on Compute Engine SA (already revoked or never granted)"
+else
+  warn "Skipping secretmanager.secretAccessor revoke (service identity mismatch guard)"
+fi
+
+if [[ "$SHOULD_REVOKE_SECRETS" == true ]]; then
+  # Revoke auto-granted Editor role (GCP default at project creation)
+  # The compute default SA only needs roles/run.builder for Cloud Build CI/CD.
+  # Editor role (if present from project creation) is overpermissioned and must be revoked
+  # to maintain least-privilege posture. This is safe & idempotent even if never granted.
+  gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="roles/editor" \
+    --quiet 2>/dev/null || warn "roles/editor not found on Compute Engine SA (already revoked, never granted, or auto-grant disabled)"
+  ok "Revoked old RUNTIME_SA project-level role grants"
+else
+  warn "Skipping roles/editor revoke (service identity mismatch guard)"
+fi
 
 # --------------- Step 6: Set up Workload Identity Federation ---------------
 info "Setting up Workload Identity Federation for GitHub Actions..."
@@ -315,10 +356,15 @@ gcloud storage buckets update "gs://${BACKUP_BUCKET}" \
 ok "Backup bucket hardened (uniform access, public access blocked)"
 
 # Revoke old RUNTIME_SA storage.objectCreator from backup bucket (now on backup-writer-sa only)
-gcloud storage buckets remove-iam-policy-binding "gs://${BACKUP_BUCKET}" \
-  --member="serviceAccount:$RUNTIME_SA" \
-  --role="roles/storage.objectCreator" \
-  --quiet 2>/dev/null || warn "storage.objectCreator not found on Compute Engine SA for backup bucket (already revoked or never granted)"
+# Use same guard as Step 5: only revoke if service doesn't exist yet OR is already running as api-runtime-sa
+if [[ "$SHOULD_REVOKE_SECRETS" == true ]]; then
+  gcloud storage buckets remove-iam-policy-binding "gs://${BACKUP_BUCKET}" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="roles/storage.objectCreator" \
+    --quiet 2>/dev/null || warn "storage.objectCreator not found on Compute Engine SA for backup bucket (already revoked or never granted)"
+else
+  warn "Skipping backup bucket storage.objectCreator revoke (service identity mismatch guard)"
+fi
 
 # Grant Backup Writer SA access to backup bucket (bucket-scoped least-privilege)
 BACKUP_SA_ROLE="roles/storage.objectCreator"
@@ -391,10 +437,15 @@ gcloud storage buckets update "gs://${OTA_BUCKET}" \
 ok "OTA bucket hardened (uniform access, public access blocked)"
 
 # Revoke old RUNTIME_SA storage.objectViewer from OTA bucket (now on api-runtime-sa only)
-gcloud storage buckets remove-iam-policy-binding "gs://${OTA_BUCKET}" \
-  --member="serviceAccount:$RUNTIME_SA" \
-  --role="roles/storage.objectViewer" \
-  --quiet 2>/dev/null || warn "storage.objectViewer not found on Compute Engine SA for OTA bucket (already revoked or never granted)"
+# Use same guard as Step 5: only revoke if service doesn't exist yet OR is already running as api-runtime-sa
+if [[ "$SHOULD_REVOKE_SECRETS" == true ]]; then
+  gcloud storage buckets remove-iam-policy-binding "gs://${OTA_BUCKET}" \
+    --member="serviceAccount:$RUNTIME_SA" \
+    --role="roles/storage.objectViewer" \
+    --quiet 2>/dev/null || warn "storage.objectViewer not found on Compute Engine SA for OTA bucket (already revoked or never granted)"
+else
+  warn "Skipping OTA bucket storage.objectViewer revoke (service identity mismatch guard)"
+fi
 
 # Grant API Runtime SA access to OTA bucket (scoped, not project-level)
 OTA_SA_ROLE="roles/storage.objectViewer"
@@ -407,7 +458,6 @@ ok "OTA bucket read access granted to API Runtime SA (bucket-scoped)"
 # --------------- Step 8b: Set Cloud Run service account + grant invoke to scheduler ---------------
 # Cloud Run service will run as api-runtime-sa (least-privilege app identity).
 # The keep-warm scheduler job will authenticate via OIDC as scheduler-invoker-sa.
-CLOUD_RUN_SERVICE_NAME="home-pulse-watcher"
 
 # Grant Scheduler Invoker SA permission to invoke Cloud Run
 # (must be done after Cloud Run service is deployed)
@@ -562,13 +612,16 @@ echo "  First deploy"
 echo "  ============================================"
 echo ""
 echo "  1. Add the secrets/variables above to GitHub"
-echo "  2. Deploy Cloud Run with the API Runtime service account:"
-echo "     gcloud run deploy $CLOUD_RUN_SERVICE_NAME \\"
-echo "       --region=$REGION --service-account=$API_RUNTIME_SA_EMAIL [other flags...]"
+echo "  2. Ensure these GitHub Actions variables are set (Settings > Variables > Actions):"
+echo "     GCP_PROJECT_ID: $PROJECT_ID"
+echo "     API_RUNTIME_SA_EMAIL: $API_RUNTIME_SA_EMAIL"
+echo "     (CI deploy will use these to set --service-account automatically)"
 echo "  3. Push to 'main' branch -> CI + deploy will run"
 echo "  4. After deploy, find the Cloud Run URL in the workflow output"
 echo "  5. Set CLOUD_RUN_URL variable in GitHub to that URL"
 echo "  6. Re-run the deploy workflow to enable Telegram webhooks"
-echo "  7. Verify keep-warm job is working:"
+echo "  7. After the first successful deploy with the new SA:"
+echo "     Re-run this bootstrap script to revoke remaining old RUNTIME_SA grants"
+echo "  8. Verify keep-warm job is working:"
 echo "     gcloud scheduler jobs describe $KEEP_WARM_JOB_NAME --location=$REGION"
 echo ""

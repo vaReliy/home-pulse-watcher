@@ -56,3 +56,4 @@ Each completed task is one row in the table below.
 | 2026-09-12 | home-pulse-watcher | infra-version-pins-gcs-lifecycle (Batch H)                                                                | T0   | 1      | 0/1/0/0           | 0       | no       | cheap    |
 | 2026-09-12 | home-pulse-watcher | Batch J — least-privilege SAs + health-endpoint hardening                                                 | T1   | 2      | 0/3/1/0           | 1       | no       | standard |
 | 2026-09-12 | home-pulse-watcher | branch review feat/production-readiness (post-INDEX gate: reviewer ∥ security-scanner, 1 inline spec fix) | T0   | 0      | 0/1/0/0           | 1       | no       | standard |
+| 2026-09-12 | home-pulse-watcher | wire-api-runtime-sa-into-deploy                                                                           | T1   | 1      | 0/1/0/0           | 0       | no       | standard |
