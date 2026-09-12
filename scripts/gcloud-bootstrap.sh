@@ -140,24 +140,87 @@ gcloud secrets add-iam-policy-binding "database-url" \
   --quiet
 ok "Database URL secret access granted"
 
-# --------------- Step 5: Grant IAM roles to runtime / build SA ---------------
-info "Granting IAM roles to Cloud Run runtime service account..."
+# --------------- Step 5: Create dedicated least-privilege service accounts ---------------
+info "Creating dedicated service accounts with minimal roles..."
 
-RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+# API Runtime SA (app only: Secrets, Logging, OTA read)
+API_RUNTIME_SA_NAME="api-runtime"
+API_RUNTIME_SA_EMAIL="${API_RUNTIME_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
-RUNTIME_ROLES=(
+if gcloud iam service-accounts describe "$API_RUNTIME_SA_EMAIL" &>/dev/null; then
+  warn "Service account '$API_RUNTIME_SA_EMAIL' already exists"
+else
+  gcloud iam service-accounts create "$API_RUNTIME_SA_NAME" \
+    --display-name="Cloud Run API Runtime (app-only)"
+  ok "Service account created: $API_RUNTIME_SA_EMAIL"
+fi
+
+# Backup Writer SA (backup bucket only)
+BACKUP_WRITER_SA_NAME="backup-writer"
+BACKUP_WRITER_SA_EMAIL="${BACKUP_WRITER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+if gcloud iam service-accounts describe "$BACKUP_WRITER_SA_EMAIL" &>/dev/null; then
+  warn "Service account '$BACKUP_WRITER_SA_EMAIL' already exists"
+else
+  gcloud iam service-accounts create "$BACKUP_WRITER_SA_NAME" \
+    --display-name="Backup Writer (bucket-scoped)"
+  ok "Service account created: $BACKUP_WRITER_SA_EMAIL"
+fi
+
+# Scheduler Invoker SA (Cloud Run invoke only for keep-warm)
+SCHEDULER_INVOKER_SA_NAME="scheduler-invoker"
+SCHEDULER_INVOKER_SA_EMAIL="${SCHEDULER_INVOKER_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+if gcloud iam service-accounts describe "$SCHEDULER_INVOKER_SA_EMAIL" &>/dev/null; then
+  warn "Service account '$SCHEDULER_INVOKER_SA_EMAIL' already exists"
+else
+  gcloud iam service-accounts create "$SCHEDULER_INVOKER_SA_NAME" \
+    --display-name="Scheduler Invoker (keep-warm job only)"
+  ok "Service account created: $SCHEDULER_INVOKER_SA_EMAIL"
+fi
+
+# Grant roles to API Runtime SA (Secret Manager read + Cloud Logging write at project level)
+info "Granting roles to API Runtime service account..."
+
+API_RUNTIME_ROLES=(
   roles/secretmanager.secretAccessor
-  roles/run.builder
+  roles/logging.logWriter
 )
 
-for role in "${RUNTIME_ROLES[@]}"; do
+for role in "${API_RUNTIME_ROLES[@]}"; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:$RUNTIME_SA" \
+    --member="serviceAccount:$API_RUNTIME_SA_EMAIL" \
     --role="$role" \
     --condition=None \
     --quiet
 done
-ok "Runtime SA roles granted"
+ok "API Runtime SA roles granted"
+
+# RUNTIME_SA = Compute Engine default SA (used only for Cloud Build in CI/CD pipeline)
+RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+# Grant run.builder to RUNTIME_SA (required by deploy workflow's Cloud Build step)
+# .github/workflows/deploy.yml uses deploy-cloudrun@v2 with source: . which runs
+# Cloud Build AS the compute default SA, not the deployer SA. This role is not for
+# app runtime; it's strictly for CI/CD build permissions.
+info "Granting Cloud Build role to Compute Engine SA (CI/CD pipeline)..."
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="roles/run.builder" \
+  --condition=None \
+  --quiet
+ok "run.builder role granted to Compute Engine SA"
+
+# Revoke old RUNTIME_SA bindings that were replaced by dedicated SAs (idempotent)
+info "Revoking old RUNTIME_SA role grants (migrated to dedicated SAs)..."
+
+# Revoke project-level secretAccessor (now on api-runtime-sa only)
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="roles/secretmanager.secretAccessor" \
+  --quiet 2>/dev/null || warn "secretmanager.secretAccessor not found on Compute Engine SA (already revoked or never granted)"
+
+ok "Revoked old RUNTIME_SA project-level role grants"
 
 # --------------- Step 6: Set up Workload Identity Federation ---------------
 info "Setting up Workload Identity Federation for GitHub Actions..."
@@ -242,22 +305,28 @@ gcloud storage buckets update "gs://${BACKUP_BUCKET}" \
   --public-access-prevention
 ok "Backup bucket hardened (uniform access, public access blocked)"
 
-# Grant runtime SA access to backup bucket (scoped, not project-level)
+# Revoke old RUNTIME_SA storage.objectCreator from backup bucket (now on backup-writer-sa only)
+gcloud storage buckets remove-iam-policy-binding "gs://${BACKUP_BUCKET}" \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="roles/storage.objectCreator" \
+  --quiet 2>/dev/null || warn "storage.objectCreator not found on Compute Engine SA for backup bucket (already revoked or never granted)"
+
+# Grant Backup Writer SA access to backup bucket (bucket-scoped least-privilege)
 BACKUP_SA_ROLE="roles/storage.objectCreator"
 gcloud storage buckets add-iam-policy-binding "gs://${BACKUP_BUCKET}" \
-  --member="serviceAccount:$RUNTIME_SA" \
+  --member="serviceAccount:$BACKUP_WRITER_SA_EMAIL" \
   --role="$BACKUP_SA_ROLE" \
   --quiet
-ok "Backup bucket permissions granted to runtime SA (bucket-scoped)"
+ok "Backup bucket permissions granted to Backup Writer SA (bucket-scoped)"
 
-# Grant OTA service account access to backup bucket
-# (same SA used for firmware OTA storage, now also backing up database)
-info "Configuring backup-bucket access for OTA service account..."
+# Grant OTA service account access to backup bucket (optional external backup tool)
+# Operator may wish to use a separate OTA service account for backup (GCP_SERVICE_ACCOUNT_KEY)
+info "Configuring backup-bucket access for external OTA service account (optional)..."
 
-read -rp "  Enter service account email for GCP_SERVICE_ACCOUNT_KEY (e.g. ota-manager@${PROJECT_ID}.iam.gserviceaccount.com): " OTA_SA_EMAIL
+read -rp "  Enter service account email for GCP_SERVICE_ACCOUNT_KEY (e.g. ota-manager@${PROJECT_ID}.iam.gserviceaccount.com, or press Enter to skip): " OTA_SA_EMAIL
 if [[ -z "$OTA_SA_EMAIL" ]]; then
-  warn "OTA service account email not provided; skipping backup-bucket IAM grant"
-  warn "If using GCP_SERVICE_ACCOUNT_KEY for backups later, manually grant it 'roles/storage.objectCreator' on gs://${BACKUP_BUCKET}"
+  warn "OTA service account email not provided; skipping additional backup-bucket IAM grant"
+  warn "App backups will use the dedicated backup-writer-sa only"
 else
   gcloud storage buckets add-iam-policy-binding "gs://${BACKUP_BUCKET}" \
     --member="serviceAccount:$OTA_SA_EMAIL" \
@@ -312,30 +381,56 @@ gcloud storage buckets update "gs://${OTA_BUCKET}" \
   --public-access-prevention
 ok "OTA bucket hardened (uniform access, public access blocked)"
 
-# Grant runtime SA access to OTA bucket (scoped, not project-level)
+# Revoke old RUNTIME_SA storage.objectViewer from OTA bucket (now on api-runtime-sa only)
+gcloud storage buckets remove-iam-policy-binding "gs://${OTA_BUCKET}" \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="roles/storage.objectViewer" \
+  --quiet 2>/dev/null || warn "storage.objectViewer not found on Compute Engine SA for OTA bucket (already revoked or never granted)"
+
+# Grant API Runtime SA access to OTA bucket (scoped, not project-level)
 OTA_SA_ROLE="roles/storage.objectViewer"
 gcloud storage buckets add-iam-policy-binding "gs://${OTA_BUCKET}" \
-  --member="serviceAccount:$RUNTIME_SA" \
+  --member="serviceAccount:$API_RUNTIME_SA_EMAIL" \
   --role="$OTA_SA_ROLE" \
   --quiet
-ok "OTA bucket read access granted to runtime SA (bucket-scoped)"
+ok "OTA bucket read access granted to API Runtime SA (bucket-scoped)"
 
-# --------------- Step 8b: Grant Cloud Run invoke permissions to runtime SA ---------------
-# This must be done before or after the Cloud Run service is deployed.
-# The keep-warm scheduler job (Step 9) will use RUNTIME_SA to authenticate via OIDC.
+# --------------- Step 8b: Set Cloud Run service account + grant invoke to scheduler ---------------
+# Cloud Run service will run as api-runtime-sa (least-privilege app identity).
+# The keep-warm scheduler job will authenticate via OIDC as scheduler-invoker-sa.
 CLOUD_RUN_SERVICE_NAME="home-pulse-watcher"
 
+# Grant Scheduler Invoker SA permission to invoke Cloud Run
+# (must be done after Cloud Run service is deployed)
+info "Granting Cloud Run invoke permissions to Scheduler Invoker service account..."
+
+# Revoke old RUNTIME_SA run.invoker from Cloud Run service (now on scheduler-invoker-sa only)
 if gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" --platform=managed --region="$REGION" &>/dev/null; then
-  if gcloud run services add-iam-policy-binding "$CLOUD_RUN_SERVICE_NAME" \
+  gcloud run services remove-iam-policy-binding "$CLOUD_RUN_SERVICE_NAME" \
     --region="$REGION" \
     --member="serviceAccount:$RUNTIME_SA" \
     --role="roles/run.invoker" \
     --condition=None \
+    --quiet 2>/dev/null || warn "run.invoker not found on Compute Engine SA for Cloud Run service (already revoked or never granted)"
+fi
+
+if gcloud run services describe "$CLOUD_RUN_SERVICE_NAME" --platform=managed --region="$REGION" &>/dev/null; then
+  if gcloud run services add-iam-policy-binding "$CLOUD_RUN_SERVICE_NAME" \
+    --region="$REGION" \
+    --member="serviceAccount:$SCHEDULER_INVOKER_SA_EMAIL" \
+    --role="roles/run.invoker" \
+    --condition=None \
     --quiet 2>/dev/null; then
-    ok "Cloud Run invoke permissions granted to runtime SA"
+    ok "Cloud Run invoke permissions granted to Scheduler Invoker SA"
   else
-    warn "Could not grant run.invoker to runtime SA (may already exist)"
+    warn "Could not grant run.invoker to Scheduler Invoker SA (may already exist)"
   fi
+else
+  warn "Cloud Run service '$CLOUD_RUN_SERVICE_NAME' not yet deployed"
+  warn "After deployment, manually grant run.invoker to $SCHEDULER_INVOKER_SA_EMAIL:"
+  warn "  gcloud run services add-iam-policy-binding $CLOUD_RUN_SERVICE_NAME \\"
+  warn "    --region=$REGION --member=serviceAccount:$SCHEDULER_INVOKER_SA_EMAIL \\"
+  warn "    --role=roles/run.invoker --quiet"
 fi
 
 # --------------- Step 9: Create keep-warm Cloud Scheduler job ---------------
@@ -355,9 +450,10 @@ if [[ -z "$CLOUD_RUN_SERVICE_URL" ]]; then
   warn "    --uri='<CLOUD_RUN_URL>/api/health/ready' \\"
   warn "    --http-method=GET \\"
   warn "    --attempt-deadline=30s \\"
-  warn "    --oidc-service-account-email=\$RUNTIME_SA"
+  warn "    --oidc-service-account-email=$SCHEDULER_INVOKER_SA_EMAIL"
 else
   # Create or update the keep-warm job (idempotent-ish)
+  # Authenticates as scheduler-invoker-sa (minimal least-privilege identity)
   if gcloud scheduler jobs describe "$KEEP_WARM_JOB_NAME" --location="$REGION" &>/dev/null; then
     warn "Keep-warm job '$KEEP_WARM_JOB_NAME' already exists"
     # Optionally update if schedule/URI changed
@@ -367,7 +463,7 @@ else
       --uri="${CLOUD_RUN_SERVICE_URL}/api/health/ready" \
       --http-method=GET \
       --attempt-deadline=30s \
-      --oidc-service-account-email="$RUNTIME_SA" \
+      --oidc-service-account-email="$SCHEDULER_INVOKER_SA_EMAIL" \
       --quiet 2>/dev/null || warn "Could not update keep-warm job"
   else
     gcloud scheduler jobs create http "$KEEP_WARM_JOB_NAME" \
@@ -376,7 +472,7 @@ else
       --uri="${CLOUD_RUN_SERVICE_URL}/api/health/ready" \
       --http-method=GET \
       --attempt-deadline=30s \
-      --oidc-service-account-email="$RUNTIME_SA" \
+      --oidc-service-account-email="$SCHEDULER_INVOKER_SA_EMAIL" \
       --quiet
     ok "Keep-warm job created: $KEEP_WARM_JOB_NAME (every 10 minutes)"
   fi
@@ -398,6 +494,22 @@ echo "  GCP_SERVICE_ACCOUNT:"
 echo "    $SA_EMAIL"
 echo ""
 echo "  ============================================"
+echo "  Service Accounts (Least-Privilege Configuration)"
+echo "  ============================================"
+echo ""
+echo "  API Runtime (Cloud Run service identity):"
+echo "    $API_RUNTIME_SA_EMAIL"
+echo "    Roles: Secret Manager read, Cloud Logging write, OTA bucket read"
+echo ""
+echo "  Backup Writer (database backups):"
+echo "    $BACKUP_WRITER_SA_EMAIL"
+echo "    Role: Storage Object Creator (backup bucket only)"
+echo ""
+echo "  Scheduler Invoker (keep-warm job):"
+echo "    $SCHEDULER_INVOKER_SA_EMAIL"
+echo "    Role: Cloud Run Invoker (Cloud Run service only)"
+echo ""
+echo "  ============================================"
 echo "  GitHub Repository Variables (Settings > Variables > Actions)"
 echo "  ============================================"
 echo ""
@@ -410,6 +522,7 @@ echo "  ============================================"
 echo ""
 echo "  Backups are stored in: gs://${BACKUP_BUCKET}/"
 echo "  Retention: 8 weeks"
+echo "  Backup Writer SA: $BACKUP_WRITER_SA_EMAIL"
 echo ""
 echo "  To manually backup (Docker):"
 echo "    ./scripts/run-backup-in-docker.sh"
@@ -424,6 +537,7 @@ echo ""
 echo "  Job: $KEEP_WARM_JOB_NAME"
 echo "  Schedule: Every 10 minutes"
 echo "  Target: /api/health/ready (keeps Cloud Run warm + Neon compute awake)"
+echo "  Invoker SA: $SCHEDULER_INVOKER_SA_EMAIL"
 echo ""
 echo "  ============================================"
 echo "  OTA Storage (Firmware Updates)"
@@ -439,8 +553,13 @@ echo "  First deploy"
 echo "  ============================================"
 echo ""
 echo "  1. Add the secrets/variables above to GitHub"
-echo "  2. Push to 'main' branch -> CI + deploy will run"
-echo "  3. After deploy, find the Cloud Run URL in the workflow output"
-echo "  4. Set CLOUD_RUN_URL variable in GitHub to that URL"
-echo "  5. Re-run the deploy workflow to enable Telegram webhooks"
+echo "  2. Deploy Cloud Run with the API Runtime service account:"
+echo "     gcloud run deploy $CLOUD_RUN_SERVICE_NAME \\"
+echo "       --region=$REGION --service-account=$API_RUNTIME_SA_EMAIL [other flags...]"
+echo "  3. Push to 'main' branch -> CI + deploy will run"
+echo "  4. After deploy, find the Cloud Run URL in the workflow output"
+echo "  5. Set CLOUD_RUN_URL variable in GitHub to that URL"
+echo "  6. Re-run the deploy workflow to enable Telegram webhooks"
+echo "  7. Verify keep-warm job is working:"
+echo "     gcloud scheduler jobs describe $KEEP_WARM_JOB_NAME --location=$REGION"
 echo ""

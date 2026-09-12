@@ -287,6 +287,26 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - **Liveness**: Confirms the process is running (no dependency checks)
 - **Readiness**: Verifies database connectivity via `SELECT 1`; returns 503 if the DB is unreachable
 
+### GCP Service Accounts & Least-Privilege Deployment Identity
+
+Cloud Run deployments use three distinct Compute Engine service accounts to implement least-privilege access control, replacing a prior monolithic `RUNTIME_SA` with overpermissioned bindings.
+
+| Service Account        | Purpose                                     | IAM Role(s) / Bindings                                                                             |
+| ---------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `api-runtime-sa`       | Application runtime (Pod identity)          | Secret Manager: `secretmanager.secretAccessor` (project-level); Cloud Logging: `logging.logWriter` |
+| `backup-writer-sa`     | Backup job execution (Cloud Scheduler task) | Cloud Storage: `roles/storage.objectCreator` on `backup-bucket` only                               |
+| `scheduler-invoker-sa` | Keep-warm scheduler (Cloud Scheduler token) | Cloud Run: `roles/run.invoker` on the `api` Cloud Run service                                      |
+
+**Deployment identity setup:**
+
+- **Cloud Run service** (`api`): `serviceAccountEmail` → `api-runtime-sa` (via `gcloud run deploy --service-account`)
+- **Cloud Scheduler keep-warm job**: `--oidc-service-account-email=scheduler-invoker-sa` (OIDC token validation)
+- **Backup Cloud Scheduler job** (if implemented): `--oidc-service-account-email=backup-writer-sa`
+
+**Implementation location:** `scripts/gcloud-bootstrap.sh` creates all three SAs, constructs the IAM bindings, and revokes prior overpermissioned bindings on the old `RUNTIME_SA`.
+
+**CI/CD integration note:** Cloud Build (triggered by `deploy-cloudrun@v2 source: .`) still runs as the Compute Engine default SA (`<project>@cloudservices.gserviceaccount.com`), requiring the `roles/run.builder` binding to remain on that account. This is a platform requirement, not an application concern.
+
 ---
 
 ## Documentation Map
