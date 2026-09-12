@@ -280,6 +280,7 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - **Development**: `pino-pretty` transport with colorized, single-line output
 - **Bootstrap buffering**: `NestFactory.create(AppModule, { bufferLogs: true })` + `app.useLogger(app.get(Logger))` — ensures all startup logs go through Pino
 - **Pre-bootstrap logging**: `validateEnv()` runs before NestJS — uses `console.error()` directly since neither NestJS Logger nor Pino are available
+- **Log level**: no `LOG_LEVEL` env var and no explicit `level` in `app.module.ts`'s `pinoHttp` config → pino defaults to `info`, so `logger.debug()` calls never emit in any environment unless someone adds an explicit level override. Debug call sites that log user-supplied free text (e.g. Telegram message text) still redact/summarize rather than logging raw content, since this default is easy to change and shouldn't be the only safeguard against a PII leak.
 
 ### Rate Limiting & Proxy Trust
 

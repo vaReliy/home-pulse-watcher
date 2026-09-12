@@ -101,6 +101,172 @@ describe('TelegramController', () => {
     });
   });
 
+  describe('debug logging PII redaction', () => {
+    it('should not log raw message text, only its length', async () => {
+      const bot = createMockBot();
+      bot.handleUpdate.mockResolvedValue(undefined);
+      const controller = new TelegramController(bot, secretConfig);
+      const debugSpy = jest
+        .spyOn(
+          (
+            controller as unknown as {
+              logger: { debug: (msg: string) => void };
+            }
+          ).logger,
+          'debug',
+        )
+        .mockImplementation(() => undefined);
+
+      const secretText = 'my home address is 123 Secret St';
+      const req = createMockRequest(
+        {
+          update_id: 1,
+          message: { message_id: 1, chat: { id: 123 }, text: secretText },
+        },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token' },
+      );
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      const loggedMessages = debugSpy.mock.calls.map((call) => String(call[0]));
+      expect(loggedMessages.some((msg) => msg.includes(secretText))).toBe(
+        false,
+      );
+      expect(
+        loggedMessages.some((msg) =>
+          msg.includes(`textLength=${secretText.length}`),
+        ),
+      ).toBe(true);
+    });
+
+    it('should log textLength=0 when message has no text field', async () => {
+      const bot = createMockBot();
+      bot.handleUpdate.mockResolvedValue(undefined);
+      const controller = new TelegramController(bot, secretConfig);
+      const debugSpy = jest
+        .spyOn(
+          (
+            controller as unknown as {
+              logger: { debug: (msg: string) => void };
+            }
+          ).logger,
+          'debug',
+        )
+        .mockImplementation(() => undefined);
+
+      const req = createMockRequest(
+        { update_id: 1, message: { message_id: 1, chat: { id: 123 } } },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token' },
+      );
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      const loggedMessages = debugSpy.mock.calls.map((call) => String(call[0]));
+      expect(loggedMessages.some((msg) => msg.includes('textLength=0'))).toBe(
+        true,
+      );
+    });
+
+    it('should log textLength=0 when update has no message field at all', async () => {
+      const bot = createMockBot();
+      bot.handleUpdate.mockResolvedValue(undefined);
+      const controller = new TelegramController(bot, secretConfig);
+      const debugSpy = jest
+        .spyOn(
+          (
+            controller as unknown as {
+              logger: { debug: (msg: string) => void };
+            }
+          ).logger,
+          'debug',
+        )
+        .mockImplementation(() => undefined);
+
+      const req = createMockRequest(
+        { update_id: 1 },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token' },
+      );
+      const res = createMockResponse();
+
+      await controller.handleWebhook(req, res);
+
+      const loggedMessages = debugSpy.mock.calls.map((call) => String(call[0]));
+      expect(loggedMessages.some((msg) => msg.includes('textLength=0'))).toBe(
+        true,
+      );
+    });
+
+    it('should not log raw text or throw for a very long message', async () => {
+      const bot = createMockBot();
+      bot.handleUpdate.mockResolvedValue(undefined);
+      const controller = new TelegramController(bot, secretConfig);
+      const debugSpy = jest
+        .spyOn(
+          (
+            controller as unknown as {
+              logger: { debug: (msg: string) => void };
+            }
+          ).logger,
+          'debug',
+        )
+        .mockImplementation(() => undefined);
+
+      const longText = 'a'.repeat(5000);
+      const req = createMockRequest(
+        {
+          update_id: 1,
+          message: { message_id: 1, chat: { id: 123 }, text: longText },
+        },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token' },
+      );
+      const res = createMockResponse();
+
+      await expect(controller.handleWebhook(req, res)).resolves.toBeUndefined();
+
+      const loggedMessages = debugSpy.mock.calls.map((call) => String(call[0]));
+      expect(loggedMessages.some((msg) => msg.includes(longText))).toBe(false);
+      expect(
+        loggedMessages.some((msg) =>
+          msg.includes(`textLength=${longText.length}`),
+        ),
+      ).toBe(true);
+    });
+
+    it('should log textLength=0 without throwing when text field is non-string', async () => {
+      const bot = createMockBot();
+      bot.handleUpdate.mockResolvedValue(undefined);
+      const controller = new TelegramController(bot, secretConfig);
+      const debugSpy = jest
+        .spyOn(
+          (
+            controller as unknown as {
+              logger: { debug: (msg: string) => void };
+            }
+          ).logger,
+          'debug',
+        )
+        .mockImplementation(() => undefined);
+
+      const req = createMockRequest(
+        {
+          update_id: 1,
+          message: { message_id: 1, chat: { id: 123 }, text: 12345 },
+        },
+        { 'x-telegram-bot-api-secret-token': 'my-secret-token' },
+      );
+      const res = createMockResponse();
+
+      await expect(controller.handleWebhook(req, res)).resolves.toBeUndefined();
+
+      const loggedMessages = debugSpy.mock.calls.map((call) => String(call[0]));
+      expect(loggedMessages.some((msg) => msg.includes('textLength=0'))).toBe(
+        true,
+      );
+    });
+  });
+
   describe('webhook secret validation', () => {
     it('should respond 200 when valid secret is provided', async () => {
       const bot = createMockBot();

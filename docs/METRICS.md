@@ -58,3 +58,4 @@ Each completed task is one row in the table below.
 | 2026-09-12 | home-pulse-watcher | branch review feat/production-readiness (post-INDEX gate: reviewer ∥ security-scanner, 1 inline spec fix) | T0   | 0      | 0/1/0/0           | 1       | no       | standard |
 | 2026-09-12 | home-pulse-watcher | wire-api-runtime-sa-into-deploy                                                                           | T1   | 1      | 0/1/0/0           | 0       | no       | standard |
 | 2026-09-12 | home-pulse-watcher | scope-dev-env-tls-flag-test-to-section                                                                    | T0   | 0      | 0/0/0/0           | 1       | no       | standard |
+| 2026-09-12 | home-pulse-watcher | audit-debug-logs-for-pii                                                                                  | T0   | 0      | 0/0/0/0           | 1       | no       | standard |
