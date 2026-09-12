@@ -32,6 +32,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `vars.*` silently expands to "" when the repository VARIABLE (not secret)
+      # is missing, producing `--service-account api-runtime-sa@.iam...` and a
+      # confusing gcloud validation error. Fail here with the real cause instead.
+      - name: Check required repository variables
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          if [[ -z "$GCP_PROJECT_ID" ]]; then
+            echo "::error::Repository variable GCP_PROJECT_ID is not set (Settings > Secrets and variables > Actions > Variables tab — a Secret with this name does not count)."
+            exit 1
+          fi
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
