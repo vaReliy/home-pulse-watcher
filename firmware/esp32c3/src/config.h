@@ -88,27 +88,6 @@
 // SOS cooldown (avoid spam during prolonged outage)
 #define SOS_COOLDOWN_MS 900000            // 15 min
 
-// Buffer Sizes
-//
-// Worst-case derivation (audited 2026-09-12, see buildSignatureInput()/
-// buildPowerStatusPayload() in libs/firmware-shared/src/telemetry.cpp):
-//   HMAC_PAYLOAD_BUFFER: "MAC:TIMESTAMP:STATUS"
-//     17 (WiFi.macAddress() "AA:BB:CC:DD:EE:FF") + 1 (':')
-//     + 10 (unsigned long max digits, 4294967295 — buildSignatureInput()
-//     explicitly casts r.timestamp to unsigned long, so that 32-bit cast
-//     is the bound, not time_t's actual width)
-//     + 1 (':') + 3 (uint8_t status max width, 255 — real values are only
-//     0/1 but the field type allows up to 255) + 1 (NUL) = 33 bytes.
-//     128 leaves ~95 bytes of margin.
-#define HMAC_PAYLOAD_BUFFER 128     // "MAC:TIMESTAMP:STATUS" buffer
-//   JSON_BODY_BUFFER: longest variant is the hasUps branch —
-//     {"status":255,"voltage":4095,"firmwareVersion":"255.255.255-alpha.255","batteryVoltage":4095}
-//     = 93 chars + NUL = 94 bytes (voltage/batteryVoltage's 4-digit bound,
-//     4095, comes from the 12-bit ADC hardware range, not from the field's
-//     C/C++ integer type width; firmwareVersion padded to a worst-case
-//     semver+prerelease string). 192 leaves ~98 bytes of margin.
-#define JSON_BODY_BUFFER 192        // HTTP POST body buffer (enlarged for batteryVoltage field)
-
 // ADC Configuration
 #define ADC_RESOLUTION_BITS 12      // 12-bit ADC (0-4095 range)
 
