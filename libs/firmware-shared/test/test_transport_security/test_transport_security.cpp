@@ -1,5 +1,6 @@
 #include <unity.h>
 #include "HomePulse/transport_client.h"
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -65,6 +66,38 @@ std::string readFirstExisting(const std::vector<std::string>& candidates) {
 
 bool contains(const std::string& haystack, const char* needle) {
     return haystack.find(needle) != std::string::npos;
+}
+
+// Extracts the text of one `[env:...]` section (from its heading up to the
+// next `[env:` heading, or EOF) so assertions can be scoped to that section
+// instead of matching anywhere in the whole platformio.ini file — a stray
+// flag in another section (or a future third env) must not false-positive
+// a section-specific assertion.
+//
+// Only matches the heading when it starts a line (preceded by '\n' or start
+// of file): platformio.ini's comments reference other envs' section names
+// in prose (e.g. "see [env:esp32c3_dev] below"), and a plain std::string::find
+// would latch onto that mid-line mention instead of the real `[env:...]`
+// heading line.
+std::string extractEnvSection(const std::string& ini, const char* envHeading) {
+    size_t searchFrom = 0;
+    size_t start = std::string::npos;
+    while (true) {
+        size_t candidate = ini.find(envHeading, searchFrom);
+        if (candidate == std::string::npos) {
+            break;
+        }
+        if (candidate == 0 || ini[candidate - 1] == '\n') {
+            start = candidate;
+            break;
+        }
+        searchFrom = candidate + 1;
+    }
+    if (start == std::string::npos) {
+        return std::string();
+    }
+    size_t nextHeading = ini.find("\n[env:", start + std::strlen(envHeading));
+    return ini.substr(start, nextHeading == std::string::npos ? std::string::npos : nextHeading - start);
 }
 
 }  // namespace
@@ -201,8 +234,10 @@ void test_esp32c3_dev_env_disables_tls(void) {
     TEST_ASSERT_TRUE_MESSAGE(
         contains(ini, "[env:esp32c3_dev]"),
         "esp32c3 platformio.ini must declare an esp32c3_dev local-dev override env");
+
+    std::string devSection = extractEnvSection(ini, "[env:esp32c3_dev]");
     TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "-DHPW_USE_TLS=0"),
+        contains(devSection, "-DHPW_USE_TLS=0"),
         "esp32c3_dev env must override back to -DHPW_USE_TLS=0 (plaintext WiFiClient) for "
         "local development against a non-HTTPS backend");
 }
@@ -213,8 +248,10 @@ void test_esp32c6_dev_env_disables_tls(void) {
     TEST_ASSERT_TRUE_MESSAGE(
         contains(ini, "[env:esp32c6_dev]"),
         "esp32c6 platformio.ini must declare an esp32c6_dev local-dev override env");
+
+    std::string devSection = extractEnvSection(ini, "[env:esp32c6_dev]");
     TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "-DHPW_USE_TLS=0"),
+        contains(devSection, "-DHPW_USE_TLS=0"),
         "esp32c6_dev env must override back to -DHPW_USE_TLS=0 (plaintext WiFiClient) for "
         "local development against a non-HTTPS backend");
 }
