@@ -6,7 +6,7 @@
 # Prerequisites: npx nx build api  (populates apps/api/dist/)
 # Auth: gcloud auth application-default login  (on host, one-time)
 
-FROM google/cloud-sdk:445-alpine AS gcloud
+FROM google/cloud-sdk:584.0.0-alpine AS gcloud
 
 FROM node:22-alpine
 
