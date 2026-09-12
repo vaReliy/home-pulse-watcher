@@ -555,3 +555,7 @@ Migrated from slash commands to interactive Reply/Inline keyboards, implemented 
 ### Power Sensing v2
 
 Implemented ADC-based sensing with ADC hysteresis, firmware confirmation (~400 ms), and server-side notification debounce (5 s) to eliminate grid flapping noise.
+
+### Security
+
+- **Audited compute default SA for GCP's auto-granted project `roles/editor`.** Follows up on the least-privilege service-account split above, which revoked the compute default SA's app-specific bindings but never checked for this pre-existing, platform-auto-granted role. Live IAM policy could not be queried in the sandboxed environment (the available service account intentionally lacks Resource Manager Admin permissions — least-privilege working as designed), so a defensive, idempotent `gcloud projects remove-iam-policy-binding ... --role=roles/editor` revoke was added to `scripts/gcloud-bootstrap.sh` mirroring the existing `secretmanager.secretAccessor` revoke pattern on the same `RUNTIME_SA`; safe no-op if the role was never granted or already revoked. `roles/run.builder` (granted earlier in the script) already covers the Cloud Build source-deploy path, so no CI/CD gap opens. Documented GCP's auto-grant behavior and the revoke rationale in `PROJECT_CONTEXT.md`. Live verification (`gcloud projects get-iam-policy $PROJECT_ID --flatten=...`) still needs to be run once by an operator with IAM Admin rights against the actual project, ideally right after the next bootstrap-script invocation.

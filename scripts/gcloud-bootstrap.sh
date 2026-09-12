@@ -220,6 +220,15 @@ gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
   --role="roles/secretmanager.secretAccessor" \
   --quiet 2>/dev/null || warn "secretmanager.secretAccessor not found on Compute Engine SA (already revoked or never granted)"
 
+# Revoke auto-granted Editor role (GCP default at project creation)
+# The compute default SA only needs roles/run.builder for Cloud Build CI/CD.
+# Editor role (if present from project creation) is overpermissioned and must be revoked
+# to maintain least-privilege posture. This is safe & idempotent even if never granted.
+gcloud projects remove-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:$RUNTIME_SA" \
+  --role="roles/editor" \
+  --quiet 2>/dev/null || warn "roles/editor not found on Compute Engine SA (already revoked, never granted, or auto-grant disabled)"
+
 ok "Revoked old RUNTIME_SA project-level role grants"
 
 # --------------- Step 6: Set up Workload Identity Federation ---------------
