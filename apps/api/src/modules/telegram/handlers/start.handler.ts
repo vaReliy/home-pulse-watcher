@@ -3,26 +3,24 @@ import type {
   CreateUserService,
   GetUserByTelegramIdService,
 } from '@home-pulse-watcher/application';
-import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
+import {
+  DomainError,
+  DomainErrorCode,
+  maskTrailing,
+} from '@home-pulse-watcher/shared';
 import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { TranslationService } from '../i18n/index.js';
 import { buildMainMenuKeyboard } from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
-/** Number of trailing characters of a Telegram user ID kept when logging. */
-const MASKED_TELEGRAM_ID_VISIBLE_CHARS = 4;
-
 /**
- * Truncates a Telegram numeric user ID for log output, keeping only the last
- * {@link MASKED_TELEGRAM_ID_VISIBLE_CHARS} characters. A Telegram ID is a
- * stable per-user identifier (PII) and must never be logged in full — see
- * docs/KNOWLEDGE_INBOX.md "Debug-log PII redaction".
+ * Truncates a Telegram numeric user ID for log output, keeping only its
+ * last 4 characters. A Telegram ID is a stable per-user identifier (PII)
+ * and must never be logged in full — see docs/KNOWLEDGE_INBOX.md
+ * "Debug-log PII redaction".
  */
 function maskTelegramId(telegramId: string): string {
-  if (telegramId.length <= MASKED_TELEGRAM_ID_VISIBLE_CHARS) {
-    return '***';
-  }
-  return `...${telegramId.slice(-MASKED_TELEGRAM_ID_VISIBLE_CHARS)}`;
+  return maskTrailing(telegramId);
 }
 
 /**

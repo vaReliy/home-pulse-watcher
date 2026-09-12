@@ -879,31 +879,9 @@ describe('HmacAuthGuard', () => {
       assertMaskedNotRaw();
     });
 
-    it('falls back to *** for a MAC header at/under the visible-chars threshold (maskMac short-input branch)', async () => {
-      const repo = createMockRepository();
-      const guard = new HmacAuthGuard(repo, createMissingReflector());
-
-      // 4-char header hits maskMac's `mac.length <= MASKED_MAC_VISIBLE_CHARS`
-      // fallback branch — never exercised by any other test, which all use
-      // full-length (17-char) MAC strings.
-      const shortMac = 'ABCD';
-      const oldTimestamp = Math.floor(Date.now() / 1000) - 600;
-      const request = createMockRequest({
-        headers: {
-          'x-device-mac': shortMac,
-          'x-timestamp': String(oldTimestamp),
-          'x-signature': 'a'.repeat(64),
-        },
-      });
-      const context = createMockContext(request);
-
-      await guard.canActivate(context).catch(() => undefined);
-
-      expect(warnSpy).toHaveBeenCalled();
-      const combined = warnSpy.mock.calls.map((c) => String(c[0])).join('\n');
-      expect(combined).not.toContain(shortMac);
-      expect(combined).toContain('***');
-    });
+    // The *** short-input fallback branch itself is covered once, by
+    // maskTrailing's own spec in libs/shared — no need to re-exercise it
+    // through every call site.
   });
 
   describe('encryption key issues', () => {

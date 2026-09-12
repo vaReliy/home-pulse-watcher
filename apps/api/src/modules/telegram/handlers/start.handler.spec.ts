@@ -181,32 +181,9 @@ describe('StartHandler', () => {
       expect(combined).toContain('...4321');
     });
 
-    it('masks a short Telegram ID with the *** fallback instead of throwing/leaking it', async () => {
-      const shortTelegramId = 42;
-      const createUserService = createMockCreateUserService();
-      const getUserByTelegramId = createMockGetUserByTelegramId();
-      getUserByTelegramId.run.mockResolvedValue({ data: null });
-      createUserService.run.mockResolvedValue({ data: mockUser });
-
-      const handler = new StartHandler(
-        createUserService as unknown as CreateUserService,
-        getUserByTelegramId as unknown as GetUserByTelegramIdService,
-        translationService,
-      );
-
-      const ctx = {
-        from: { id: shortTelegramId, username: 'testuser' },
-        reply: jest.fn(),
-      } as unknown as TelegramContext;
-      await handler.handle(ctx);
-
-      expect(logSpy).toHaveBeenCalled();
-      for (const call of logSpy.mock.calls) {
-        expect(String(call[0])).not.toContain(String(shortTelegramId));
-      }
-      const combined = logSpy.mock.calls.map((c) => String(c[0])).join('\n');
-      expect(combined).toContain('***');
-    });
+    // The *** short-input fallback branch itself is covered once, by
+    // maskTrailing's own spec in libs/shared — no need to re-exercise it
+    // through every call site.
   });
 
   it('replies ERROR_GENERIC on unexpected error from CreateUserService', async () => {

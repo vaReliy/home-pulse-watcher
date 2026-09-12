@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { NotificationRecipient } from '@home-pulse-watcher/application';
 import { NotificationDispatcher } from './notification-dispatcher.js';
 import { DEFAULT_LOCALE, DEFAULT_TIMEZONE } from '../i18n/locale.config.js';
@@ -144,6 +145,149 @@ describe('NotificationDispatcher', () => {
       } finally {
         jest.useRealTimers();
       }
+    });
+  });
+
+  describe('recipient ID log masking (PII)', () => {
+    const longChatId = '987654321';
+    const longUserId = '123456789';
+    let debugSpy: jest.SpyInstance;
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation();
+      warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    });
+
+    afterEach(() => {
+      debugSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
+    it('masks the chatId when logging a successful send', async () => {
+      const dispatcher = new NotificationDispatcher();
+      const sendMessage = jest.fn().mockResolvedValue({});
+      const bot = { telegram: { sendMessage } } as unknown as Parameters<
+        NotificationDispatcher['dispatch']
+      >[0];
+
+      const recipients = [
+        makeRecipient({ userId: longUserId, chatId: longChatId }),
+      ];
+
+      await dispatcher.dispatch(bot, recipients, () => ({ text: 'hi' }));
+
+      expect(debugSpy).toHaveBeenCalled();
+      const combined = debugSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(combined).not.toContain(longChatId);
+      expect(combined).toContain('...4321');
+    });
+
+    it('masks the userId when logging a failed send', async () => {
+      const dispatcher = new NotificationDispatcher();
+      const sendMessage = jest
+        .fn()
+        .mockRejectedValue(new Error('blocked by user'));
+      const bot = { telegram: { sendMessage } } as unknown as Parameters<
+        NotificationDispatcher['dispatch']
+      >[0];
+
+      const recipients = [
+        makeRecipient({ userId: longUserId, chatId: longChatId }),
+      ];
+
+      await dispatcher.dispatch(bot, recipients, () => ({ text: 'hi' }));
+
+      expect(warnSpy).toHaveBeenCalled();
+      const combined = warnSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(combined).not.toContain(longUserId);
+      expect(combined).not.toContain(longChatId);
+      expect(combined).toContain('...6789');
+    });
+
+    // The *** short-input fallback branch itself is covered once, by
+    // maskTrailing's own spec in libs/shared — no need to re-exercise it
+    // through every call site.
+
+    it('redacts the bot token from a network-level FetchError stack/message', async () => {
+      const dispatcher = new NotificationDispatcher();
+      const fakeToken = '123456:FAKE_TOKEN_ABC';
+      const fetchError = new Error(
+        `request to https://api.telegram.org/bot${fakeToken}/sendMessage failed, reason: connect ETIMEDOUT`,
+      );
+      fetchError.name = 'FetchError';
+      fetchError.stack = `FetchError: request to https://api.telegram.org/bot${fakeToken}/sendMessage failed, reason: connect ETIMEDOUT\n    at ClientRequest.<anonymous>`;
+
+      const sendMessage = jest.fn().mockRejectedValue(fetchError);
+      const bot = { telegram: { sendMessage } } as unknown as Parameters<
+        NotificationDispatcher['dispatch']
+      >[0];
+
+      const recipients = [
+        makeRecipient({ userId: longUserId, chatId: longChatId }),
+      ];
+
+      await dispatcher.dispatch(bot, recipients, () => ({ text: 'hi' }));
+
+      expect(warnSpy).toHaveBeenCalled();
+      const combined = warnSpy.mock.calls
+        .map((c) => c.map(String).join(' '))
+        .join('\n');
+      expect(combined).not.toContain(fakeToken);
+      expect(combined).toContain('bot***');
+    });
+
+    it('redacts the bot token from message alone when stack is undefined', async () => {
+      const dispatcher = new NotificationDispatcher();
+      const fakeToken = '123456:FAKE_TOKEN_ABC';
+      const fetchError = new Error(
+        `request to https://api.telegram.org/bot${fakeToken}/sendMessage failed, reason: connect ETIMEDOUT`,
+      );
+      fetchError.name = 'FetchError';
+      fetchError.stack = undefined;
+
+      const sendMessage = jest.fn().mockRejectedValue(fetchError);
+      const bot = { telegram: { sendMessage } } as unknown as Parameters<
+        NotificationDispatcher['dispatch']
+      >[0];
+
+      const recipients = [
+        makeRecipient({ userId: longUserId, chatId: longChatId }),
+      ];
+
+      await dispatcher.dispatch(bot, recipients, () => ({ text: 'hi' }));
+
+      expect(warnSpy).toHaveBeenCalled();
+      const combined = warnSpy.mock.calls
+        .map((c) => c.map(String).join(' '))
+        .join('\n');
+      expect(combined).not.toContain(fakeToken);
+      expect(combined).toContain('bot***');
+    });
+
+    it('does not alter a normal error with no token-shaped substring', async () => {
+      const dispatcher = new NotificationDispatcher();
+      const plainError = new Error('blocked by user');
+      plainError.name = 'TelegramError';
+      plainError.stack = 'TelegramError: blocked by user\n    at somewhere';
+
+      const sendMessage = jest.fn().mockRejectedValue(plainError);
+      const bot = { telegram: { sendMessage } } as unknown as Parameters<
+        NotificationDispatcher['dispatch']
+      >[0];
+
+      const recipients = [
+        makeRecipient({ userId: longUserId, chatId: longChatId }),
+      ];
+
+      await dispatcher.dispatch(bot, recipients, () => ({ text: 'hi' }));
+
+      expect(warnSpy).toHaveBeenCalled();
+      const combined = warnSpy.mock.calls
+        .map((c) => c.map(String).join(' '))
+        .join('\n');
+      expect(combined).toContain('blocked by user');
+      expect(combined).not.toContain('bot***');
     });
   });
 });

@@ -65,3 +65,6 @@ Each completed task is one row in the table below.
 | 2026-09-12 | home-pulse-watcher | heading-presence-assert-line-start-match                                                                  | T0   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-09-13 | home-pulse-watcher | audit-hmac-guard-mac-logging                                                                              | T1   | 0      | 0/0/0/0           | 1       | no       | standard |
 | 2026-09-13 | home-pulse-watcher | mask-telegramid-in-start-handler-log                                                                      | T1   | 0      | 0/0/0/0           | 2       | no       | standard |
+| 2026-09-13 | home-pulse-watcher | mask-chatid-in-notification-dispatcher-log                                                                | T1   | 0      | 0/0/0/0           | 1       | no       | standard |
+| 2026-09-13 | home-pulse-watcher | extract-shared-mask-trailing-util                                                                         | T1   | 0      | 0/0/0/0           | 0       | no       | standard |
+| 2026-09-13 | home-pulse-watcher | redact-bot-token-from-fetch-error-stack                                                                   | T1   | 0      | 0/0/0/0           | 0       | no       | standard |

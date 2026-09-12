@@ -13,6 +13,7 @@ import {
   AuthenticationError,
   AuthenticationErrorCode,
   decryptDeviceSecret,
+  maskTrailing,
 } from '@home-pulse-watcher/shared';
 import { REPOSITORY_TOKENS } from '../modules/repositories/repository.tokens.js';
 import {
@@ -26,20 +27,14 @@ const TIMESTAMP_TOLERANCE_SECONDS = 300;
 /** Uppercase MAC address format: AA:BB:CC:DD:EE:FF */
 const MAC_RE = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/;
 
-/** Number of trailing characters of a MAC address kept when logging. */
-const MASKED_MAC_VISIBLE_CHARS = 4;
-
 /**
- * Truncates a MAC address for log output, keeping only the last
- * {@link MASKED_MAC_VISIBLE_CHARS} characters. MAC addresses are PII-adjacent
- * (tie a log line to a specific physical device/household) and must never be
- * logged in full — see docs/KNOWLEDGE_INBOX.md "Debug-log PII redaction".
+ * Truncates a MAC address for log output, keeping only its last 4
+ * characters. MAC addresses are PII-adjacent (tie a log line to a specific
+ * physical device/household) and must never be logged in full — see
+ * docs/KNOWLEDGE_INBOX.md "Debug-log PII redaction".
  */
 function maskMac(mac: string): string {
-  if (mac.length <= MASKED_MAC_VISIBLE_CHARS) {
-    return '***';
-  }
-  return `...${mac.slice(-MASKED_MAC_VISIBLE_CHARS)}`;
+  return maskTrailing(mac);
 }
 
 /**
