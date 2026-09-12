@@ -122,19 +122,21 @@ describe('assertCallerHasRole', () => {
     function neverRuns(): void {
       const userDeviceRepo = createMockUserDeviceRepository();
 
-      // @ts-expect-error caller is required — omitting it must not compile,
-      // since that was the fail-open bypass this type closes.
+      // tsc reports the error on the offending argument's own line, so the
+      // directive must sit directly above that argument, not above the call.
       void assertCallerHasRole(
         userDeviceRepo,
+        // @ts-expect-error caller is required — omitting it must not compile,
+        // since that was the fail-open bypass this type closes.
         undefined,
         'device-1',
         DeviceRole.VIEWER,
         'device-1',
       );
 
-      // @ts-expect-error caller must be { id: string } | { system: true }
       void assertCallerHasRole(
         userDeviceRepo,
+        // @ts-expect-error caller must be { id: string } | { system: true }
         {},
         'device-1',
         DeviceRole.VIEWER,
