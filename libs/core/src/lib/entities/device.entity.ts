@@ -1,6 +1,7 @@
 import { PowerStatus } from '../types/power-status.enum.js';
 import { ReleaseChannel } from '../types/release-channel.enum.js';
 import { DeviceType } from '../types/device-type.enum.js';
+import { BoardType } from '../types/board-type.enum.js';
 
 /**
  * Device domain entity.
@@ -22,6 +23,8 @@ export class Device {
   readonly releaseChannel: ReleaseChannel;
   /** Hardware category set once at provisioning; never edited afterward. */
   readonly deviceType: DeviceType;
+  /** ESP32 board variant set once at provisioning; never edited afterward. */
+  readonly boardType: BoardType;
 
   constructor(props: {
     id: string;
@@ -35,6 +38,7 @@ export class Device {
     batteryVoltage: number | null;
     releaseChannel: ReleaseChannel;
     deviceType: DeviceType;
+    boardType: BoardType;
   }) {
     this.id = props.id;
     this.macAddress = props.macAddress;
@@ -47,6 +51,7 @@ export class Device {
     this.batteryVoltage = props.batteryVoltage;
     this.releaseChannel = props.releaseChannel;
     this.deviceType = props.deviceType;
+    this.boardType = props.boardType;
   }
 
   /** Returns true if this device has a UPS battery module (batteryVoltage is not null and not the 0 sentinel for "no reading"). */

@@ -13,6 +13,7 @@ import {
   AuthenticationError,
   AuthenticationErrorCode,
   decryptDeviceSecret,
+  maskTrailing,
 } from '@home-pulse-watcher/shared';
 import { REPOSITORY_TOKENS } from '../modules/repositories/repository.tokens.js';
 import {
@@ -25,6 +26,16 @@ const TIMESTAMP_TOLERANCE_SECONDS = 300;
 
 /** Uppercase MAC address format: AA:BB:CC:DD:EE:FF */
 const MAC_RE = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/;
+
+/**
+ * Truncates a MAC address for log output, keeping only its last 4
+ * characters. MAC addresses are PII-adjacent (tie a log line to a specific
+ * physical device/household) and must never be logged in full — see
+ * docs/KNOWLEDGE_INBOX.md "Debug-log PII redaction".
+ */
+function maskMac(mac: string): string {
+  return maskTrailing(mac);
+}
 
 /**
  * Guard that verifies HMAC signatures from ESP32 devices.
@@ -86,7 +97,7 @@ export class HmacAuthGuard implements CanActivate {
     const timestampDiff = Math.abs(now - timestampNum);
     if (timestampDiff > TIMESTAMP_TOLERANCE_SECONDS) {
       this.logger.warn(
-        `EXPIRED_TIMESTAMP: mac=${mac} diff=${timestampDiff}s (tolerance=${TIMESTAMP_TOLERANCE_SECONDS}s) device=${timestampNum} server=${now}`,
+        `EXPIRED_TIMESTAMP: mac=${maskMac(mac.toUpperCase())} diff=${timestampDiff}s (tolerance=${TIMESTAMP_TOLERANCE_SECONDS}s) device=${timestampNum} server=${now}`,
       );
       throw new AuthenticationError(
         'Request timestamp expired or too far in the future',
@@ -98,7 +109,7 @@ export class HmacAuthGuard implements CanActivate {
     const normalizedMac = mac.toUpperCase();
 
     if (!MAC_RE.test(normalizedMac)) {
-      this.logger.warn(`INVALID_MAC_FORMAT: mac=${normalizedMac}`);
+      this.logger.warn(`INVALID_MAC_FORMAT: mac=${maskMac(normalizedMac)}`);
       throw new AuthenticationError(
         'Invalid MAC address format',
         AuthenticationErrorCode.INVALID_CREDENTIALS,
@@ -108,7 +119,7 @@ export class HmacAuthGuard implements CanActivate {
     const device = await this.deviceRepository.findByMacAddress(normalizedMac);
 
     if (!device) {
-      this.logger.warn(`DEVICE_NOT_FOUND: mac=${normalizedMac}`);
+      this.logger.warn(`DEVICE_NOT_FOUND: mac=${maskMac(normalizedMac)}`);
       throw new AuthenticationError(
         'Device not found',
         AuthenticationErrorCode.INVALID_CREDENTIALS,
@@ -149,7 +160,7 @@ export class HmacAuthGuard implements CanActivate {
       const msg =
         err instanceof Error ? err.message : 'Canonical builder error';
       this.logger.warn(
-        `CANONICAL_BUILD_FAILED: mac=${normalizedMac} reason=${msg}`,
+        `CANONICAL_BUILD_FAILED: mac=${maskMac(normalizedMac)} reason=${msg}`,
       );
       throw new AuthenticationError(
         'Invalid signature',
@@ -171,7 +182,7 @@ export class HmacAuthGuard implements CanActivate {
       sigBuffer.length !== expectedBuffer.length ||
       !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
     ) {
-      this.logger.warn(`INVALID_SIGNATURE: mac=${normalizedMac}`);
+      this.logger.warn(`INVALID_SIGNATURE: mac=${maskMac(normalizedMac)}`);
       throw new AuthenticationError(
         'Invalid signature',
         AuthenticationErrorCode.INVALID_CREDENTIALS,

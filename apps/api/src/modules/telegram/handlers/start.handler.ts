@@ -3,11 +3,25 @@ import type {
   CreateUserService,
   GetUserByTelegramIdService,
 } from '@home-pulse-watcher/application';
-import { DomainError, DomainErrorCode } from '@home-pulse-watcher/shared';
+import {
+  DomainError,
+  DomainErrorCode,
+  maskTrailing,
+} from '@home-pulse-watcher/shared';
 import { SERVICE_TOKENS } from '../../services/service.tokens.js';
 import { TranslationService } from '../i18n/index.js';
 import { buildMainMenuKeyboard } from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
+
+/**
+ * Truncates a Telegram numeric user ID for log output, keeping only its
+ * last 4 characters. A Telegram ID is a stable per-user identifier (PII)
+ * and must never be logged in full — see docs/KNOWLEDGE_INBOX.md
+ * "Debug-log PII redaction".
+ */
+function maskTelegramId(telegramId: string): string {
+  return maskTrailing(telegramId);
+}
 
 /**
  * Handles /start command - user registration.
@@ -61,7 +75,9 @@ export class StartHandler {
         parse_mode: 'MarkdownV2',
         ...buildMainMenuKeyboard(msgs),
       });
-      this.logger.log(`New user registered: ${telegramId}`);
+      this.logger.log(
+        `New user registered: ${maskTelegramId(telegramId.toString())}`,
+      );
     } catch (error) {
       if (
         error instanceof DomainError &&

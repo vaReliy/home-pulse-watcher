@@ -1,3 +1,4 @@
+import { DeviceRole } from '@home-pulse-watcher/core';
 import { TranslationService } from '../i18n/index.js';
 import {
   buildMainMenuKeyboard,
@@ -6,6 +7,9 @@ import {
   buildTimezoneKeyboard,
   buildCheckStatusButton,
   buildViewHistoryButton,
+  buildDeviceManageKeyboard,
+  buildDeviceActionKeyboard,
+  buildDeleteConfirmKeyboard,
 } from './keyboard.builder.js';
 
 describe('Keyboard Builders', () => {
@@ -142,6 +146,93 @@ describe('Keyboard Builders', () => {
       for (const data of allCallbackData) {
         expect(Buffer.byteLength(data, 'utf8')).toBeLessThan(64);
       }
+    });
+  });
+
+  describe('buildDeviceManageKeyboard', () => {
+    const deviceId = '11111111-1111-1111-1111-111111111111';
+
+    it('should have one row per device with dev:menu: callback', () => {
+      const kb = buildDeviceManageKeyboard(msgsUk, [
+        { id: deviceId, label: 'Kitchen' },
+      ]);
+      const buttons = kb.reply_markup.inline_keyboard;
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0][0]).toEqual(
+        expect.objectContaining({ callback_data: `dev:menu:${deviceId}` }),
+      );
+    });
+
+    it('should render empty keyboard for no devices', () => {
+      const kb = buildDeviceManageKeyboard(msgsUk, []);
+      expect(kb.reply_markup.inline_keyboard).toHaveLength(0);
+    });
+
+    it('should keep callback data under 64 bytes for a UUID device id', () => {
+      const kb = buildDeviceManageKeyboard(msgsUk, [
+        { id: deviceId, label: 'Kitchen' },
+      ]);
+      const data = (
+        kb.reply_markup.inline_keyboard[0][0] as { callback_data: string }
+      ).callback_data;
+      expect(Buffer.byteLength(data, 'utf8')).toBeLessThan(64);
+    });
+  });
+
+  describe('buildDeviceActionKeyboard', () => {
+    const deviceId = '11111111-1111-1111-1111-111111111111';
+
+    it('VIEWER sees no action buttons', () => {
+      const kb = buildDeviceActionKeyboard(msgsUk, deviceId, DeviceRole.VIEWER);
+      expect(kb.reply_markup.inline_keyboard).toHaveLength(0);
+    });
+
+    it('EDITOR sees only Rename', () => {
+      const kb = buildDeviceActionKeyboard(msgsUk, deviceId, DeviceRole.EDITOR);
+      const buttons = kb.reply_markup.inline_keyboard.flat();
+      expect(buttons).toHaveLength(1);
+      expect(buttons[0]).toEqual(
+        expect.objectContaining({
+          callback_data: `dev:rename:${deviceId}`,
+        }),
+      );
+    });
+
+    it('OWNER sees Rename, Rotate Secret, Request OTA Check, Delete', () => {
+      const kb = buildDeviceActionKeyboard(msgsUk, deviceId, DeviceRole.OWNER);
+      const cbData = kb.reply_markup.inline_keyboard
+        .flat()
+        .map((b) => (b as { callback_data: string }).callback_data);
+      expect(cbData).toEqual([
+        `dev:rename:${deviceId}`,
+        `dev:rotate:${deviceId}`,
+        `dev:ota:${deviceId}`,
+        `dev:delete:ask:${deviceId}`,
+      ]);
+    });
+
+    it('all callback data stays under 64 bytes for a UUID device id', () => {
+      const kb = buildDeviceActionKeyboard(msgsUk, deviceId, DeviceRole.OWNER);
+      for (const button of kb.reply_markup.inline_keyboard.flat()) {
+        const data = (button as { callback_data: string }).callback_data;
+        expect(Buffer.byteLength(data, 'utf8')).toBeLessThan(64);
+      }
+    });
+  });
+
+  describe('buildDeleteConfirmKeyboard', () => {
+    it('should have Yes/Cancel buttons with dev:delete:yes/no callbacks', () => {
+      const deviceId = '11111111-1111-1111-1111-111111111111';
+      const kb = buildDeleteConfirmKeyboard(msgsUk, deviceId);
+      const buttons = kb.reply_markup.inline_keyboard[0];
+      expect(buttons).toEqual([
+        expect.objectContaining({
+          callback_data: `dev:delete:yes:${deviceId}`,
+        }),
+        expect.objectContaining({
+          callback_data: `dev:delete:no:${deviceId}`,
+        }),
+      ]);
     });
   });
 });

@@ -1,5 +1,14 @@
-import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
-import { NotFoundError, ValidationError } from '@home-pulse-watcher/shared';
+import type {
+  IDeviceRepository,
+  IUserDeviceRepository,
+  Device,
+} from '@home-pulse-watcher/core';
+import { DeviceRole, UserDevice } from '@home-pulse-watcher/core';
+import {
+  DomainErrorCode,
+  NotFoundError,
+  ValidationError,
+} from '@home-pulse-watcher/shared';
 import { RequestOtaForceCheckService } from './request-ota-force-check.service.js';
 
 describe('RequestOtaForceCheckService', () => {
@@ -27,13 +36,32 @@ describe('RequestOtaForceCheckService', () => {
     requestOtaForceCheck: jest.fn(),
   });
 
+  const createMockUserDeviceRepository =
+    (): jest.Mocked<IUserDeviceRepository> => ({
+      findByUserAndDevice: jest.fn(),
+      findByUserId: jest.fn(),
+      findByDeviceId: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      exists: jest.fn(),
+      countByDeviceId: jest.fn(),
+    });
+
   describe('by id', () => {
     it('should set the flag for the device found by id', async () => {
       const mockRepo = createMockRepository();
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
       mockRepo.findById.mockResolvedValue(mockDevice);
 
-      const service = new RequestOtaForceCheckService(mockRepo);
-      const result = await service.run({ id: 'device-123' }, {});
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
+      );
+      const result = await service.run(
+        { id: 'device-123', caller: { system: true } },
+        {},
+      );
 
       expect(mockRepo.findById).toHaveBeenCalledWith('device-123');
       expect(mockRepo.requestOtaForceCheck).toHaveBeenCalledWith('device-123');
@@ -44,10 +72,17 @@ describe('RequestOtaForceCheckService', () => {
   describe('by macAddress', () => {
     it('should normalize MAC to uppercase and set the flag', async () => {
       const mockRepo = createMockRepository();
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
       mockRepo.findByMacAddress.mockResolvedValue(mockDevice);
 
-      const service = new RequestOtaForceCheckService(mockRepo);
-      await service.run({ macAddress: 'aa:bb:cc:dd:ee:ff' }, {});
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
+      );
+      await service.run(
+        { macAddress: 'aa:bb:cc:dd:ee:ff', caller: { system: true } },
+        {},
+      );
 
       expect(mockRepo.findByMacAddress).toHaveBeenCalledWith(
         'AA:BB:CC:DD:EE:FF',
@@ -59,21 +94,150 @@ describe('RequestOtaForceCheckService', () => {
   describe('error handling', () => {
     it('should throw ValidationError when neither id nor macAddress provided', async () => {
       const mockRepo = createMockRepository();
-      const service = new RequestOtaForceCheckService(mockRepo);
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
+      );
 
-      await expect(service.run({}, {})).rejects.toThrow(ValidationError);
+      await expect(
+        service.run({ caller: { system: true } }, {}),
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should throw NotFoundError when device does not exist', async () => {
       const mockRepo = createMockRepository();
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
       mockRepo.findById.mockResolvedValue(null);
 
-      const service = new RequestOtaForceCheckService(mockRepo);
-
-      await expect(service.run({ id: 'missing-device' }, {})).rejects.toThrow(
-        NotFoundError,
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
       );
+
+      await expect(
+        service.run({ id: 'missing-device', caller: { system: true } }, {}),
+      ).rejects.toThrow(NotFoundError);
       expect(mockRepo.requestOtaForceCheck).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('role enforcement', () => {
+    it('should allow the caller when role is OWNER', async () => {
+      const mockRepo = createMockRepository();
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
+      mockRepo.findById.mockResolvedValue(mockDevice);
+      mockUserDeviceRepo.findByUserAndDevice.mockResolvedValue(
+        new UserDevice({
+          userId: 'user-1',
+          deviceId: 'device-123',
+          customName: null,
+          role: DeviceRole.OWNER,
+        }),
+      );
+
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
+      );
+
+      await service.run({ id: 'device-123', caller: { id: 'user-1' } }, {});
+
+      expect(mockRepo.requestOtaForceCheck).toHaveBeenCalledWith('device-123');
+    });
+
+    it('should deny the caller when role is EDITOR (below OWNER)', async () => {
+      const mockRepo = createMockRepository();
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
+      mockRepo.findById.mockResolvedValue(mockDevice);
+      mockUserDeviceRepo.findByUserAndDevice.mockResolvedValue(
+        new UserDevice({
+          userId: 'user-1',
+          deviceId: 'device-123',
+          customName: null,
+          role: DeviceRole.EDITOR,
+        }),
+      );
+
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
+      );
+
+      await expect(
+        service.run({ id: 'device-123', caller: { id: 'user-1' } }, {}),
+      ).rejects.toMatchObject({ code: DomainErrorCode.FORBIDDEN_ROLE });
+      expect(mockRepo.requestOtaForceCheck).not.toHaveBeenCalled();
+    });
+
+    it('should skip the role check when caller is { system: true } (CLI bypass)', async () => {
+      const mockRepo = createMockRepository();
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
+      mockRepo.findById.mockResolvedValue(mockDevice);
+
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
+      );
+
+      await service.run({ id: 'device-123', caller: { system: true } }, {});
+
+      expect(mockUserDeviceRepo.findByUserAndDevice).not.toHaveBeenCalled();
+      expect(mockRepo.requestOtaForceCheck).toHaveBeenCalledWith('device-123');
+    });
+
+    it('should deny the caller with NotFoundError (not FORBIDDEN_ROLE) when no membership exists', async () => {
+      const mockRepo = createMockRepository();
+      const mockUserDeviceRepo = createMockUserDeviceRepository();
+      mockRepo.findById.mockResolvedValue(mockDevice);
+      mockUserDeviceRepo.findByUserAndDevice.mockResolvedValue(null);
+
+      const service = new RequestOtaForceCheckService(
+        mockRepo,
+        mockUserDeviceRepo,
+      );
+
+      await expect(
+        service.run({ id: 'device-123', caller: { id: 'user-1' } }, {}),
+      ).rejects.toThrow(NotFoundError);
+      expect(mockRepo.requestOtaForceCheck).not.toHaveBeenCalled();
+    });
+
+    it('should produce the same NotFoundError for a real device with zero membership as for a nonexistent device (enumeration resistance)', async () => {
+      const mockRepoA = createMockRepository();
+      const mockUserDeviceRepoA = createMockUserDeviceRepository();
+      mockRepoA.findById.mockResolvedValue(null);
+      const serviceA = new RequestOtaForceCheckService(
+        mockRepoA,
+        mockUserDeviceRepoA,
+      );
+      let nonexistentError: unknown;
+      try {
+        await serviceA.run({ id: 'device-123', caller: { system: true } }, {});
+      } catch (error) {
+        nonexistentError = error;
+      }
+
+      const mockRepoB = createMockRepository();
+      const mockUserDeviceRepoB = createMockUserDeviceRepository();
+      mockRepoB.findById.mockResolvedValue(mockDevice);
+      mockUserDeviceRepoB.findByUserAndDevice.mockResolvedValue(null);
+      const serviceB = new RequestOtaForceCheckService(
+        mockRepoB,
+        mockUserDeviceRepoB,
+      );
+      let noMembershipError: unknown;
+      try {
+        await serviceB.run({ id: 'device-123', caller: { id: 'user-1' } }, {});
+      } catch (error) {
+        noMembershipError = error;
+      }
+
+      expect(noMembershipError).toBeInstanceOf(NotFoundError);
+      expect(nonexistentError).toBeInstanceOf(NotFoundError);
+      expect((noMembershipError as NotFoundError).message).toBe(
+        (nonexistentError as NotFoundError).message,
+      );
     });
   });
 });

@@ -335,10 +335,16 @@ This project uses [vaReliy/claude-ts](https://github.com/vaReliy/claude-ts) — 
     - [x] Firmware Logic: `httpUpdate` integration with white LED status and auto-rollback protection
     - [x] Admin Tools: `firmware:upload` CLI command
   - [ ] 5.7: Telegram Admin UI & Role Management
+    - [x] Access Control: Owner/Editor/Viewer roles enforced in the Application layer (`assertCallerHasRole()`)
+      - [x] RBAC enforcement in 4/6 services (rename, delete, rotate-secret, request-OTA-check via bot)
+      - [ ] Remaining: link-device / unlink-device still CLI-only
+    - [x] Fleet Autonomy (partial overlap)
+      - [x] Remote OTA trigger: `device:request-ota-check` CLI + `forceOtaCheck` response field
+      - [x] Enhanced device status: `/devices` endpoint shows `Device.firmwareVersion`
+      - [x] Admin tools: `firmware:list` CLI, `UploadFirmwareService`, `/admin/firmware` HTTP route (browser-based upload)
+      - [x] Device type tracking: `Device.deviceType` field (`UPS` | `MAINS`, set at provisioning)
     - [ ] Admin Tools: Implementation of `device:upgrade` CLI command
-    - [ ] Access Control: Implementation of Owner and Editor roles (RBAC)
-    - [ ] Remote Control: Commands for remote reboot, OTA triggers, and device settings via bot
-    - [ ] Status Reporting: Enhanced status templates with firmware versioning and system health
+    - [ ] Remote Control: Commands for remote reboot and device settings via bot
 
 ## 📋 Changelog
 

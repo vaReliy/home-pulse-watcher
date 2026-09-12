@@ -5,6 +5,7 @@ import type {
   IUserRepository,
   User,
 } from '@home-pulse-watcher/core';
+import { DeviceRole } from '@home-pulse-watcher/core';
 import {
   DomainError,
   DomainErrorCode,
@@ -14,12 +15,17 @@ import {
   type ServiceContext,
 } from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
+import {
+  assertCallerHasRole,
+  type Caller,
+} from './assert-caller-has-role.util.js';
 
 export interface UnlinkDeviceFromUserInput {
   telegramId?: string;
   userId?: string;
   mac?: string;
   deviceId?: string;
+  caller: Caller;
 }
 
 export interface UnlinkDeviceFromUserOutput {
@@ -46,6 +52,7 @@ export class UnlinkDeviceFromUserService extends BaseService<
       userId: ['string'],
       mac: ['string'],
       deviceId: ['string'],
+      caller: 'required',
     };
   }
 
@@ -65,8 +72,21 @@ export class UnlinkDeviceFromUserService extends BaseService<
       });
     }
 
-    const user = await this.resolveUser(params);
     const device = await this.resolveDevice(params);
+
+    const deviceIdentifier = params.mac
+      ? `mac=${params.mac.toUpperCase()}`
+      : (params.deviceId as string);
+
+    await assertCallerHasRole(
+      this.userDeviceRepository,
+      params.caller,
+      device.id,
+      DeviceRole.OWNER,
+      deviceIdentifier,
+    );
+
+    const user = await this.resolveUser(params);
 
     const linked = await this.userDeviceRepository.exists(user.id, device.id);
     if (!linked) {

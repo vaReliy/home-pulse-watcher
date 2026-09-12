@@ -7,7 +7,7 @@
 # This Dockerfile is meant to be built and run by scripts/run-backup-in-docker.sh,
 # which handles env-sourcing and mounting credentials. Do not run directly.
 
-FROM google/cloud-sdk:slim
+FROM google/cloud-sdk:445-slim
 
 WORKDIR /app
 

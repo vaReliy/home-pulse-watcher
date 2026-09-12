@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { NotificationRecipient } from '@home-pulse-watcher/application';
+import { maskTrailing } from '@home-pulse-watcher/shared';
 import type { Telegraf } from 'telegraf';
 import { DEFAULT_LOCALE, DEFAULT_TIMEZONE } from '../i18n/locale.config.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
@@ -7,6 +8,37 @@ import type { TelegramContext } from '../types/telegram-context.type.js';
 /** Rate limiting constants for Telegram API (~30 msgs/sec ceiling). */
 const BATCH_SIZE = 25;
 const BATCH_DELAY_MS = 1000;
+
+/**
+ * Truncates a recipient identifier (Telegram chat ID or internal user ID) for
+ * log output, keeping only its last 4 characters. Both are PII-adjacent (tie
+ * a log line to a specific person) and must never be logged in full — see
+ * docs/KNOWLEDGE_INBOX.md "Debug-log PII redaction".
+ */
+function maskId(id: string): string {
+  return maskTrailing(id);
+}
+
+/**
+ * Matches a Telegraf bot token embedded in a URL path segment
+ * (`bot<digits>:<secret>`), e.g. `https://api.telegram.org/bot123:ABC/sendMessage`.
+ */
+const BOT_TOKEN_PATTERN = /bot\d+:[^/\s]+/gi;
+
+/**
+ * Redacts a Telegraf bot token from arbitrary error text before logging.
+ *
+ * Telegraf embeds the bot token in the request URL path, not a header. A
+ * network-level send failure (timeout/DNS/connection-reset) surfaces as a
+ * `node-fetch` `FetchError` whose `.message`/`.stack` is
+ * `request to ${url} failed, reason: ...` — so the raw stack/message can leak
+ * the token in plaintext. Telegram API-level errors (4xx/5xx) produce a safe
+ * `TelegramError` without the URL, but this is applied unconditionally since
+ * it's a no-op when no token pattern is present.
+ */
+function redactBotToken(value: string): string {
+  return value.replace(BOT_TOKEN_PATTERN, 'bot***');
+}
 
 /** A single Telegram send target within a locale/timezone group. */
 export interface DispatchRecipient {
@@ -108,11 +140,15 @@ export class NotificationDispatcher {
             parse_mode: 'MarkdownV2',
             ...(extra ?? {}),
           });
-          this.logger.debug(`Notification sent to user ${chatId}`);
+          this.logger.debug(`Notification sent to user ${maskId(chatId)}`);
         } catch (error) {
+          const detail =
+            error instanceof Error
+              ? (error.stack ?? error.message)
+              : String(error);
           this.logger.warn(
-            `Failed to send notification to user ${userId}`,
-            error instanceof Error ? error.stack : String(error),
+            `Failed to send notification to user ${maskId(userId)}`,
+            redactBotToken(detail),
           );
         }
       });

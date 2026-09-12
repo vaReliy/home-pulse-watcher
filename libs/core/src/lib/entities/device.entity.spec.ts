@@ -1,5 +1,10 @@
 import { Device } from './device.entity.js';
-import { PowerStatus, ReleaseChannel, DeviceType } from '../types/index.js';
+import {
+  PowerStatus,
+  ReleaseChannel,
+  DeviceType,
+  BoardType,
+} from '../types/index.js';
 
 describe('Device', () => {
   const createDevice = (
@@ -17,6 +22,7 @@ describe('Device', () => {
       batteryVoltage: null,
       releaseChannel: ReleaseChannel.STABLE,
       deviceType: DeviceType.MAINS,
+      boardType: BoardType.ESP32_C6,
       ...overrides,
     });
 
@@ -30,6 +36,8 @@ describe('Device', () => {
       expect(device.label).toBe('Kitchen');
       expect(device.lastStatus).toBe(PowerStatus.ON);
       expect(device.lastSeenAt).toBeInstanceOf(Date);
+      expect(device.deviceType).toBe(DeviceType.MAINS);
+      expect(device.boardType).toBe(BoardType.ESP32_C6);
     });
 
     it('should create device with null optional fields', () => {

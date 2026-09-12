@@ -46,6 +46,7 @@ export class RotateDeviceSecretCommand extends CommandRunner {
         {
           macAddress: options.mac,
           id: options.deviceId,
+          caller: { system: true },
         },
         {
           config: { deviceSecretEncryptionKey },

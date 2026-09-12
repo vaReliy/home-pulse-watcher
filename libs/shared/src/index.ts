@@ -9,3 +9,6 @@ export * from './lib/types/index.js';
 
 // Crypto
 export * from './lib/crypto/index.js';
+
+// Logging
+export * from './lib/logging/index.js';

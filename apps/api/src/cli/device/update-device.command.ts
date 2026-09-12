@@ -36,6 +36,7 @@ export class UpdateDeviceCommand extends CommandRunner {
         macAddress: options.mac,
         id: options.deviceId,
         label: options.label,
+        caller: { system: true },
       });
 
       const { device } = result.data;

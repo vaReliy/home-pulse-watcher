@@ -16,6 +16,10 @@ import {
   type ServiceContext,
 } from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
+import {
+  assertCallerHasRole,
+  type Caller,
+} from './assert-caller-has-role.util.js';
 
 export interface LinkDeviceToUserInput {
   telegramId?: string;
@@ -23,6 +27,7 @@ export interface LinkDeviceToUserInput {
   mac?: string;
   deviceId?: string;
   role?: string;
+  caller: Caller;
 }
 
 export interface LinkDeviceToUserOutput {
@@ -51,6 +56,7 @@ export class LinkDeviceToUserService extends BaseService<
       mac: ['string'],
       deviceId: ['string'],
       role: { one_of: ['OWNER', 'EDITOR', 'VIEWER'] },
+      caller: 'required',
     };
   }
 
@@ -73,6 +79,40 @@ export class LinkDeviceToUserService extends BaseService<
     const user = await this.resolveUser(params);
     const device = await this.resolveDevice(params);
 
+    const existingMemberships = await this.userDeviceRepository.findByDeviceId(
+      device.id,
+    );
+    const isFirstLink = existingMemberships.length === 0;
+    let role: DeviceRole;
+
+    if (isFirstLink) {
+      // First link is self-registration: force VIEWER for non-system callers,
+      // regardless of any requested role param. Defense-in-depth — the
+      // caller-role check below is deliberately skipped on this path, so a
+      // future untrusted caller (bot/REST) must not be able to self-grant
+      // OWNER via a forwarded role param. The trusted CLI (`caller: {
+      // system: true }`) bypasses this and honors an explicit `--role`,
+      // matching its trusted-bypass treatment elsewhere in this file.
+      role =
+        'system' in params.caller
+          ? ((params.role as DeviceRole) ?? DeviceRole.VIEWER)
+          : DeviceRole.VIEWER;
+    } else {
+      role = (params.role as DeviceRole) ?? DeviceRole.VIEWER;
+
+      const deviceIdentifier = params.mac
+        ? `mac=${params.mac.toUpperCase()}`
+        : (params.deviceId as string);
+
+      await assertCallerHasRole(
+        this.userDeviceRepository,
+        params.caller,
+        device.id,
+        DeviceRole.OWNER,
+        deviceIdentifier,
+      );
+    }
+
     const alreadyLinked = await this.userDeviceRepository.exists(
       user.id,
       device.id,
@@ -83,8 +123,6 @@ export class LinkDeviceToUserService extends BaseService<
         `Device ${device.macAddress} is already linked to user ${user.id}`,
       );
     }
-
-    const role = (params.role as DeviceRole) ?? DeviceRole.VIEWER;
 
     const userDevice = await this.userDeviceRepository.create({
       userId: user.id,

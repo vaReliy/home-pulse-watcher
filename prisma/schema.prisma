@@ -35,6 +35,7 @@ model Device {
   releaseChannel   String       @default("STABLE")
   otaForceCheckRequested Boolean @default(false)
   deviceType       String       @default("MAINS")
+  boardType        String
   users           UserDevice[]
   events          PowerEvent[]
 }

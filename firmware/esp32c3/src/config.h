@@ -88,10 +88,6 @@
 // SOS cooldown (avoid spam during prolonged outage)
 #define SOS_COOLDOWN_MS 900000            // 15 min
 
-// Buffer Sizes
-#define HMAC_PAYLOAD_BUFFER 128     // "MAC:TIMESTAMP:STATUS" buffer
-#define JSON_BODY_BUFFER 192        // HTTP POST body buffer (enlarged for batteryVoltage field)
-
 // ADC Configuration
 #define ADC_RESOLUTION_BITS 12      // 12-bit ADC (0-4095 range)
 

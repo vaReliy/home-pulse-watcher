@@ -1,5 +1,5 @@
 import * as crypto from 'node:crypto';
-import { ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
@@ -720,6 +720,168 @@ describe('HmacAuthGuard', () => {
         code: AuthenticationErrorCode.INVALID_CREDENTIALS,
       });
     });
+  });
+
+  describe('MAC address log masking (PII)', () => {
+    const fullMac = 'AA:BB:CC:DD:EE:FF';
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    const assertMaskedNotRaw = (): void => {
+      expect(warnSpy).toHaveBeenCalled();
+      for (const call of warnSpy.mock.calls) {
+        const message = String(call[0]);
+        expect(message).not.toContain(fullMac);
+      }
+      const combined = warnSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(combined).toContain('...E:FF');
+    };
+
+    it('masks the MAC on EXPIRED_TIMESTAMP', async () => {
+      const repo = createMockRepository();
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const oldTimestamp = Math.floor(Date.now() / 1000) - 600;
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': fullMac,
+          'x-timestamp': String(oldTimestamp),
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      await guard.canActivate(context).catch(() => undefined);
+
+      assertMaskedNotRaw();
+    });
+
+    it('uppercases a lowercase MAC header before masking on EXPIRED_TIMESTAMP (log-format consistency with the other 4 sites)', async () => {
+      const repo = createMockRepository();
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const lowercaseMac = fullMac.toLowerCase();
+      const oldTimestamp = Math.floor(Date.now() / 1000) - 600;
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': lowercaseMac,
+          'x-timestamp': String(oldTimestamp),
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      await guard.canActivate(context).catch(() => undefined);
+
+      expect(warnSpy).toHaveBeenCalled();
+      const combined = warnSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(combined).not.toContain(lowercaseMac);
+      // Masked suffix must be uppercase, matching the other 4 log sites
+      // (which mask the already-uppercased normalizedMac).
+      expect(combined).toContain('...E:FF');
+      expect(combined).not.toContain('...e:ff');
+    });
+
+    it('masks the MAC on INVALID_MAC_FORMAT', async () => {
+      const repo = createMockRepository();
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': 'gg:hh:ii:jj:kk:ll',
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      await guard.canActivate(context).catch(() => undefined);
+
+      expect(warnSpy).toHaveBeenCalled();
+      for (const call of warnSpy.mock.calls) {
+        expect(String(call[0])).not.toContain(fullMac);
+      }
+    });
+
+    it('masks the MAC on DEVICE_NOT_FOUND', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(null);
+      const guard = new HmacAuthGuard(repo, createMissingReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': fullMac,
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+      });
+      const context = createMockContext(request);
+
+      await guard.canActivate(context).catch(() => undefined);
+
+      assertMaskedNotRaw();
+    });
+
+    it('masks the MAC on CANONICAL_BUILD_FAILED', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(mockDevice);
+      const throwingBuilder: CanonicalBuilder = () => {
+        throw new Error('bad body');
+      };
+      const guard = new HmacAuthGuard(
+        repo,
+        createCanonicalReflector(throwingBuilder),
+      );
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': fullMac,
+          'x-timestamp': timestamp,
+          'x-signature': 'a'.repeat(64),
+        },
+        body: {},
+      });
+      const context = createMockContext(request);
+
+      await guard.canActivate(context).catch(() => undefined);
+
+      assertMaskedNotRaw();
+    });
+
+    it('masks the MAC on INVALID_SIGNATURE', async () => {
+      const repo = createMockRepository();
+      repo.findByMacAddress.mockResolvedValue(mockDevice);
+      const guard = new HmacAuthGuard(repo, createStatusReflector());
+
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const request = createMockRequest({
+        headers: {
+          'x-device-mac': fullMac,
+          'x-timestamp': timestamp,
+          'x-signature': 'b'.repeat(64),
+        },
+        body: { status: 1 },
+      });
+      const context = createMockContext(request);
+
+      await guard.canActivate(context).catch(() => undefined);
+
+      assertMaskedNotRaw();
+    });
+
+    // The *** short-input fallback branch itself is covered once, by
+    // maskTrailing's own spec in libs/shared — no need to re-exercise it
+    // through every call site.
   });
 
   describe('encryption key issues', () => {

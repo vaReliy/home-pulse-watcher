@@ -35,6 +35,7 @@ export class RequestOtaCheckCommand extends CommandRunner {
       const result = await this.requestOtaForceCheckService.run({
         macAddress: options.mac,
         id: options.deviceId,
+        caller: { system: true },
       });
 
       const { device } = result.data;

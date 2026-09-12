@@ -111,9 +111,11 @@ export const serviceProviders: Provider[] = [
   },
   {
     provide: SERVICE_TOKENS.UPDATE_DEVICE,
-    useFactory: (deviceRepo: IDeviceRepository) =>
-      new UpdateDeviceService(deviceRepo),
-    inject: [REPOSITORY_TOKENS.DEVICE],
+    useFactory: (
+      deviceRepo: IDeviceRepository,
+      userDeviceRepo: IUserDeviceRepository,
+    ) => new UpdateDeviceService(deviceRepo, userDeviceRepo),
+    inject: [REPOSITORY_TOKENS.DEVICE, REPOSITORY_TOKENS.USER_DEVICE],
   },
   {
     provide: SERVICE_TOKENS.DELETE_DEVICE,
@@ -130,15 +132,19 @@ export const serviceProviders: Provider[] = [
   },
   {
     provide: SERVICE_TOKENS.ROTATE_DEVICE_SECRET,
-    useFactory: (deviceRepo: IDeviceRepository) =>
-      new RotateDeviceSecretService(deviceRepo),
-    inject: [REPOSITORY_TOKENS.DEVICE],
+    useFactory: (
+      deviceRepo: IDeviceRepository,
+      userDeviceRepo: IUserDeviceRepository,
+    ) => new RotateDeviceSecretService(deviceRepo, userDeviceRepo),
+    inject: [REPOSITORY_TOKENS.DEVICE, REPOSITORY_TOKENS.USER_DEVICE],
   },
   {
     provide: SERVICE_TOKENS.REQUEST_OTA_FORCE_CHECK,
-    useFactory: (deviceRepo: IDeviceRepository) =>
-      new RequestOtaForceCheckService(deviceRepo),
-    inject: [REPOSITORY_TOKENS.DEVICE],
+    useFactory: (
+      deviceRepo: IDeviceRepository,
+      userDeviceRepo: IUserDeviceRepository,
+    ) => new RequestOtaForceCheckService(deviceRepo, userDeviceRepo),
+    inject: [REPOSITORY_TOKENS.DEVICE, REPOSITORY_TOKENS.USER_DEVICE],
   },
   {
     provide: SERVICE_TOKENS.LIST_USERS,

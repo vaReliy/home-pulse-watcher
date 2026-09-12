@@ -19,6 +19,7 @@ import type { TelegramContext } from './types/telegram-context.type.js';
 import { StartHandler } from './handlers/start.handler.js';
 import { StatusHandler } from './handlers/status.handler.js';
 import { DevicesHandler } from './handlers/devices.handler.js';
+import { DeviceActionsHandler } from './handlers/device-actions.handler.js';
 import { HelpHandler } from './handlers/help.handler.js';
 import { HistoryHandler } from './handlers/history.handler.js';
 import { SettingsHandler } from './handlers/settings.handler.js';
@@ -62,6 +63,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     private readonly startHandler: StartHandler,
     private readonly statusHandler: StatusHandler,
     private readonly devicesHandler: DevicesHandler,
+    private readonly deviceActionsHandler: DeviceActionsHandler,
     private readonly helpHandler: HelpHandler,
     private readonly historyHandler: HistoryHandler,
     private readonly settingsHandler: SettingsHandler,
@@ -156,6 +158,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.translationService.getAllButtonTexts('BUTTON_STATUS'),
       async (ctx) => {
         try {
+          if (await this.tryDeferToPendingRename(ctx as TelegramContext)) {
+            return;
+          }
           await this.withAuth(ctx as TelegramContext, () =>
             this.statusHandler.handle(ctx as TelegramContext),
           );
@@ -174,6 +179,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.translationService.getAllButtonTexts('BUTTON_DEVICES'),
       async (ctx) => {
         try {
+          if (await this.tryDeferToPendingRename(ctx as TelegramContext)) {
+            return;
+          }
           await this.withAuth(ctx as TelegramContext, () =>
             this.devicesHandler.handle(ctx as TelegramContext),
           );
@@ -192,6 +200,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.translationService.getAllButtonTexts('BUTTON_SETTINGS'),
       async (ctx) => {
         try {
+          if (await this.tryDeferToPendingRename(ctx as TelegramContext)) {
+            return;
+          }
           await this.withAuth(ctx as TelegramContext, () =>
             this.settingsHandler.handle(ctx as TelegramContext),
           );
@@ -210,6 +221,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.translationService.getAllButtonTexts('BUTTON_HELP'),
       async (ctx) => {
         try {
+          if (await this.tryDeferToPendingRename(ctx as TelegramContext)) {
+            return;
+          }
           // Attach user if registered (for locale-aware help)
           const telegramId = ctx.from?.id;
           if (telegramId) {
@@ -230,6 +244,40 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         }
       },
     );
+  }
+
+  /**
+   * Checks whether the caller has an active rename prompt pending and, if
+   * so, routes the incoming text there instead of letting the calling
+   * `.hears()` handler treat it as a button press. `.hears()` matches on
+   * exact button-label text and runs before the catch-all `.on('text')`
+   * handler, so without this guard a rename-in-progress user whose new
+   * device name happens to equal a localized button label (e.g. "Devices")
+   * would have their pending rename silently dropped until its TTL expires.
+   * Returns `false` (untouched) when there's no pending rename, or the text
+   * couldn't be routed, so the caller's normal handling proceeds unaffected.
+   */
+  private async tryDeferToPendingRename(
+    ctx: TelegramContext,
+  ): Promise<boolean> {
+    const telegramId = ctx.from?.id;
+    if (
+      !telegramId ||
+      !this.deviceActionsHandler.hasPendingRename(telegramId)
+    ) {
+      return false;
+    }
+
+    const { data: user } = await this.getUserByTelegramId.run({
+      telegramId: telegramId.toString(),
+    });
+    if (!user) return false;
+
+    const text =
+      ctx.message && 'text' in ctx.message ? ctx.message.text : undefined;
+    if (text === undefined) return false;
+
+    return this.deviceActionsHandler.tryHandleRenameText(ctx, user, text);
   }
 
   private setupActions(): void {
@@ -378,6 +426,115 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         });
       }
     });
+
+    this.setupDeviceActions();
+  }
+
+  /** Role-gated device-management actions: menu, rename, delete, rotate secret, OTA check. */
+  private setupDeviceActions(): void {
+    if (!this.bot) return;
+
+    this.bot.action(/^dev:menu:(.+)$/, async (ctx) => {
+      const deviceId = ctx.match[1];
+      await this.runDeviceAction(ctx as TelegramContext, 'device menu', () =>
+        this.deviceActionsHandler.handleMenu(ctx as TelegramContext, deviceId),
+      );
+    });
+
+    this.bot.action(/^dev:rename:(.+)$/, async (ctx) => {
+      const deviceId = ctx.match[1];
+      await this.runDeviceAction(ctx as TelegramContext, 'device rename', () =>
+        this.deviceActionsHandler.handleRenamePrompt(
+          ctx as TelegramContext,
+          deviceId,
+        ),
+      );
+    });
+
+    this.bot.action(/^dev:delete:ask:(.+)$/, async (ctx) => {
+      const deviceId = ctx.match[1];
+      await this.runDeviceAction(
+        ctx as TelegramContext,
+        'device delete confirm',
+        () =>
+          this.deviceActionsHandler.handleDeleteConfirm(
+            ctx as TelegramContext,
+            deviceId,
+          ),
+      );
+    });
+
+    this.bot.action(/^dev:delete:yes:(.+)$/, async (ctx) => {
+      const deviceId = ctx.match[1];
+      await this.runDeviceAction(
+        ctx as TelegramContext,
+        'device delete execute',
+        () =>
+          this.deviceActionsHandler.handleDeleteExecute(
+            ctx as TelegramContext,
+            deviceId,
+          ),
+      );
+    });
+
+    this.bot.action(/^dev:delete:no:(.+)$/, async (ctx) => {
+      await this.runDeviceAction(
+        ctx as TelegramContext,
+        'device delete cancel',
+        () =>
+          this.deviceActionsHandler.handleDeleteCancel(ctx as TelegramContext),
+      );
+    });
+
+    this.bot.action(/^dev:rotate:(.+)$/, async (ctx) => {
+      const deviceId = ctx.match[1];
+      await this.runDeviceAction(
+        ctx as TelegramContext,
+        'device rotate secret',
+        () =>
+          this.deviceActionsHandler.handleRotateSecret(
+            ctx as TelegramContext,
+            deviceId,
+          ),
+      );
+    });
+
+    this.bot.action(/^dev:ota:(.+)$/, async (ctx) => {
+      const deviceId = ctx.match[1];
+      await this.runDeviceAction(
+        ctx as TelegramContext,
+        'device OTA check',
+        () =>
+          this.deviceActionsHandler.handleOtaCheck(
+            ctx as TelegramContext,
+            deviceId,
+          ),
+      );
+    });
+  }
+
+  /**
+   * Shared wrapper for device-action callback queries: answers the callback,
+   * resolves/attaches the authenticated user via `withAuth`, and logs+swallows
+   * errors so a failure never surfaces a raw exception to the user.
+   */
+  private async runDeviceAction(
+    ctx: TelegramContext,
+    label: string,
+    handler: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await ctx.answerCbQuery();
+      await this.withAuth(ctx, handler);
+    } catch (error) {
+      this.logger.error(
+        `Error in ${label} action`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      await ctx.answerCbQuery().catch(() => {
+        /* already handled */
+      });
+    }
   }
 
   /** Catch-all: registered users sending unrecognized text get a nudge. */
@@ -393,6 +550,17 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           telegramId: telegramId.toString(),
         });
         if (!user) return; // Ignore unregistered users
+
+        const text =
+          ctx.message && 'text' in ctx.message ? ctx.message.text : undefined;
+        if (text !== undefined) {
+          const handled = await this.deviceActionsHandler.tryHandleRenameText(
+            ctx as TelegramContext,
+            user,
+            text,
+          );
+          if (handled) return;
+        }
 
         const userMsgs = this.translationService.getMessages(user.locale);
         await ctx.reply(userMsgs.UNKNOWN_COMMAND, {

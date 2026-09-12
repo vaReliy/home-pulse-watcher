@@ -74,8 +74,11 @@ export class TelegramController {
     }
 
     try {
+      // Message text may contain PII (locations, contact info, device secrets) — log
+      // length only, never raw content, even at debug level.
+      const textLength = req.body?.message?.text?.length ?? 0;
       this.logger.debug(
-        `Webhook update received: update_id=${req.body?.update_id}, text=${req.body?.message?.text}`,
+        `Webhook update received: update_id=${req.body?.update_id}, textLength=${textLength}`,
       );
       await this.bot.handleUpdate(req.body);
       res.sendStatus(HttpStatus.OK);

@@ -1,0 +1,13 @@
+## Extends rules/cts/workflow.md — new section: `security-scanner` Trigger Is Content-Based, Not Size-Based
+
+A T1 task file justified skipping `security-scanner` on a single-conditional change ("cheap-override exception") even though the change directly modified RBAC role-assignment logic. `rules/cts/workflow.md`'s stage-3 trigger for `security-scanner` (auth/validation/secrets/HMAC/external-input touch) is purely content-based — it has no size/complexity carve-out. The "cheap-override exception" is a _different_ mechanism entirely: it only governs whether `## Emit as Task` findings get fixed inline vs. task-filed, not whether the scanner stage runs at all. `reviewer` caught the misapplication during gate review. Watch for future task files reusing this same conflation to justify skipping the scanner on small-but-auth-touching diffs.
+
+## Extends rules/cts/workflow.md — new section: Additive-Only IAM Least-Privilege Migrations Need a Symmetric Revoke Check
+
+An IAM migration split a shared `RUNTIME_SA` (compute default SA) into three dedicated least-privilege SAs with correctly-scoped new grants, but added zero `remove-iam-policy-binding`/revoke calls — `security-scanner` caught that the old `RUNTIME_SA` kept every one of its original bindings (project-wide `secretmanager.secretAccessor`, backup-bucket `storage.objectCreator`, OTA-bucket `storage.objectViewer`, `run.invoker`), all now duplicated by the new SAs, defeating the stated least-privilege goal — especially risky since GCP's compute default SA commonly also carries the auto-granted project `Editor` role. The task file's acceptance checkbox ("old RUNTIME_SA roles verified as no longer needed") was checked without any verification/revocation code backing it.
+
+**Security-scanner checklist addition**: for any IAM-migration changeset, grep the diff for `remove-iam-policy-binding` count vs. number of new SAs created — if it's 0 while the old SA(s) previously held equivalent grants, the migration is additive-only and half-done regardless of how minimal the new grants are.
+
+## Extends rules/cts/workflow.md — new section: Quality-Gate Typecheck Requirement
+
+A green Jest run is not a typecheck. This repo's Jest runs via `@swc/jest`, which strips types without checking them — `@ts-expect-error` regression tests and most other compile-time-only errors are invisible to `nx test`. `tester(verify)` must run `nx typecheck` (or the project's equivalent typecheck target) in addition to the test suite before signing off a spec-only or type-contract change as done; skipping it let a broken `@ts-expect-error` placement cascade into a downstream project's typecheck failure undetected by the test run alone.

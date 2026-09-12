@@ -4,6 +4,7 @@ import type {
   Device,
   PowerStatus,
   DeviceType,
+  BoardType,
 } from '@home-pulse-watcher/core';
 import { DeviceType as DeviceTypeConst } from '@home-pulse-watcher/core';
 import { mapPrismaDeviceToEntity } from '../mappers/device.mapper.js';
@@ -43,6 +44,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
     encryptedSecret: string;
     label?: string | null;
     deviceType?: DeviceType;
+    boardType: BoardType;
   }): Promise<Device> {
     const device = await withPrismaError('Device', () =>
       this.prisma.device.create({
@@ -51,6 +53,7 @@ export class PrismaDeviceRepository implements IDeviceRepository {
           encryptedSecret: data.encryptedSecret,
           label: data.label ?? null,
           deviceType: data.deviceType ?? DeviceTypeConst.MAINS,
+          boardType: data.boardType,
         },
       }),
     );

@@ -4,6 +4,7 @@ import type {
   IPowerEventRepository,
   Device,
 } from '@home-pulse-watcher/core';
+import { DeviceRole } from '@home-pulse-watcher/core';
 import {
   NotFoundError,
   ValidationError,
@@ -11,10 +12,15 @@ import {
   type ServiceContext,
 } from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
+import {
+  assertCallerHasRole,
+  type Caller,
+} from './assert-caller-has-role.util.js';
 
 export interface DeleteDeviceInput {
   id?: string;
   macAddress?: string;
+  caller: Caller;
 }
 
 export interface DeleteDeviceOutput {
@@ -40,6 +46,7 @@ export class DeleteDeviceService extends BaseService<
     return {
       id: 'string',
       macAddress: 'macAddress',
+      caller: 'required',
     };
   }
 
@@ -63,10 +70,19 @@ export class DeleteDeviceService extends BaseService<
       );
     }
 
+    const identifier = params.id ?? params.macAddress ?? 'unknown';
+
     if (!device) {
-      const identifier = params.id ?? params.macAddress ?? 'unknown';
       throw new NotFoundError('Device', identifier);
     }
+
+    await assertCallerHasRole(
+      this.userDeviceRepository,
+      params.caller,
+      device.id,
+      DeviceRole.OWNER,
+      identifier,
+    );
 
     // Remove user-device links
     const userDevices = await this.userDeviceRepository.findByDeviceId(

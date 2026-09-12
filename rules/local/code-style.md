@@ -8,3 +8,7 @@ if (value != null && value > 0) { ... }   // required — value > 0 alone is a T
 ```
 
 Keep the explicit `!= null`/`!== null` guard any time the operand's type includes `null`/`undefined`. This pattern is not eligible for simplification in strict TS — don't attempt it even for boolean-only return values.
+
+## Extends rules/cts/code-style.md — new section: Configuration & Secrets
+
+A value that's a deterministic function of an existing input shouldn't become its own separate secret or env var. **Example**: `GCS_BACKUP_BUCKET` was initially added as its own required env var/GitHub secret, but its value is always `${PROJECT_ID}-backups` — fully derivable from the already-known/authenticated GCP project. Storing it separately created a manual-sync footgun (the secret could silently drift from what bootstrap actually created). **Fix**: compute it inline from the authenticated context (`gcloud config get-value project`) rather than duplicating it as configuration.

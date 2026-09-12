@@ -34,6 +34,7 @@ export class DeleteDeviceCommand extends CommandRunner {
       const result = await this.deleteDeviceService.run({
         macAddress: options.mac,
         id: options.deviceId,
+        caller: { system: true },
       });
 
       const { device, deletedLinksCount, deletedEventsCount } = result.data;

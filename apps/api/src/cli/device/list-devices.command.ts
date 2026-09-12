@@ -51,9 +51,11 @@ export class ListDevicesCommand extends CommandRunner {
         'ID'.padEnd(40) +
           'MAC Address'.padEnd(20) +
           'Label'.padEnd(20) +
-          'Status',
+          'Status'.padEnd(10) +
+          'Channel'.padEnd(10) +
+          'Firmware',
       );
-      console.log('-'.repeat(100));
+      console.log('-'.repeat(120));
 
       for (const device of devices) {
         const status = device.isOnline() ? 'ONLINE' : 'OFFLINE';
@@ -61,7 +63,9 @@ export class ListDevicesCommand extends CommandRunner {
           device.id.padEnd(40) +
             device.macAddress.padEnd(20) +
             (device.label ?? '-').padEnd(20) +
-            status,
+            status.padEnd(10) +
+            device.releaseChannel.padEnd(10) +
+            (device.firmwareVersion ?? '-'),
         );
       }
 

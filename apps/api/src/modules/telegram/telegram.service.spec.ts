@@ -11,6 +11,7 @@ import { TranslationService } from './i18n/index';
 import type { StartHandler } from './handlers/start.handler';
 import type { StatusHandler } from './handlers/status.handler';
 import type { DevicesHandler } from './handlers/devices.handler';
+import type { DeviceActionsHandler } from './handlers/device-actions.handler';
 import type { HelpHandler } from './handlers/help.handler';
 import type { HistoryHandler } from './handlers/history.handler';
 import type { SettingsHandler } from './handlers/settings.handler';
@@ -46,6 +47,17 @@ describe('TelegramService', () => {
     startHandler: {} as StartHandler,
     statusHandler: { handle: jest.fn() } as unknown as StatusHandler,
     devicesHandler: { handle: jest.fn() } as unknown as DevicesHandler,
+    deviceActionsHandler: {
+      handleMenu: jest.fn(),
+      handleRenamePrompt: jest.fn(),
+      hasPendingRename: jest.fn().mockReturnValue(false),
+      tryHandleRenameText: jest.fn().mockResolvedValue(false),
+      handleDeleteConfirm: jest.fn(),
+      handleDeleteExecute: jest.fn(),
+      handleDeleteCancel: jest.fn(),
+      handleRotateSecret: jest.fn(),
+      handleOtaCheck: jest.fn(),
+    } as unknown as jest.Mocked<DeviceActionsHandler>,
     helpHandler: { handle: jest.fn() } as unknown as HelpHandler,
     historyHandler: { handle: jest.fn() } as unknown as HistoryHandler,
     settingsHandler: { handle: jest.fn() } as unknown as SettingsHandler,
@@ -81,6 +93,7 @@ describe('TelegramService', () => {
       deps.startHandler,
       deps.statusHandler,
       deps.devicesHandler,
+      deps.deviceActionsHandler,
       deps.helpHandler,
       deps.historyHandler,
       deps.settingsHandler,
@@ -104,6 +117,7 @@ describe('TelegramService', () => {
       deps.startHandler,
       deps.statusHandler,
       deps.devicesHandler,
+      deps.deviceActionsHandler,
       deps.helpHandler,
       deps.historyHandler,
       deps.settingsHandler,
@@ -142,8 +156,10 @@ describe('TelegramService', () => {
       // 4 hears: status, devices, settings, help
       expect(bot.hears).toHaveBeenCalledTimes(4);
 
-      // 6 actions: check_status, view_history, settings:language, settings:timezone, /^lang:/, /^tz:/
-      expect(bot.action).toHaveBeenCalledTimes(6);
+      // 13 actions: check_status, view_history, settings:language, settings:timezone,
+      // /^lang:/, /^tz:/, /^dev:menu:/, /^dev:rename:/, /^dev:delete:ask:/,
+      // /^dev:delete:yes:/, /^dev:delete:no:/, /^dev:rotate:/, /^dev:ota:/
+      expect(bot.action).toHaveBeenCalledTimes(13);
 
       // 1 catch-all text handler
       expect(bot.on).toHaveBeenCalledWith('text', expect.any(Function));
@@ -385,6 +401,354 @@ describe('TelegramService', () => {
       await textCallback(ctx);
 
       expect(ctx.reply).not.toHaveBeenCalled();
+    });
+
+    it('delegates to deviceActionsHandler.tryHandleRenameText and skips UNKNOWN_COMMAND when handled', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+      (
+        deps.deviceActionsHandler.tryHandleRenameText as jest.Mock
+      ).mockResolvedValue(true);
+
+      await service.onModuleInit();
+
+      const textCallback = (bot.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'text',
+      )[1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: 'New Kitchen Label' },
+      } as unknown as TelegramContext;
+      await textCallback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.tryHandleRenameText,
+      ).toHaveBeenCalledWith(ctx, mockUser, 'New Kitchen Label');
+      expect(ctx.reply).not.toHaveBeenCalled();
+    });
+
+    it('falls through to UNKNOWN_COMMAND when no pending rename', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+      (
+        deps.deviceActionsHandler.tryHandleRenameText as jest.Mock
+      ).mockResolvedValue(false);
+
+      await service.onModuleInit();
+
+      const textCallback = (bot.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'text',
+      )[1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: 'random text' },
+      } as unknown as TelegramContext;
+      await textCallback(ctx);
+
+      const msgs = new TranslationService().getMessages(mockUser.locale);
+      expect(ctx.reply).toHaveBeenCalledWith(
+        msgs.UNKNOWN_COMMAND,
+        expect.objectContaining({ parse_mode: 'MarkdownV2' }),
+      );
+    });
+  });
+
+  describe('pending-rename guard on .hears() handlers', () => {
+    it('routes text matching a button label to tryHandleRenameText, not the button handler, when a rename is pending', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+      (deps.deviceActionsHandler.hasPendingRename as jest.Mock).mockReturnValue(
+        true,
+      );
+      (
+        deps.deviceActionsHandler.tryHandleRenameText as jest.Mock
+      ).mockResolvedValue(true);
+
+      await service.onModuleInit();
+
+      const buttonText = new TranslationService().getAllButtonTexts(
+        'BUTTON_DEVICES',
+      )[0];
+      // 2nd hears() call registers the devices button (status, devices, settings, help)
+      const devicesCallback = (bot.hears as jest.Mock).mock
+        .calls[1][1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: buttonText },
+      } as unknown as TelegramContext;
+
+      await devicesCallback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.tryHandleRenameText,
+      ).toHaveBeenCalledWith(ctx, mockUser, buttonText);
+      expect(deps.devicesHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('falls through to the button handler when no rename is pending', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+      (deps.deviceActionsHandler.hasPendingRename as jest.Mock).mockReturnValue(
+        false,
+      );
+
+      await service.onModuleInit();
+
+      const buttonText = new TranslationService().getAllButtonTexts(
+        'BUTTON_DEVICES',
+      )[0];
+      const devicesCallback = (bot.hears as jest.Mock).mock
+        .calls[1][1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: buttonText },
+      } as unknown as TelegramContext;
+
+      await devicesCallback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.tryHandleRenameText,
+      ).not.toHaveBeenCalled();
+      expect(deps.devicesHandler.handle).toHaveBeenCalledWith(ctx);
+    });
+
+    it('defers to tryHandleRenameText instead of the status handler when a rename is pending', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+      (deps.deviceActionsHandler.hasPendingRename as jest.Mock).mockReturnValue(
+        true,
+      );
+      (
+        deps.deviceActionsHandler.tryHandleRenameText as jest.Mock
+      ).mockResolvedValue(true);
+
+      await service.onModuleInit();
+
+      const buttonText = new TranslationService().getAllButtonTexts(
+        'BUTTON_STATUS',
+      )[0];
+      // 1st hears() call registers the status button.
+      const statusCallback = (bot.hears as jest.Mock).mock
+        .calls[0][1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: buttonText },
+      } as unknown as TelegramContext;
+
+      await statusCallback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.tryHandleRenameText,
+      ).toHaveBeenCalledWith(ctx, mockUser, buttonText);
+      expect(deps.statusHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('defers to tryHandleRenameText instead of the settings handler when a rename is pending', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+      (deps.deviceActionsHandler.hasPendingRename as jest.Mock).mockReturnValue(
+        true,
+      );
+      (
+        deps.deviceActionsHandler.tryHandleRenameText as jest.Mock
+      ).mockResolvedValue(true);
+
+      await service.onModuleInit();
+
+      const buttonText = new TranslationService().getAllButtonTexts(
+        'BUTTON_SETTINGS',
+      )[0];
+      // 3rd hears() call registers the settings button.
+      const settingsCallback = (bot.hears as jest.Mock).mock
+        .calls[2][1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: buttonText },
+      } as unknown as TelegramContext;
+
+      await settingsCallback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.tryHandleRenameText,
+      ).toHaveBeenCalledWith(ctx, mockUser, buttonText);
+      expect(deps.settingsHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('defers to tryHandleRenameText instead of the help handler when a rename is pending, without attaching a user first', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.deviceActionsHandler.hasPendingRename as jest.Mock).mockReturnValue(
+        true,
+      );
+      (
+        deps.deviceActionsHandler.tryHandleRenameText as jest.Mock
+      ).mockResolvedValue(true);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const buttonText = new TranslationService().getAllButtonTexts(
+        'BUTTON_HELP',
+      )[0];
+      // 4th hears() call registers the help button.
+      const helpCallback = (bot.hears as jest.Mock).mock
+        .calls[3][1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: buttonText },
+      } as unknown as TelegramContext;
+
+      await helpCallback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.tryHandleRenameText,
+      ).toHaveBeenCalledWith(ctx, mockUser, buttonText);
+      expect(deps.helpHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('falls through to the help handler (with user attach) when no rename is pending', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.deviceActionsHandler.hasPendingRename as jest.Mock).mockReturnValue(
+        false,
+      );
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const buttonText = new TranslationService().getAllButtonTexts(
+        'BUTTON_HELP',
+      )[0];
+      const helpCallback = (bot.hears as jest.Mock).mock
+        .calls[3][1] as HearsCallback;
+      const ctx = {
+        ...createMockCtx(),
+        message: { text: buttonText },
+      } as unknown as TelegramContext;
+
+      await helpCallback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.tryHandleRenameText,
+      ).not.toHaveBeenCalled();
+      expect(deps.helpHandler.handle).toHaveBeenCalledWith(ctx);
+    });
+  });
+
+  describe('device actions', () => {
+    const findAction = (
+      bot: jest.Mocked<Telegraf<TelegramContext>>,
+      pattern: string,
+    ): ActionCallback =>
+      (bot.action as jest.Mock).mock.calls.find(
+        (call) => String(call[0]) === pattern,
+      )[1] as ActionCallback;
+
+    const createActionCtx = (deviceId: string): TelegramContext =>
+      ({
+        ...createMockCtx(),
+        match: ['dev:menu:' + deviceId, deviceId],
+      }) as unknown as TelegramContext;
+
+    it('dev:menu: calls handleMenu with the authenticated user and device id', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const callback = findAction(bot, '/^dev:menu:(.+)$/');
+      const ctx = createActionCtx('device-1');
+      await callback(ctx);
+
+      expect(ctx.answerCbQuery).toHaveBeenCalled();
+      expect(deps.deviceActionsHandler.handleMenu).toHaveBeenCalledWith(
+        ctx,
+        'device-1',
+      );
+    });
+
+    it('dev:delete:yes: calls handleDeleteExecute', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const callback = findAction(bot, '/^dev:delete:yes:(.+)$/');
+      const ctx = createActionCtx('device-1');
+      await callback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.handleDeleteExecute,
+      ).toHaveBeenCalledWith(ctx, 'device-1');
+    });
+
+    it('dev:delete:no: calls handleDeleteCancel without a device id', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: mockUser,
+      });
+
+      await service.onModuleInit();
+
+      const callback = findAction(bot, '/^dev:delete:no:(.+)$/');
+      const ctx = createActionCtx('device-1');
+      await callback(ctx);
+
+      expect(deps.deviceActionsHandler.handleDeleteCancel).toHaveBeenCalledWith(
+        ctx,
+      );
+    });
+
+    it('does not call the handler when caller is unregistered (withAuth guard)', async () => {
+      const bot = createMockBot();
+      const { service, deps } = createServiceWithDeps(bot, defaultConfig);
+      (deps.getUserByTelegramId.run as jest.Mock).mockResolvedValue({
+        data: null,
+      });
+
+      await service.onModuleInit();
+
+      const callback = findAction(bot, '/^dev:rotate:(.+)$/');
+      const ctx = createActionCtx('device-1');
+      await callback(ctx);
+
+      expect(
+        deps.deviceActionsHandler.handleRotateSecret,
+      ).not.toHaveBeenCalled();
+      const msgs = new TranslationService().getMessages();
+      expect(ctx.reply).toHaveBeenCalledWith(
+        msgs.NOT_REGISTERED,
+        expect.objectContaining({ parse_mode: 'MarkdownV2' }),
+      );
     });
   });
 

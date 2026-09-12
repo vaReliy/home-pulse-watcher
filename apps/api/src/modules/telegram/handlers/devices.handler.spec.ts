@@ -3,7 +3,11 @@ import type {
   GetUserDevicesOverviewOutput,
 } from '@home-pulse-watcher/application';
 import type { User, Device } from '@home-pulse-watcher/core';
-import { PowerStatus, DeviceRole } from '@home-pulse-watcher/core';
+import {
+  PowerStatus,
+  DeviceRole,
+  ReleaseChannel,
+} from '@home-pulse-watcher/core';
 import { DevicesHandler } from './devices.handler.js';
 import { TranslationService } from '../i18n/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
@@ -30,6 +34,7 @@ describe('DevicesHandler', () => {
       lastStatus: PowerStatus.ON,
       lastSeenAt: new Date(),
       firmwareVersion,
+      releaseChannel: ReleaseChannel.STABLE,
       isOnline: () => true,
     }) as Device;
 
@@ -146,6 +151,92 @@ describe('DevicesHandler', () => {
       expect(message).toContain(msgs.FIRMWARE_LABEL);
       expect(message).toContain(msgs.FIRMWARE_VERSION_UNKNOWN);
       expect(message).not.toContain('null');
+    });
+
+    it('renders releaseChannel alongside firmwareVersion', async () => {
+      const overviewService = createMockOverviewService();
+      mockRun(overviewService, {
+        devices: [
+          {
+            device: buildDevice('1.2.3'),
+            customName: null,
+            role: DeviceRole.OWNER,
+          },
+        ],
+        total: 1,
+      });
+
+      const handler = new DevicesHandler(
+        overviewService as unknown as GetUserDevicesOverviewService,
+        translationService,
+      );
+
+      const ctx = createMockContext(buildUser(locale));
+      await handler.handle(ctx);
+
+      const message = (ctx.reply as jest.Mock).mock.calls[0][0] as string;
+      expect(message).toContain(msgs.RELEASE_CHANNEL_LABEL);
+      expect(message).toContain(ReleaseChannel.STABLE);
+    });
+  });
+
+  describe('device-manage keyboard', () => {
+    it('shows a manage button for EDITOR/OWNER devices, omits it for VIEWER-only devices', async () => {
+      const overviewService = createMockOverviewService();
+      mockRun(overviewService, {
+        devices: [
+          {
+            device: { ...buildDevice('1.0.0'), id: 'device-editor' } as Device,
+            customName: null,
+            role: DeviceRole.EDITOR,
+          },
+        ],
+        total: 1,
+      });
+
+      const handler = new DevicesHandler(
+        overviewService as unknown as GetUserDevicesOverviewService,
+        translationService,
+      );
+
+      const ctx = createMockContext(buildUser('uk'));
+      await handler.handle(ctx);
+
+      const options = (ctx.reply as jest.Mock).mock.calls[0][1] as {
+        reply_markup: { inline_keyboard: { callback_data: string }[][] };
+      };
+      expect(options.reply_markup.inline_keyboard).toHaveLength(1);
+      expect(options.reply_markup.inline_keyboard[0][0].callback_data).toBe(
+        'dev:menu:device-editor',
+      );
+    });
+
+    it('falls back to the main menu keyboard when caller has VIEWER role only', async () => {
+      const overviewService = createMockOverviewService();
+      mockRun(overviewService, {
+        devices: [
+          {
+            device: buildDevice('1.0.0'),
+            customName: null,
+            role: DeviceRole.VIEWER,
+          },
+        ],
+        total: 1,
+      });
+
+      const handler = new DevicesHandler(
+        overviewService as unknown as GetUserDevicesOverviewService,
+        translationService,
+      );
+
+      const ctx = createMockContext(buildUser('uk'));
+      await handler.handle(ctx);
+
+      const options = (ctx.reply as jest.Mock).mock.calls[0][1] as {
+        reply_markup: { keyboard?: unknown; inline_keyboard?: unknown };
+      };
+      expect(options.reply_markup.keyboard).toBeDefined();
+      expect(options.reply_markup.inline_keyboard).toBeUndefined();
     });
   });
 

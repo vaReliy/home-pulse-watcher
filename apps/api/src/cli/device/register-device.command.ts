@@ -2,13 +2,14 @@ import { Inject, Logger } from '@nestjs/common';
 import { Command, CommandRunner, Option } from 'nest-commander';
 import type { RegisterDeviceService } from '@home-pulse-watcher/application';
 import { BaseError } from '@home-pulse-watcher/shared';
-import { DeviceType } from '@home-pulse-watcher/core';
+import { DeviceType, BoardType } from '@home-pulse-watcher/core';
 import { SERVICE_TOKENS } from '../../modules/services/services.module';
 
 interface RegisterDeviceOptions {
   mac: string;
   label?: string;
   deviceType?: DeviceType;
+  boardType: BoardType;
 }
 
 @Command({
@@ -40,6 +41,7 @@ export class RegisterDeviceCommand extends CommandRunner {
           macAddress: options.mac,
           label: options.label,
           deviceType: options.deviceType,
+          boardType: options.boardType,
         },
         {
           config: { deviceSecretEncryptionKey },
@@ -90,5 +92,15 @@ export class RegisterDeviceCommand extends CommandRunner {
   })
   parseDeviceType(val: string): DeviceType {
     return val.toUpperCase() as DeviceType;
+  }
+
+  @Option({
+    flags: '-b, --board-type <boardType>',
+    description:
+      'ESP32 board variant: esp32c3 or esp32c6. Required. Write-once at provisioning.',
+    required: true,
+  })
+  parseBoardType(val: string): BoardType {
+    return val as BoardType;
   }
 }

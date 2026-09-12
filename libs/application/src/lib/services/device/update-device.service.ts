@@ -1,4 +1,9 @@
-import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
+import type {
+  IDeviceRepository,
+  IUserDeviceRepository,
+  Device,
+} from '@home-pulse-watcher/core';
+import { DeviceRole } from '@home-pulse-watcher/core';
 import {
   NotFoundError,
   ValidationError,
@@ -6,23 +11,31 @@ import {
   type ServiceContext,
 } from '@home-pulse-watcher/shared';
 import { BaseService } from '../../base-service.js';
+import {
+  assertCallerHasRole,
+  type Caller,
+} from './assert-caller-has-role.util.js';
 
 export interface UpdateDeviceInput {
   id?: string;
   macAddress?: string;
   label: string;
+  caller: Caller;
 }
 
 export interface UpdateDeviceOutput {
   device: Device;
 }
 
-/** Updates device information (label). */
+/** Updates device information (label). Requires at least EDITOR role unless caller is `{ system: true }`. */
 export class UpdateDeviceService extends BaseService<
   UpdateDeviceInput,
   UpdateDeviceOutput
 > {
-  constructor(private readonly deviceRepository: IDeviceRepository) {
+  constructor(
+    private readonly deviceRepository: IDeviceRepository,
+    private readonly userDeviceRepository: IUserDeviceRepository,
+  ) {
     super();
   }
 
@@ -31,6 +44,7 @@ export class UpdateDeviceService extends BaseService<
       id: 'string',
       macAddress: 'macAddress',
       label: ['required', { max_length: 100 }],
+      caller: 'required',
     };
   }
 
@@ -54,10 +68,19 @@ export class UpdateDeviceService extends BaseService<
       );
     }
 
+    const identifier = params.id ?? params.macAddress ?? 'unknown';
+
     if (!device) {
-      const identifier = params.id ?? params.macAddress ?? 'unknown';
       throw new NotFoundError('Device', identifier);
     }
+
+    await assertCallerHasRole(
+      this.userDeviceRepository,
+      params.caller,
+      device.id,
+      DeviceRole.EDITOR,
+      identifier,
+    );
 
     const updated = await this.deviceRepository.update(device.id, {
       label: params.label,

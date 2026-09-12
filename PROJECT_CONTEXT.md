@@ -8,13 +8,13 @@
 
 **HomePulse Watcher** is a DIY, high-reliability IoT system that monitors household mains power and delivers instant Telegram alerts to users.
 
-| Field             | Value                                                |
-| ----------------- | ---------------------------------------------------- |
-| Current phase     | **Phase 5 — Production Hardening** (5.6 in progress) |
-| Active devices    | 2 (real users, live data)                            |
-| Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)            |
-| Codebase maturity | MVP — no legacy concerns; DB can be recreated        |
-| Stack type        | Nx monorepo, NestJS, Prisma, ESP32 firmware          |
+| Field             | Value                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| Current phase     | **Phase 5 — Production Hardening** (5.6 complete, 5.7 in progress) |
+| Active devices    | 2 (real users, live data)                                          |
+| Deployment        | Google Cloud Run + Neon.tech (PostgreSQL)                          |
+| Codebase maturity | MVP — no legacy concerns; DB can be recreated                      |
+| Stack type        | Nx monorepo, NestJS, Prisma, ESP32 firmware                        |
 
 ---
 
@@ -156,7 +156,8 @@ Two hardware configurations are supported. Both use identical ADC sensing. UPS i
 - SOS alert threshold: **3400 mV** (`BATTERY_VOLTAGE_LOW_MV`, `BATTERY_LOW_THRESHOLD_MV`)
 - SOS cooldown: 15 min (`SOS_COOLDOWN_MS`) — firmware only sends SOS when power is OFF
 - Backend emits `BATTERY_LOW_EVENT` when `batteryVoltage < 3400 && batteryVoltage > 0`
-- `/status` shows battery line for UPS devices: `🔋 Battery: 3.85V (79%)`
+- `/status` shows battery line for UPS devices: `🔋 Battery: 3.85V (79%)` — guarded with `batteryVoltage > 0` (sentinel: 0 mV is not a real reading; the formatter guard also covers null/undefined)
+- **Battery cache staleness**: `sendPowerStatus()` at boot and on status-change events read a cached `lastBatteryAdcValue` without refreshing — a reboot during outage (before first heartbeat) ships literal `0`. Fixed by sampling `readBatteryVoltage()` immediately before every `sendPowerStatus()` call site.
 - **No rebuild needed to switch hardware**: Single compiled binary per board (C3/C6) works for both Standard and UPS variants — the distinction is a captive-portal provisioning step
 
 #### Future Optimizations (TODO)
@@ -213,6 +214,45 @@ Credentials are stored in NVS (ESP32 non-volatile flash), not compiled in. No ha
 - All user-facing strings go through `TranslationService` — no hardcoded display text
 - Bot is optional: app degrades gracefully if `TELEGRAM_BOT_TOKEN` is absent
 
+### Role-Based Access Control (RBAC)
+
+`UserDevice.role` (`VIEWER < EDITOR < OWNER`, `UserDevice.hasAtLeastRole()`) is enforced in the Application layer via `assertCallerHasRole()` (`libs/application/src/lib/services/device/assert-caller-has-role.util.ts`), called from each service after resolving the target device.
+
+| Action                   | Minimum Role | Service                                      |
+| ------------------------ | ------------ | -------------------------------------------- |
+| View status / history    | VIEWER\*     | `GetDeviceService`, `GetPowerHistoryService` |
+| Rename / update settings | EDITOR       | `UpdateDeviceService`                        |
+| Unlink device from user  | OWNER        | `UnlinkDeviceFromUserService`                |
+| Delete device            | OWNER        | `DeleteDeviceService`                        |
+| Rotate device secret     | OWNER        | `RotateDeviceSecretService`                  |
+| Force OTA check          | OWNER        | `RequestOtaForceCheckService`                |
+| Link device to user      | OWNER\*\*    | `LinkDeviceToUserService`                    |
+
+\*Not yet enforced via `assertCallerHasRole()`. Both services take no `caller` parameter and implicitly rely on userId-scoped queries in the REST controller to prevent cross-user data access — deliberately deferred, will be enforced in roadmap 5.7.
+
+\*\*`LinkDeviceToUserService`'s gate is membership-existence-based, not the uniform "OWNER required" row it looks like at a glance: the **first** link to a device (zero existing `UserDevice` rows) skips the caller check entirely and defaults to `VIEWER` — this is self-registration, unchanged from pre-RBAC behavior. Every **subsequent** link requires the caller to hold OWNER on that device, for **any** requested role including `VIEWER` — deliberately stricter than "only block OWNER/EDITOR escalation," because gating VIEWER more weakly than OWNER/EDITOR on the same mutation would let a caller distinguish device/membership state by varying the requested role and observing which error comes back (an enumeration side-channel). `{ system: true }` (CLI) bypasses this on both first and non-first links. On the first-link path, for **non-system** callers the resulting role is forced to `VIEWER` in code regardless of any requested `role` param (not merely defaulted when omitted) — enforced defense-in-depth since `assertCallerHasRole` is skipped there, closing a gap where a future/compromised non-CLI caller (bot/REST) could pass `role: 'OWNER'` on self-registration. The trusted CLI (`caller: { system: true }`) is exempt from this forcing and continues to honor an explicit `--role` on first link — this is the documented way to bootstrap OWNER on a new device (see `docs/cli-reference.md`).
+
+- **Caller identity is required as a discriminated union (`{ id: string } | { system: true }`)** — omitting it is a TypeScript compile error. `{ system: true }` is an explicit bypass marker for trusted server-side callers (CLI commands only); `{ id: string }` triggers membership lookup via `IUserDeviceRepository.findByUserAndDevice()` + `UserDevice.hasAtLeastRole()` check. This design replaces an earlier optional-field pattern after security review flagged it as fail-open.
+- Denied actions throw `DomainError(FORBIDDEN_ROLE)` → HTTP 403, surfaced to Telegram users via the generic `ERROR_FORBIDDEN_ROLE` i18n string (uk/en) — never leaks which role was required.
+- **Telegram bot is the first real caller**: Roadmap 5.7 Phase B wires device-management actions into the bot (rename, delete, rotate-secret, request-OTA-check); every mutation now calls the Application service with `caller: { id: user.id }` (never `{ system: true }` from bot handlers — that bypass is CLI-only). Prior to this, only the CLI used these services with the `{ system: true }` bypass.
+
+#### Residual Asymmetry — Accepted Risk
+
+Device-mutation services (rotate-secret, update-device, delete-device, request-ota-force-check, link-device, unlink-device) use identical `NotFoundError` response for "device doesn't exist" vs "caller has zero membership". However a timing asymmetry persists:
+
+- Nonexistent device: 1 DB query (service's `findById`/`findByMacAddress` returns null immediately)
+- Zero membership: 2 DB queries for the five mutation services (rotate-device-secret, update-device, delete-device, request-ota-force-check, unlink-device-from-user) — `findById` succeeds, then `assertCallerHasRole` calls `userDeviceRepository.findByUserAndDevice()`; exception: `link-device-to-user` runs 3 queries (resolveDevice, then unconditional `findByDeviceId` for isFirstLink check, then `assertCallerHasRole`'s `findByUserAndDevice` on the non-first-link path)
+
+**Status (2026-09-11): Accepted, no code change.** Reasoning: Four of six services are now exposed to real Telegram users (commit `370f02a` — `update-device`, `delete-device`, `rotate-device-secret`, `request-ota-force-check` wired in task 2026-09-11-03-telegram-bot-device-actions.md, done). Only `link-device-to-user` and `unlink-device-from-user` remain CLI-only (hardening tracked separately in done tasks 2026-09-11-03-cap-first-link-role-to-viewer.md and 2026-09-11-04-unlink-device-not-linked-macaddress-leak.md; note: task numbering collision with the Telegram-wiring task despite different purposes). Despite live exposure, the risk is judged acceptable: statistical timing side-channels require many samples to distinguish over real network jitter, so this remains a low-severity residual signal despite being reachable now. Equalizing query counts would require touching 6 call sites with real complications — MAC-based lookups don't know `device.id` until `findByMacAddress` resolves (can't parallelize); `{ system: true }` trusted callers skip membership query entirely (would need special-casing); unconfirmed if `findByUserAndDevice` is safe to call with non-existent deviceId. Cost judged to exceed benefit.
+
+**Revisit trigger:** Revisit if (a) the query-count timing difference is ever shown to be practically distinguishable over real network conditions (not just theoretically exploitable in a lab), or (b) when `link-device-to-user` or `unlink-device-from-user` are wired to an untrusted-caller surface (currently CLI-only, the 2 remaining genuinely unexposed services).
+
+#### First-Link Self-Registration Oracle — Accepted, Low Severity
+
+`LinkDeviceToUserService` skips `assertCallerHasRole` on the first link (no existing membership) but enforces OWNER on any later link. A caller who already knows a device MAC can therefore tell "unclaimed" from "already owned" without holding any membership. Flagged by `security-scanner` on 2026-09-12 as LOW; this is the intentional self-registration UX and sits inside the documented enumeration carve-out ("only about a device the caller already knows exists"). Accepted, not fixed. Revisit trigger: a public/unauthenticated claim flow, or third-party installers entering the picture (the single-operator assumption — owner flashes/provisions every device personally — no longer holding) — same revisit trigger as the general enumeration-resistance posture above.
+
+**Util location:** `libs/application/src/lib/services/device/assert-caller-has-role.util.ts`
+
 ---
 
 ## Technical Standards
@@ -227,6 +267,12 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 > **Phase 5.6 lesson**: `@google-cloud/storage` was added to source but omitted from all three files, causing Cloud Run builds to fail silently (`Build failed; check build logs for details`). The fix: add to `webpack.config.js` `EXTERNAL_PACKAGES` + `assets/package.json` only (root `package.json` not needed).
 
+### Webpack Config Invariants (`apps/api/webpack.config.js`)
+
+- **`@nestjs/common`'s `FileTypeValidator` bundles the ESM-only `file-type` package even when unused.** `@nestjs/common`'s `pipes` barrel export includes `FileTypeValidator`, which imports `file-type` — an ESM-only package whose `exports` field has no `require`-condition entry. Any webpack (CJS-target) Nest build hits `Module not found: "." is not exported ... from file-type` from this import alone, with zero file-upload code anywhere in the app. Suppressed via a scoped `IgnorePlugin` in `webpack.config.js` (matching only imports of `file-type` from within `@nestjs/common/pipes/file`), with a comment that it must be replaced with a real fix — not re-suppressed — the moment `ParseFilePipe`/`FileTypeValidator`/`MaxFileSizeValidator` is actually introduced (plausible for firmware admin upload work).
+- **`NxAppWebpackPlugin`'s injected `source-map-loader` rule has no `exclude` option.** With `sourceMap: true`, `NxAppWebpackPlugin` injects a bare `source-map-loader` rule (`enforce: 'pre'`) that follows every dependency's `//# sourceMappingURL` into `node_modules`, producing dozens of "Failed to parse source map" warnings for packages that don't ship their `.ts` sources (e.g. `nest-commander`). The plugin exposes no option to scope this rule. Fixed by `ExcludeNodeModulesFromSourceMapLoaderPlugin`, a small custom plugin listed _after_ `NxAppWebpackPlugin` in the `plugins` array, whose `apply(compiler)` finds that rule in `compiler.options.module.rules` and sets `exclude: /node_modules/`. This works only because `NxAppWebpackPlugin.apply()` (confirmed in the installed `@nx/webpack` package source) mutates `compiler.options.module.rules` directly and synchronously inside `apply()` — not deferred through a compiler hook — so a later plugin's synchronous `apply()` can safely read/patch those same rules. Array position in `plugins:` is load-bearing as long as `@nx/webpack` keeps this synchronous; anyone reordering plugins later needs to know that.
+- **`ExcludeNodeModulesFromSourceMapLoaderPlugin` fails loud if its target rule disappears**, via `compiler.hooks.done` pushing `new Error(...)` onto `stats.compilation.warnings` if the expected `source-map-loader` rule from `NxAppWebpackPlugin` isn't found (e.g. after a future `@nx/webpack` shape change). `compiler.hooks.done` fires after compilation finishes but before Nx prints stats output, and `Stats.getWarnings()` reads `compilation.warnings` live, so push-then-print works regardless of tap-registration order. This pattern generalizes to any webpack plugin with a `find X in compiler.options` step whose failure would otherwise be silently swallowed by an `if (found)` guard.
+
 ### Structured Logging (Pino)
 
 - **Library**: `nestjs-pino` + `pino-http`
@@ -234,9 +280,18 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - **Development**: `pino-pretty` transport with colorized, single-line output
 - **Bootstrap buffering**: `NestFactory.create(AppModule, { bufferLogs: true })` + `app.useLogger(app.get(Logger))` — ensures all startup logs go through Pino
 - **Pre-bootstrap logging**: `validateEnv()` runs before NestJS — uses `console.error()` directly since neither NestJS Logger nor Pino are available
+- **Log level**: no `LOG_LEVEL` env var and no explicit `level` in `app.module.ts`'s `pinoHttp` config → pino defaults to `info`, so `logger.debug()` calls never emit in any environment unless someone adds an explicit level override. Debug call sites that log user-supplied free text (e.g. Telegram message text) still redact/summarize rather than logging raw content, since this default is easy to change and shouldn't be the only safeguard against a PII leak.
+- **Header redaction**: `app.module.ts`'s `pinoHttp` config sets `redact: { paths: REDACTED_HEADER_PATHS, censor: '[Redacted]' }` — `pino-http`'s default request serializer otherwise logs the full `req.headers` object at base level (`info`) on every request, independent of any `.debug()` gating. Three separate auth mechanisms each land in `req.headers` and are covered: device HMAC (`x-signature`, `x-device-mac`, `x-timestamp`, read by `hmac-auth.guard.ts`), the Telegram webhook's static shared secret (`x-telegram-bot-api-secret-token`), and the admin firmware-upload bearer token (`authorization`, read by `admin-token.guard.ts`). Redact paths are always lowercase since Node's HTTP layer lowercases incoming header names before any application code sees them. A future new auth header must be added to `REDACTED_HEADER_PATHS` explicitly — it is not automatic. Known gap: `hmac-auth.guard.ts` still logs the raw device MAC via plain `logger.warn` string interpolation (not a `req.headers` path), which this redact config cannot reach — a backlog item exists for it.
+
+### Rate Limiting & Proxy Trust
+
+- **Proxy trust**: Cloud Run must set `app.set('trust proxy', 1)` (number, not boolean). Without it, Cloud Run's LB rewrite makes all requests share one IP → one global throttle bucket, both a DoS risk and a bypass. Boolean `true` trusts the whole XFF chain and is spoofable — don't build a custom `getTracker()` reading leftmost XFF either.
+- **Cold-start reset**: `ThrottlerModule`'s default in-memory store resets every Cloud Run cold start (~15 min scale-to-zero); acceptable only while min/max instances = 1 — migrate to `@nest-lab/throttler-storage-redis` before scaling horizontally.
+- **Per-IP under-service**: NAT'd households (multiple ESP32 devices behind one home router) share a per-IP throttle bucket. Post-MVP: add per-MAC named throttler inside `HmacAuthGuard` after MAC validation.
 
 ### Mandatory Env Validation
 
+- **`main.ts` intentionally has no `dotenv/config` import** — it expects env vars injected by the container/environment, not loaded from a local `.env` file. Only `cli.ts` does `import 'dotenv/config'`. Anyone debugging "`dist/main.js` can't find `DATABASE_URL`" when starting it manually/locally should check for this split before assuming something broke.
 - **Timing**: Runs before `NestFactory.create()` in `main.ts`
 - **Failure mode**: Logs `[EnvValidation] CRITICAL: ...` via `console.error` and calls `process.exit(1)`
 - **Required vars**: `DATABASE_URL`, `DEVICE_SECRET_ENCRYPTION_KEY` (64 hex chars), `GCS_BUCKET_NAME`
@@ -251,6 +306,34 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 - **Liveness**: Confirms the process is running (no dependency checks)
 - **Readiness**: Verifies database connectivity via `SELECT 1`; returns 503 if the DB is unreachable
+
+### GCP Service Accounts & Least-Privilege Deployment Identity
+
+Cloud Run deployments use three distinct Compute Engine service accounts to implement least-privilege access control, replacing a prior monolithic `RUNTIME_SA` with overpermissioned bindings.
+
+| Service Account        | Purpose                                     | IAM Role(s) / Bindings                                                                             |
+| ---------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `api-runtime-sa`       | Application runtime (Pod identity)          | Secret Manager: `secretmanager.secretAccessor` (project-level); Cloud Logging: `logging.logWriter` |
+| `backup-writer-sa`     | Backup job execution (Cloud Scheduler task) | Cloud Storage: `roles/storage.objectCreator` on `backup-bucket` only                               |
+| `scheduler-invoker-sa` | Keep-warm scheduler (Cloud Scheduler token) | Cloud Run: `roles/run.invoker` on the `api` Cloud Run service                                      |
+
+**Deployment identity setup:**
+
+- **Cloud Run service** (`api`): `serviceAccountEmail` → `api-runtime-sa` (via `gcloud run deploy --service-account`)
+- **Cloud Scheduler keep-warm job**: `--oidc-service-account-email=scheduler-invoker-sa` (OIDC token validation) — the email supplied here becomes the invoking identity for `run.invoker` purposes, not the Cloud Scheduler service agent itself (`*@gcp-sa-cloudscheduler.iam.gserviceaccount.com`). Granting `run.invoker` to the scheduler service agent is incorrect; the original script did this, which was masked by Cloud Run having `--allow-unauthenticated`.
+- **Backup Cloud Scheduler job** (if implemented): `--oidc-service-account-email=backup-writer-sa`
+
+**Implementation location:** `scripts/gcloud-bootstrap.sh` creates all three SAs, constructs the IAM bindings, and revokes prior overpermissioned bindings on the old `RUNTIME_SA`.
+
+**GCS lifecycle rules are age-based, not reference-aware:** the OTA/firmware-releases bucket's lifecycle rule (`scripts/gcloud-bootstrap.sh`, Step 8a) deletes objects after 180 days — `gsutil lifecycle set` conditions are purely object-metadata-based (age/prefix/etc.); they cannot query the `FirmwareRelease` table to check whether an object is still referenced. The 180-day threshold is a blind risk-mitigation buffer (well beyond observed release cadence), not a correctness guarantee, applied alongside bucket hardening (uniform bucket-level access, public-access-prevention) and a read-only IAM grant for the runtime SA — mirroring the existing backup-bucket lifecycle pattern in the same script. Anyone shortening this threshold later must first run `SELECT "gcsPath" FROM "FirmwareRelease"` for objects older than the new threshold to check nothing live would be deleted.
+
+**Bootstrap-script buckets consumed by app runtime config need explicit env-var wiring:** the OTA bucket created in Step 8a is read by app runtime config (`apps/api/src/modules/storage/storage.providers.ts` via `GCS_BUCKET_NAME`, a bare bucket name, not a `gs://` URI) — unlike the backup bucket, which is self-contained (only read by `scripts/backup-database.sh`). The bootstrap script's Step 10 operator summary must surface `GCS_BUCKET_NAME=<bucket>` explicitly, not just create-and-harden the bucket silently. Rule for future bootstrap-script resources: ask "does app runtime config read this via an env var?" and if so, add a matching wiring reminder to the Step 10 summary.
+
+**CI/CD integration note:** Cloud Build (triggered by `deploy-cloudrun@v2 source: .`) still runs as the Compute Engine default SA (`<project>-compute@developer.gserviceaccount.com`), requiring the `roles/run.builder` binding to remain on that account. This is a platform requirement. GCP automatically grants `roles/editor` to the compute default SA at project creation time — a pre-existing condition outside the app's control. The bootstrap script revokes this Editor role as part of least-privilege hardening (idempotent guard, safe even if auto-grant was disabled by policy). The SA retains only `roles/run.builder` for CI/CD after bootstrap.
+
+**Scheduled workflow verification:** `.github/workflows/backup.yml` originally fetched `DATABASE_URL` via `gcloud secrets versions access latest --secret=database-url`, but the setup only granted backup-bucket IAM — the secret access binding was missing, causing `PERMISSION_DENIED` on every scheduled run since setup, unnoticed until checked in GH Actions. Fixed by reading `DATABASE_URL` from a GitHub Actions repo secret instead (manual step: add repo secret `DATABASE_URL` via Settings → Secrets and variables → Actions). Lesson: verify scheduled workflows by actual run status, not IAM-grant intent — a cron job's first real failure can go unnoticed for weeks.
+
+**Operator ordering for SA migration:** Bootstrap script (Batch J, Step 5) guards the IAM revoke against live production services. Correct order: **(1) Run bootstrap to create new SAs** → **(2) Push to main / run deploy workflow to switch service account** → **(3) Re-run bootstrap to execute revokes**. If bootstrap is re-run against a live service before step 2, all revokes are skipped (with loud warnings), preventing the outage that would result from revoking the old SA's Secret Manager access while the service still runs as that account. The `.github/workflows/deploy.yml` now passes `--service-account=api-runtime-sa@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com` to `gcloud run deploy` automatically; ensure `GCP_PROJECT_ID` and `API_RUNTIME_SA_EMAIL` (or substitute vars) are set in GitHub Actions secrets/variables before first deploy.
 
 ---
 
@@ -321,16 +404,22 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 **Prisma Model: `FirmwareRelease`**
 
-| Field        | Type      | Purpose                                                             |
-| ------------ | --------- | ------------------------------------------------------------------- |
-| `id`         | String    | Primary key (UUID)                                                  |
-| `version`    | String    | Semantic version (e.g., "3.5.0")                                    |
-| `boardType`  | BoardType | Target hardware: `ESP32_C3` or `ESP32_C6`                           |
-| `channel`    | Channel   | Release stability: `ALPHA`, `BETA`, or `STABLE`                     |
-| `checksum`   | String    | SHA256 hex digest of the binary                                     |
-| `gcsPath`    | String    | Cloud Storage path (e.g., `firmware/esp32c3/3.5.0/firmware.bin`)    |
-| `isCritical` | Boolean   | Marks security/stability-critical releases requiring forced upgrade |
-| `createdAt`  | DateTime  | Metadata creation timestamp                                         |
+| Field        | Type      | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | String    | Primary key (UUID)                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `version`    | String    | Semantic version (e.g., "3.5.0")                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `boardType`  | BoardType | Target hardware: `ESP32_C3` or `ESP32_C6`                                                                                                                                                                                                                                                                                                                                                                                             |
+| `channel`    | Channel   | Release stability: `ALPHA`, `BETA`, or `STABLE`                                                                                                                                                                                                                                                                                                                                                                                       |
+| `checksum`   | String    | SHA256 hex digest of the binary                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `gcsPath`    | String    | Cloud Storage path; validated by CHECK constraint regex `^firmware/[a-z0-9_-]+/[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9][a-zA-Z0-9.]*)?/[A-Za-z0-9._-]+\.bin$` (e.g., `firmware/esp32c3/3.5.0/firmware.bin`). Board segment is lowercase `[a-z0-9_-]+`, no channel in path; prerelease group `(-[a-zA-Z0-9][a-zA-Z0-9.]*)?` correctly rejects naive `(-[a-zA-Z0-9.]+)?` which would accept `0.2.0-.`. Tests in `firmware-gcs-path.spec.ts`. |
+| `isCritical` | Boolean   | Marks security/stability-critical releases requiring forced upgrade                                                                                                                                                                                                                                                                                                                                                                   |
+| `createdAt`  | DateTime  | Metadata creation timestamp                                                                                                                                                                                                                                                                                                                                                                                                           |
+
+**OTA Security Constraints & Rollout Order**
+
+- **Signed-URL TTL consistency**: Response `expiresAt` is computed server-side as `Date.now() + SIGNED_URL_TTL_MS` (derived from `@home-pulse-watcher/core`'s constant), NOT extracted from the GCS signed URL's own expiry. If `SIGNED_URL_TTL_MS` drifts from the actual GCS TTL, firmware computes a different `expiresAt` and the response HMAC mismatches — both values must be kept in sync.
+- **Sig-verification rollout**: Deploy backend sig-emission **before** deploying sig-verifying firmware. New firmware rejects OTA responses missing `sig`; old backend doesn't emit it. Deploying firmware-first → every OTA check returns `ParseError` → device stuck. Old firmware safely ignores unknown `sig` fields (JSON parser skips unknown keys), so backend-first is always safe.
+- **Channel promotion is a rebuild, not a re-upload**: promoting a release by re-running `firmware:upload` with a different `--channel` against the same binary is impossible — `FirmwareRelease` is unique on `[version, boardType]`, on `checksum`, and on `gcsPath` (which embeds board and version), so three independent constraints reject it. More fundamentally, `FIRMWARE_VERSION` is compiled into the binary and reported on every heartbeat, so an `-alpha` build parked on STABLE would keep identifying as an alpha. Correct model: bump the version suffix and rebuild (`3.5.4-alpha.N` → `3.5.4-beta.1` → `3.5.4`), which yields new bytes and a new checksum for free. Consequence for docs/runbooks: the promoted artifact is a _new build_, so BETA soak time does not transfer to the STABLE artifact.
 
 **TypeScript Enums (libs/core)**
 
@@ -380,6 +469,7 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 - `releaseChannel`: String (default `"STABLE"`) — server-controlled firmware tier; device never forces downgrade via request tampering. Typed as `as const` object in `libs/core`.
 - `deviceType`: String (`"UPS"` | `"MAINS"`, default `"MAINS"`) — backend-side hardware category, write-once at provisioning via CLI (`--device-type` flag) or captive portal. For tracking and potential future per-device logic. **Firmware-side equivalent:** NVS flag `hasUps` (set via captive-portal checkbox) — both should be kept in sync during provisioning, but the firmware uses `hasUps` for all battery-monitoring decisions.
+- `boardType`: String (`"esp32c3"` | `"esp32c6"`, required, NOT NULL, no default) — write-once at provisioning via CLI (`--board-type` flag) only; unlike `deviceType` there is no captive-portal REST surface to set it (captive portal is firmware-NVS-local, never calls the backend API). Lowercase values, mirroring `FirmwareRelease.boardType` — do not uppercase. Mapper throws on an invalid/unmapped DB value rather than silently defaulting, since a wrong guess between c3/c6 could pick the wrong OTA binary. Joins `Device` rows to their applicable `FirmwareRelease` rows for OTA-eligibility/staleness features. Backfilled to `"esp32c6"` for the 2 pre-existing live devices (no `esp32c3` hardware exists yet in prod or dev).
 - `otaForceCheckRequested`: Boolean (default `false`) — sticky flag set by admin CLI (`device:request-ota-check --mac <mac>`), cleared after being served once in the status response.
 
 **OTA Discovery API & Force-check Mechanism**
@@ -389,7 +479,7 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
   - Semantic version comparison (returns only releases > current device version)
   - Response: `{ "hasUpdate": boolean, "release": { "version", "checksum", "downloadUrl" } | null }`
   - Guard decorator: `@HmacCanonical()` pluggable (supports both deviceId/MAC canonicalization)
-- **`POST /api/device/status` response** (heartbeat) — now includes optional `forceOtaCheck: true` field (omitted when false). When present, firmware resets its OTA-check timer (`lastOtaCheckTime`) to trigger `checkForUpdate()` immediately on the next loop iteration instead of waiting up to 6h (`OTA_CHECK_INTERVAL_MS`, `config.h:120`). Consumed and cleared atomically server-side by `ProcessPowerStatusService` (after response is sent, the flag is reset to false for the next heartbeat).
+- **`POST /api/device/status` response** (heartbeat) — now includes optional `forceOtaCheck: true` field (omitted when false). When present, firmware sets a separate `otaCheckRequested` bool flag (`firmware/common/main.cpp`), consumed by the pure predicate `HomePulse::Ota::shouldCheckForOta(nowMs, lastCheckMs, requested, intervalMs)` (`libs/firmware-shared/src/ota.cpp`) to trigger `checkForUpdate()` immediately on the next loop iteration instead of waiting up to 6h (`OTA_CHECK_INTERVAL_MS`, `config.h:120`). An earlier implementation instead back-dated `lastOtaCheckTime = 0` to signal "check now" — that was a no-op on any recently-booted device, since the elapsed-time gate (`millis() - 0 >= INTERVAL`) only becomes true once uptime exceeds the full interval, i.e. exactly when the periodic check would have fired anyway; `0` means boot, not "long ago" for a `millis()`-based timer. The explicit-bool fix avoids that class of bug entirely. Consumed and cleared atomically server-side by `ProcessPowerStatusService` (after response is sent, the flag is reset to false for the next heartbeat). **Response parsing**: Current firmware parses optional response fields (`forceOtaCheck`); unknown fields are silently ignored by the JSON deserializer. New optional response fields may be added backend-first safely without firmware changes — old firmware will simply ignore the unknown keys and proceed normally.
 
 **Firmware OTA Client (Task 4, Complete + Hardened)**
 
@@ -403,7 +493,7 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 - `BACKEND_URL` in NVS/`secrets.h` is the base origin only (`https://your-server.com`); firmware appends `/api/device/status` and `/api/ota/check` at call sites
 - OTA confirmed working end-to-end on real ESP32-C6 hardware (v3.5.2 auto-flashed)
 
-**Firmware shared-library boundary:** `libs/firmware-shared` must not include board-specific headers (`config.h`). LED helpers in `ota.cpp` are now suppressed (`(void)statusLed`) to preserve this boundary. The shared sketch (`firmware/common/main.cpp`) consumes `config.h` from each env's `src/` via the implicit `src_dir` include path — zero `#ifdef` in the shared source.
+**Firmware shared-library boundary:** `libs/firmware-shared` must not include board-specific headers (`config.h`) — it is compiled as its own translation unit and never `#include`s a board's `src/config.h`, so a macro read inside shared code (e.g. a bare `FIRMWARE_VERSION`) silently resolves to that file's own local fallback, not the board's real value. Shared code must instead take board-specific values as constructor/call parameters (e.g. `PowerStatusReport::firmwareVersion`, set by the caller in `main.cpp`); `-I src` only adds `config.h` to the include _path_, it does not define anything. A `#ifndef` fallback is the dangerous shape here — it turns a missing definition into a silently-wrong value instead of a link error. This exact bug shipped `telemetry.cpp` reading a local `#ifndef … "test"` stub for `FIRMWARE_VERSION`: every device reported `"test"` from the 2026-04-25 extraction commit until caught on 2026-09-08, and `Device.firmwareVersion` froze at its last pre-extraction value for that whole window. LED helpers in `ota.cpp` are now suppressed (`(void)statusLed`) to preserve this boundary. The shared sketch (`firmware/common/main.cpp`) consumes `config.h` from each env's `src/` via the implicit `src_dir` include path — zero `#ifdef` in the shared source. All shared-library headers using standard integer types (`uint8_t`, `size_t`, `uint32_t`) must include explicit `<cstdint>` and `<cstddef>` headers — `Arduino.h` pulls them in transitively via the ESP32 toolchain, but a native/clang-analyzer build does not have those paths, causing cascade errors.
 
 **OTA Security Boundaries (Post-Audit)**
 
@@ -415,9 +505,16 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
 
 **Transport Security: TLS as a Build-Time Flag (2026-07-08)**
 
-- `HPW_USE_TLS` compile-time macro (`libs/firmware-shared/include/HomePulse/transport_client.h`) selects `WiFiClientSecure` (pinned GTS root bundle — R1 for `storage.googleapis.com`, R4 for `*.run.app`; single-sourced) vs plaintext `WiFiClient` for both telemetry POSTs and OTA-check requests — previously plaintext by default (HMAC gives integrity, not confidentiality; MAC/power-status/battery-voltage were visible to any network observer). OTA binary download already used `WiFiClientSecure` independently and is unaffected.
+- `HPW_USE_TLS` compile-time macro (`libs/firmware-shared/include/HomePulse/transport_client.h`) selects `WiFiClientSecure` (pinned GTS root bundle — R1 for `storage.googleapis.com`, R4 for `*.run.app`; single-sourced) vs plaintext `WiFiClient` for both telemetry POSTs and OTA-check requests
+- Cloud Run and GCS present different Google Trust Services root CAs: `storage.googleapis.com`'s chain roots at GTS Root R1, `*.run.app`'s roots at GTS Root R4 — verified via `openssl s_client -showcerts` against each hostname. `setCACert()` (`mbedTLS`/`WiFiClientSecure`) accepts multiple concatenated PEM certs in one string, so both roots ship in the single `GTS_ROOT_CA` bundle rather than picking one. General rule for any future TLS-pinned hostname: check the live chain per hostname first — don't assume two Google-operated services share a root. — previously plaintext by default (HMAC gives integrity, not confidentiality; MAC/power-status/battery-voltage were visible to any network observer). OTA binary download already used `WiFiClientSecure` independently and is unaffected.
 - Release envs (`esp32c3`/`esp32c6` in `platformio.ini`) hardcode `-DHPW_USE_TLS=1`. Plaintext is reachable only via explicit `_dev`-suffixed envs (`esp32c3_dev`/`esp32c6_dev`), never invoked by the Docker/CI build pipeline (`scripts/firmware-docker-build.sh` always builds the plain env name) — no runtime/NVS/remote toggle exists, so a release-flashed device cannot be downgraded to plaintext.
 - Single shared `TransportClient` instance reused sequentially across telemetry → OTA-check (never held concurrently) to conserve heap on the ESP32-C3's 400KB RAM; OTA binary download deliberately uses its own separate `WiFiClientSecure` instance rather than the shared one, so exactly one TLS session is ever open at a time.
+
+**Firmware Docker build pipeline gotchas**
+
+`firmware/Dockerfile` + `scripts/firmware-docker-build.sh <board> <version>` build ESP32 firmware reproducibly in Docker. Three non-obvious traps: (1) Unpinned `platform = espressif32` in `platformio.ini` can resolve to a DIFFERENT version inside Docker vs. local build — dependency resolution is not guaranteed reproducible. Fix: always pin `platform =` to an explicit version/commit/tag URL, never a bare package name. (2) `lib_extra_dirs`/`symlink://../../libs/firmware-shared` in `platformio.ini` doesn't resolve inside Docker (relative symlink assumes local filesystem layout) — Dockerfile must copy the shared lib to a fixed path and patch `platformio.ini` to reference it directly. (3) `.dockerignore` exclusion patterns must use `**` for nested paths (e.g. `firmware/**/.pio/`, not root-anchored `/firmware/.pio`) — a root-anchored pattern silently let a real dev `secrets.h` file reach the image layers (security finding, since fixed).
+
+**Upload command's file-path resolution:** the build script's output lives at `tmp/firmware/${BOARD}/${VERSION}/firmware.bin` — any upload suggestion (docs, CLI help text) must include the version segment. `UploadFirmwareCommand.resolveFilePath()` (`apps/api/src/cli/firmware/upload-firmware.command.ts`) treats a bare filename (no `/` or `\`) as a name to search for under `./tmp/firmware/`, so passing just `firmware.bin` resolves to `./tmp/firmware/firmware.bin`, not the versioned path, and fails with "file not found." Always pass `${BOARD}/${VERSION}/firmware.bin` (or an absolute path) to `--file`.
 
 **Captive-portal AP password build injection (2026-09-08)**
 
@@ -444,7 +541,9 @@ When a new npm package must NOT be bundled (native binaries, worker threads, dyn
   - File validation: size limit 4MB, filename must match `^[A-Za-z0-9._-]+\.bin$` (prevents directory traversal)
   - Response: JSON `{ success: true, path, version, board, channel }` on success, or error details on validation failure
 
+**OTA recovery has no remote fallback**: HomePulse's OTA path is pull-based only — firmware initiates the HTTPS POST to `/api/ota/check`; there is no backend-side push/remote-flash service. If a device's OTA client itself is broken (wrong protocol, incompatible payload, etc.), it structurally cannot self-heal, since fixing it requires the very channel that's broken — physical/serial access is mandatory in that scenario. Documented in [`docs/ota-recovery-runbook.md`](docs/ota-recovery-runbook.md) so on-call doesn't discover this mid-incident.
+
 **Still pending:**
 
-- Device → Release linking for tracking upgrade status per-device (deferred to 5.7)
-- `firmware:promote` (canary/staged rollout automation) — deferred pending adoption of gradual rollout strategy
+- Device → Release linking for tracking upgrade status per-device (deferred to 5.7) — `Device.boardType` column landed 2026-09-12 (joins to `FirmwareRelease.boardType`), unblocking the join key; the OTA-eligibility/staleness feature logic itself (e.g. a "stuck?" flag on `device:list`) is still not built.
+- `firmware:promote` (canary/staged rollout automation) — deferred to 5.8 / backlog pending adoption of gradual rollout strategy
