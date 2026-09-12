@@ -1,5 +1,5 @@
 import { PrismaDeviceRepository } from './device.repository.js';
-import { Device, PowerStatus } from '@home-pulse-watcher/core';
+import { Device, PowerStatus, BoardType } from '@home-pulse-watcher/core';
 
 const mockPrismaClient = {
   device: {
@@ -20,6 +20,7 @@ const basePrismaDevice = {
   batteryVoltage: null,
   releaseChannel: 'STABLE',
   deviceType: 'MAINS',
+  boardType: 'esp32c6',
 };
 
 describe('PrismaDeviceRepository', () => {
@@ -55,6 +56,52 @@ describe('PrismaDeviceRepository', () => {
       const result = await repository.findById('nonexistent');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('create', () => {
+    it('should pass boardType through to Prisma create', async () => {
+      mockPrismaClient.device.create.mockResolvedValue({
+        ...basePrismaDevice,
+        id: 'device-1',
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        label: null,
+        lastStatus: null,
+        lastSeenAt: null,
+        statusChangedAt: null,
+      });
+
+      await repository.create({
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        encryptedSecret: 'iv:tag:cipher',
+        boardType: BoardType.ESP32_C3,
+      });
+
+      expect(mockPrismaClient.device.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ boardType: 'esp32c3' }),
+      });
+    });
+
+    it('should default deviceType to MAINS when not provided', async () => {
+      mockPrismaClient.device.create.mockResolvedValue({
+        ...basePrismaDevice,
+        id: 'device-1',
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        label: null,
+        lastStatus: null,
+        lastSeenAt: null,
+        statusChangedAt: null,
+      });
+
+      await repository.create({
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        encryptedSecret: 'iv:tag:cipher',
+        boardType: BoardType.ESP32_C6,
+      });
+
+      expect(mockPrismaClient.device.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ deviceType: 'MAINS' }),
+      });
     });
   });
 

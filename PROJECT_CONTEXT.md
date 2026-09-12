@@ -468,6 +468,7 @@ Cloud Run deployments use three distinct Compute Engine service accounts to impl
 
 - `releaseChannel`: String (default `"STABLE"`) — server-controlled firmware tier; device never forces downgrade via request tampering. Typed as `as const` object in `libs/core`.
 - `deviceType`: String (`"UPS"` | `"MAINS"`, default `"MAINS"`) — backend-side hardware category, write-once at provisioning via CLI (`--device-type` flag) or captive portal. For tracking and potential future per-device logic. **Firmware-side equivalent:** NVS flag `hasUps` (set via captive-portal checkbox) — both should be kept in sync during provisioning, but the firmware uses `hasUps` for all battery-monitoring decisions.
+- `boardType`: String (`"esp32c3"` | `"esp32c6"`, required, NOT NULL, no default) — write-once at provisioning via CLI (`--board-type` flag) only; unlike `deviceType` there is no captive-portal REST surface to set it (captive portal is firmware-NVS-local, never calls the backend API). Lowercase values, mirroring `FirmwareRelease.boardType` — do not uppercase. Mapper throws on an invalid/unmapped DB value rather than silently defaulting, since a wrong guess between c3/c6 could pick the wrong OTA binary. Joins `Device` rows to their applicable `FirmwareRelease` rows for OTA-eligibility/staleness features. Backfilled to `"esp32c6"` for the 2 pre-existing live devices (no `esp32c3` hardware exists yet in prod or dev).
 - `otaForceCheckRequested`: Boolean (default `false`) — sticky flag set by admin CLI (`device:request-ota-check --mac <mac>`), cleared after being served once in the status response.
 
 **OTA Discovery API & Force-check Mechanism**
@@ -543,5 +544,5 @@ Cloud Run deployments use three distinct Compute Engine service accounts to impl
 
 **Still pending:**
 
-- Device → Release linking for tracking upgrade status per-device (deferred to 5.7) — blocked in part by `Device` having no `boardType` column: `FirmwareRelease` is keyed on `(boardType, channel, version)`, but `Device` only has `deviceType` (MAINS/UPS hardware variant — unrelated), so there is no column to join a Device row to its applicable `FirmwareRelease` rows without adding one, populated at provisioning.
+- Device → Release linking for tracking upgrade status per-device (deferred to 5.7) — `Device.boardType` column landed 2026-09-12 (joins to `FirmwareRelease.boardType`), unblocking the join key; the OTA-eligibility/staleness feature logic itself (e.g. a "stuck?" flag on `device:list`) is still not built.
 - `firmware:promote` (canary/staged rollout automation) — deferred to 5.8 / backlog pending adoption of gradual rollout strategy

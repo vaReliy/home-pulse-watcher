@@ -1,5 +1,10 @@
 import type { ListDevicesService } from '@home-pulse-watcher/application';
-import { Device, DeviceType, ReleaseChannel } from '@home-pulse-watcher/core';
+import {
+  Device,
+  DeviceType,
+  ReleaseChannel,
+  BoardType,
+} from '@home-pulse-watcher/core';
 import { NotFoundError } from '@home-pulse-watcher/shared';
 import { ListDevicesCommand } from './list-devices.command.js';
 
@@ -18,6 +23,7 @@ function makeDevice(
     batteryVoltage: null,
     releaseChannel: ReleaseChannel.STABLE,
     deviceType: DeviceType.MAINS,
+    boardType: BoardType.ESP32_C6,
     ...overrides,
   });
 }

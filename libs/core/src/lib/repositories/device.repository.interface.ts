@@ -1,6 +1,7 @@
 import type { Device } from '../entities/device.entity.js';
 import type { PowerStatus } from '../types/power-status.enum.js';
 import type { DeviceType } from '../types/device-type.enum.js';
+import type { BoardType } from '../types/board-type.enum.js';
 
 /**
  * Repository interface for Device entity operations.
@@ -33,6 +34,8 @@ export interface IDeviceRepository {
     label?: string | null;
     /** Hardware category, write-once at provisioning. Defaults to MAINS. */
     deviceType?: DeviceType;
+    /** ESP32 board variant, write-once at provisioning. Required — no default. */
+    boardType: BoardType;
   }): Promise<Device>;
 
   /**

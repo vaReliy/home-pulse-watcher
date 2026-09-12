@@ -1,4 +1,5 @@
 import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
+import { BoardType } from '@home-pulse-watcher/core';
 import {
   DomainError,
   DomainErrorCode,
@@ -14,6 +15,7 @@ describe('RegisterDeviceService', () => {
     label: 'Test Device',
     lastStatus: null,
     lastSeenAt: null,
+    boardType: BoardType.ESP32_C6,
     isOnline: () => false,
   } as Device;
 
@@ -49,7 +51,7 @@ describe('RegisterDeviceService', () => {
 
       const service = new RegisterDeviceService(mockRepo);
       const result = await service.run(
-        { macAddress: 'aa:bb:cc:dd:ee:ff' },
+        { macAddress: 'aa:bb:cc:dd:ee:ff', boardType: BoardType.ESP32_C6 },
         validContext,
       );
 
@@ -64,7 +66,10 @@ describe('RegisterDeviceService', () => {
       mockRepo.create.mockResolvedValue(mockDevice);
 
       const service = new RegisterDeviceService(mockRepo);
-      await service.run({ macAddress: 'aa:bb:cc:dd:ee:ff' }, validContext);
+      await service.run(
+        { macAddress: 'aa:bb:cc:dd:ee:ff', boardType: BoardType.ESP32_C6 },
+        validContext,
+      );
 
       expect(mockRepo.existsByMacAddress).toHaveBeenCalledWith(
         'AA:BB:CC:DD:EE:FF',
@@ -81,7 +86,11 @@ describe('RegisterDeviceService', () => {
 
       const service = new RegisterDeviceService(mockRepo);
       await service.run(
-        { macAddress: 'AA:BB:CC:DD:EE:FF', label: 'Kitchen' },
+        {
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+          label: 'Kitchen',
+          boardType: BoardType.ESP32_C6,
+        },
         validContext,
       );
 
@@ -96,10 +105,29 @@ describe('RegisterDeviceService', () => {
       mockRepo.create.mockResolvedValue(mockDevice);
 
       const service = new RegisterDeviceService(mockRepo);
-      await service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext);
+      await service.run(
+        { macAddress: 'AA:BB:CC:DD:EE:FF', boardType: BoardType.ESP32_C6 },
+        validContext,
+      );
 
       expect(mockRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ label: null }),
+      );
+    });
+
+    it('should pass boardType through to the repository', async () => {
+      const mockRepo = createMockRepository();
+      mockRepo.existsByMacAddress.mockResolvedValue(false);
+      mockRepo.create.mockResolvedValue(mockDevice);
+
+      const service = new RegisterDeviceService(mockRepo);
+      await service.run(
+        { macAddress: 'AA:BB:CC:DD:EE:FF', boardType: BoardType.ESP32_C3 },
+        validContext,
+      );
+
+      expect(mockRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ boardType: BoardType.ESP32_C3 }),
       );
     });
 
@@ -110,7 +138,7 @@ describe('RegisterDeviceService', () => {
 
       const service = new RegisterDeviceService(mockRepo);
       const result = await service.run(
-        { macAddress: 'AA:BB:CC:DD:EE:FF' },
+        { macAddress: 'AA:BB:CC:DD:EE:FF', boardType: BoardType.ESP32_C6 },
         validContext,
       );
 
@@ -135,11 +163,17 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext),
+        service.run(
+          { macAddress: 'AA:BB:CC:DD:EE:FF', boardType: BoardType.ESP32_C6 },
+          validContext,
+        ),
       ).rejects.toThrow(DomainError);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, validContext),
+        service.run(
+          { macAddress: 'AA:BB:CC:DD:EE:FF', boardType: BoardType.ESP32_C6 },
+          validContext,
+        ),
       ).rejects.toMatchObject({
         code: DomainErrorCode.DEVICE_ALREADY_REGISTERED,
       });
@@ -152,7 +186,10 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, {}),
+        service.run(
+          { macAddress: 'AA:BB:CC:DD:EE:FF', boardType: BoardType.ESP32_C6 },
+          {},
+        ),
       ).rejects.toThrow(
         'deviceSecretEncryptionKey not provided in service context',
       );
@@ -165,7 +202,10 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'AA:BB:CC:DD:EE:FF' }, { config: undefined }),
+        service.run(
+          { macAddress: 'AA:BB:CC:DD:EE:FF', boardType: BoardType.ESP32_C6 },
+          { config: undefined },
+        ),
       ).rejects.toThrow(
         'deviceSecretEncryptionKey not provided in service context',
       );
@@ -178,7 +218,13 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({} as { macAddress: string }, validContext),
+        service.run(
+          { boardType: BoardType.ESP32_C6 } as {
+            macAddress: string;
+            boardType: BoardType;
+          },
+          validContext,
+        ),
       ).rejects.toThrow(ValidationError);
     });
 
@@ -187,7 +233,40 @@ describe('RegisterDeviceService', () => {
       const service = new RegisterDeviceService(mockRepo);
 
       await expect(
-        service.run({ macAddress: 'invalid-mac' }, validContext),
+        service.run(
+          { macAddress: 'invalid-mac', boardType: BoardType.ESP32_C6 },
+          validContext,
+        ),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('should throw ValidationError for missing boardType', async () => {
+      const mockRepo = createMockRepository();
+      const service = new RegisterDeviceService(mockRepo);
+
+      await expect(
+        service.run(
+          { macAddress: 'AA:BB:CC:DD:EE:FF' } as {
+            macAddress: string;
+            boardType: BoardType;
+          },
+          validContext,
+        ),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('should throw ValidationError for invalid boardType', async () => {
+      const mockRepo = createMockRepository();
+      const service = new RegisterDeviceService(mockRepo);
+
+      await expect(
+        service.run(
+          {
+            macAddress: 'AA:BB:CC:DD:EE:FF',
+            boardType: 'esp8266' as BoardType,
+          },
+          validContext,
+        ),
       ).rejects.toThrow(ValidationError);
     });
   });

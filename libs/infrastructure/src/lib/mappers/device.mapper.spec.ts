@@ -4,6 +4,7 @@ import {
   PowerStatus,
   ReleaseChannel,
   DeviceType,
+  BoardType,
 } from '@home-pulse-watcher/core';
 
 describe('mapPrismaDeviceToEntity', () => {
@@ -22,6 +23,7 @@ describe('mapPrismaDeviceToEntity', () => {
       releaseChannel: 'STABLE',
       otaForceCheckRequested: false,
       deviceType: 'UPS',
+      boardType: 'esp32c6',
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -37,6 +39,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.firmwareVersion).toBe('3.1.0');
     expect(result.releaseChannel).toBe(ReleaseChannel.STABLE);
     expect(result.deviceType).toBe(DeviceType.UPS);
+    expect(result.boardType).toBe(BoardType.ESP32_C6);
   });
 
   it('should handle null optional fields', () => {
@@ -53,6 +56,7 @@ describe('mapPrismaDeviceToEntity', () => {
       releaseChannel: 'BETA',
       otaForceCheckRequested: false,
       deviceType: 'BOGUS',
+      boardType: 'esp32c3',
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
@@ -64,6 +68,7 @@ describe('mapPrismaDeviceToEntity', () => {
     expect(result.firmwareVersion).toBeNull();
     expect(result.releaseChannel).toBe(ReleaseChannel.BETA);
     expect(result.deviceType).toBe(DeviceType.MAINS);
+    expect(result.boardType).toBe(BoardType.ESP32_C3);
   });
 
   it('should map lastStatus 0 to PowerStatus.OFF', () => {
@@ -80,10 +85,33 @@ describe('mapPrismaDeviceToEntity', () => {
       releaseChannel: 'STABLE',
       otaForceCheckRequested: false,
       deviceType: 'MAINS',
+      boardType: 'esp32c6',
     };
 
     const result = mapPrismaDeviceToEntity(prismaDevice);
 
     expect(result.lastStatus).toBe(PowerStatus.OFF);
+  });
+
+  it('should throw when boardType is an invalid/unmapped value', () => {
+    const prismaDevice = {
+      id: 'device-1',
+      macAddress: 'AA:BB:CC:DD:EE:FF',
+      encryptedSecret: 'iv:authtag:ciphertext',
+      label: null,
+      lastStatus: null,
+      lastSeenAt: null,
+      statusChangedAt: null,
+      firmwareVersion: null,
+      batteryVoltage: null,
+      releaseChannel: 'STABLE',
+      otaForceCheckRequested: false,
+      deviceType: 'MAINS',
+      boardType: 'esp8266',
+    };
+
+    expect(() => mapPrismaDeviceToEntity(prismaDevice)).toThrow(
+      /invalid boardType/i,
+    );
   });
 });

@@ -1,6 +1,6 @@
 import * as crypto from 'node:crypto';
 import type { IDeviceRepository, Device } from '@home-pulse-watcher/core';
-import { DeviceType } from '@home-pulse-watcher/core';
+import { DeviceType, BoardType } from '@home-pulse-watcher/core';
 import {
   DomainError,
   DomainErrorCode,
@@ -15,6 +15,8 @@ export interface RegisterDeviceInput {
   label?: string;
   /** Hardware category, written once at provisioning. Defaults to MAINS. */
   deviceType?: DeviceType;
+  /** ESP32 board variant, written once at provisioning. Required — no default. */
+  boardType: BoardType;
 }
 
 export interface RegisterDeviceOutput {
@@ -35,6 +37,7 @@ export class RegisterDeviceService extends BaseService<
       macAddress: ['required', 'macAddress'],
       label: { max_length: 100 },
       deviceType: { one_of: Object.values(DeviceType) },
+      boardType: ['required', { one_of: Object.values(BoardType) }],
     };
   }
 
@@ -69,6 +72,7 @@ export class RegisterDeviceService extends BaseService<
       encryptedSecret,
       label: params.label ?? null,
       deviceType: params.deviceType ?? DeviceType.MAINS,
+      boardType: params.boardType,
     });
 
     return {

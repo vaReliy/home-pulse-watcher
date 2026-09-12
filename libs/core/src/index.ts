@@ -1,5 +1,5 @@
 // Types/Enums
-export { BoardType } from './lib/types/board-type.enum.js';
+export { BoardType, isBoardType } from './lib/types/board-type.enum.js';
 export { DeviceRole } from './lib/types/device-role.enum.js';
 export { PowerStatus } from './lib/types/power-status.enum.js';
 export {
