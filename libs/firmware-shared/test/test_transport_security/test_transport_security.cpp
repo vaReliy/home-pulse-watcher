@@ -213,11 +213,11 @@ void test_main_cpp_configures_transport_client_before_first_use(void) {
 void test_esp32c3_release_env_enables_tls(void) {
     std::string ini = readFirstExisting(kEsp32c3IniCandidates);
     TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c3/platformio.ini");
-    TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "[env:esp32c3]"),
-        "esp32c3 platformio.ini must declare an [env:esp32c3] release env");
 
     std::string releaseSection = extractEnvSection(ini, "[env:esp32c3]");
+    TEST_ASSERT_TRUE_MESSAGE(
+        !releaseSection.empty(),
+        "esp32c3 platformio.ini must declare an [env:esp32c3] release env");
     TEST_ASSERT_TRUE_MESSAGE(
         contains(releaseSection, "-DHPW_USE_TLS=1"),
         "esp32c3 release env must build with -DHPW_USE_TLS=1");
@@ -226,11 +226,11 @@ void test_esp32c3_release_env_enables_tls(void) {
 void test_esp32c6_release_env_enables_tls(void) {
     std::string ini = readFirstExisting(kEsp32c6IniCandidates);
     TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c6/platformio.ini");
-    TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "[env:esp32c6]"),
-        "esp32c6 platformio.ini must declare an [env:esp32c6] release env");
 
     std::string releaseSection = extractEnvSection(ini, "[env:esp32c6]");
+    TEST_ASSERT_TRUE_MESSAGE(
+        !releaseSection.empty(),
+        "esp32c6 platformio.ini must declare an [env:esp32c6] release env");
     TEST_ASSERT_TRUE_MESSAGE(
         contains(releaseSection, "-DHPW_USE_TLS=1"),
         "esp32c6 release env must build with -DHPW_USE_TLS=1");
@@ -241,11 +241,11 @@ void test_esp32c6_release_env_enables_tls(void) {
 void test_esp32c3_dev_env_disables_tls(void) {
     std::string ini = readFirstExisting(kEsp32c3IniCandidates);
     TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c3/platformio.ini");
-    TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "[env:esp32c3_dev]"),
-        "esp32c3 platformio.ini must declare an esp32c3_dev local-dev override env");
 
     std::string devSection = extractEnvSection(ini, "[env:esp32c3_dev]");
+    TEST_ASSERT_TRUE_MESSAGE(
+        !devSection.empty(),
+        "esp32c3 platformio.ini must declare an esp32c3_dev local-dev override env");
     TEST_ASSERT_TRUE_MESSAGE(
         contains(devSection, "-DHPW_USE_TLS=0"),
         "esp32c3_dev env must override back to -DHPW_USE_TLS=0 (plaintext WiFiClient) for "
@@ -255,11 +255,11 @@ void test_esp32c3_dev_env_disables_tls(void) {
 void test_esp32c6_dev_env_disables_tls(void) {
     std::string ini = readFirstExisting(kEsp32c6IniCandidates);
     TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c6/platformio.ini");
-    TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "[env:esp32c6_dev]"),
-        "esp32c6 platformio.ini must declare an esp32c6_dev local-dev override env");
 
     std::string devSection = extractEnvSection(ini, "[env:esp32c6_dev]");
+    TEST_ASSERT_TRUE_MESSAGE(
+        !devSection.empty(),
+        "esp32c6 platformio.ini must declare an esp32c6_dev local-dev override env");
     TEST_ASSERT_TRUE_MESSAGE(
         contains(devSection, "-DHPW_USE_TLS=0"),
         "esp32c6_dev env must override back to -DHPW_USE_TLS=0 (plaintext WiFiClient) for "
