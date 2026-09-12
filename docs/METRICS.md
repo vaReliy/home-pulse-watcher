@@ -61,3 +61,4 @@ Each completed task is one row in the table below.
 | 2026-09-12 | home-pulse-watcher | audit-debug-logs-for-pii                                                                                  | T0   | 0      | 0/0/0/0           | 1       | no       | standard |
 | 2026-09-12 | home-pulse-watcher | add-boardtype-to-device                                                                                   | T2   | 0      | 0/0/0/0           | 0       | no       | standard |
 | 2026-09-12 | home-pulse-watcher | scope-release-env-tls-assertions                                                                          | T0   | 0      | 0/0/0/0           | 1       | no       | standard |
+| 2026-09-12 | home-pulse-watcher | redact-auth-headers-in-http-logs                                                                          | T1   | 0      | 0/0/0/0           | 1       | no       | standard |

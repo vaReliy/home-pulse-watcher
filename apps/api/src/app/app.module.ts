@@ -20,6 +20,19 @@ import { AdminModule } from '../modules/admin/admin.module.js';
 
 const isProduction = process.env['NODE_ENV'] === 'production';
 
+/**
+ * Header paths carrying long-lived or per-request secrets that must never
+ * reach stdout/Cloud Logging. pino-http lowercases req.headers keys, so
+ * every path here must match the lowercase header name.
+ */
+export const REDACTED_HEADER_PATHS = [
+  'req.headers["x-telegram-bot-api-secret-token"]', // Telegram webhook static shared secret
+  'req.headers["x-signature"]', // device HMAC signature (hmac-auth.guard.ts)
+  'req.headers["x-device-mac"]', // device HMAC identity (hmac-auth.guard.ts)
+  'req.headers["x-timestamp"]', // device HMAC signed timestamp (hmac-auth.guard.ts)
+  'req.headers.authorization', // admin bearer token (admin-token.guard.ts)
+];
+
 @Module({
   imports: [
     // In-memory store is fine for single-instance MVP; replace with @nest-lab/throttler-storage-redis before horizontal scaling.
@@ -32,6 +45,10 @@ const isProduction = process.env['NODE_ENV'] === 'production';
     ]),
     LoggerModule.forRoot({
       pinoHttp: {
+        redact: {
+          paths: REDACTED_HEADER_PATHS,
+          censor: '[Redacted]',
+        },
         ...(isProduction
           ? {
               messageKey: 'message',
