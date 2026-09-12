@@ -31,7 +31,7 @@ npx prisma migrate dev --name <name>      # new migration
 
 **Architecture**: Onion/Clean — Core (entities, repo interfaces) → Application (UseCases) → Infrastructure (Prisma repos, Telegram) → Interface (REST controllers, Telegram bot). Detail: `docs/ARCHITECTURE.md`.
 
-**DB models**: User (telegramId, locale, timezone), Device (macAddress, encryptedSecret), UserDevice (role: OWNER/EDITOR/VIEWER), PowerEvent (status 0/1, duration).
+**DB models**: User (telegramId, locale, timezone), Device (macAddress, encryptedSecret), UserDevice (role: OWNER/EDITOR/VIEWER), PowerEvent (status 0/1, duration). Gap: `Device` has no `boardType` column, blocking Device↔FirmwareRelease joins for OTA-eligibility/staleness features (see `PROJECT_CONTEXT.md`'s OTA section).
 
 **Telegram bot**: `apps/api/src/modules/telegram/` — Telegraf, button-driven (`/start` only slash command), MarkdownV2, i18n uk/en (default uk, Europe/Kyiv).
 
