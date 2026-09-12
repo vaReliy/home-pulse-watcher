@@ -214,7 +214,12 @@ void test_esp32c3_release_env_enables_tls(void) {
     std::string ini = readFirstExisting(kEsp32c3IniCandidates);
     TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c3/platformio.ini");
     TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "-DHPW_USE_TLS=1"),
+        contains(ini, "[env:esp32c3]"),
+        "esp32c3 platformio.ini must declare an [env:esp32c3] release env");
+
+    std::string releaseSection = extractEnvSection(ini, "[env:esp32c3]");
+    TEST_ASSERT_TRUE_MESSAGE(
+        contains(releaseSection, "-DHPW_USE_TLS=1"),
         "esp32c3 release env must build with -DHPW_USE_TLS=1");
 }
 
@@ -222,7 +227,12 @@ void test_esp32c6_release_env_enables_tls(void) {
     std::string ini = readFirstExisting(kEsp32c6IniCandidates);
     TEST_ASSERT_TRUE_MESSAGE(!ini.empty(), "could not locate firmware/esp32c6/platformio.ini");
     TEST_ASSERT_TRUE_MESSAGE(
-        contains(ini, "-DHPW_USE_TLS=1"),
+        contains(ini, "[env:esp32c6]"),
+        "esp32c6 platformio.ini must declare an [env:esp32c6] release env");
+
+    std::string releaseSection = extractEnvSection(ini, "[env:esp32c6]");
+    TEST_ASSERT_TRUE_MESSAGE(
+        contains(releaseSection, "-DHPW_USE_TLS=1"),
         "esp32c6 release env must build with -DHPW_USE_TLS=1");
 }
 
