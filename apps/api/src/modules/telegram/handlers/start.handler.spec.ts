@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type {
   CreateUserService,
   GetUserByTelegramIdService,
@@ -140,6 +141,72 @@ describe('StartHandler', () => {
       msgs.ALREADY_REGISTERED,
       expect.objectContaining({ parse_mode: 'MarkdownV2' }),
     );
+  });
+
+  describe('Telegram ID log masking (PII)', () => {
+    const longTelegramId = 987654321;
+    let logSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    });
+
+    afterEach(() => {
+      logSpy.mockRestore();
+    });
+
+    it('masks the Telegram ID when logging new user registration', async () => {
+      const createUserService = createMockCreateUserService();
+      const getUserByTelegramId = createMockGetUserByTelegramId();
+      getUserByTelegramId.run.mockResolvedValue({ data: null });
+      createUserService.run.mockResolvedValue({ data: mockUser });
+
+      const handler = new StartHandler(
+        createUserService as unknown as CreateUserService,
+        getUserByTelegramId as unknown as GetUserByTelegramIdService,
+        translationService,
+      );
+
+      const ctx = {
+        from: { id: longTelegramId, username: 'testuser' },
+        reply: jest.fn(),
+      } as unknown as TelegramContext;
+      await handler.handle(ctx);
+
+      expect(logSpy).toHaveBeenCalled();
+      for (const call of logSpy.mock.calls) {
+        expect(String(call[0])).not.toContain(String(longTelegramId));
+      }
+      const combined = logSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(combined).toContain('...4321');
+    });
+
+    it('masks a short Telegram ID with the *** fallback instead of throwing/leaking it', async () => {
+      const shortTelegramId = 42;
+      const createUserService = createMockCreateUserService();
+      const getUserByTelegramId = createMockGetUserByTelegramId();
+      getUserByTelegramId.run.mockResolvedValue({ data: null });
+      createUserService.run.mockResolvedValue({ data: mockUser });
+
+      const handler = new StartHandler(
+        createUserService as unknown as CreateUserService,
+        getUserByTelegramId as unknown as GetUserByTelegramIdService,
+        translationService,
+      );
+
+      const ctx = {
+        from: { id: shortTelegramId, username: 'testuser' },
+        reply: jest.fn(),
+      } as unknown as TelegramContext;
+      await handler.handle(ctx);
+
+      expect(logSpy).toHaveBeenCalled();
+      for (const call of logSpy.mock.calls) {
+        expect(String(call[0])).not.toContain(String(shortTelegramId));
+      }
+      const combined = logSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(combined).toContain('***');
+    });
   });
 
   it('replies ERROR_GENERIC on unexpected error from CreateUserService', async () => {

@@ -9,6 +9,22 @@ import { TranslationService } from '../i18n/index.js';
 import { buildMainMenuKeyboard } from '../keyboards/index.js';
 import type { TelegramContext } from '../types/telegram-context.type.js';
 
+/** Number of trailing characters of a Telegram user ID kept when logging. */
+const MASKED_TELEGRAM_ID_VISIBLE_CHARS = 4;
+
+/**
+ * Truncates a Telegram numeric user ID for log output, keeping only the last
+ * {@link MASKED_TELEGRAM_ID_VISIBLE_CHARS} characters. A Telegram ID is a
+ * stable per-user identifier (PII) and must never be logged in full — see
+ * docs/KNOWLEDGE_INBOX.md "Debug-log PII redaction".
+ */
+function maskTelegramId(telegramId: string): string {
+  if (telegramId.length <= MASKED_TELEGRAM_ID_VISIBLE_CHARS) {
+    return '***';
+  }
+  return `...${telegramId.slice(-MASKED_TELEGRAM_ID_VISIBLE_CHARS)}`;
+}
+
 /**
  * Handles /start command - user registration.
  * This command works for unregistered users.
@@ -61,7 +77,9 @@ export class StartHandler {
         parse_mode: 'MarkdownV2',
         ...buildMainMenuKeyboard(msgs),
       });
-      this.logger.log(`New user registered: ${telegramId}`);
+      this.logger.log(
+        `New user registered: ${maskTelegramId(telegramId.toString())}`,
+      );
     } catch (error) {
       if (
         error instanceof DomainError &&
